@@ -1,7 +1,6 @@
 package zeitgeber
 
 import (
-	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -17,32 +16,41 @@ type ApplyMsg struct {
 
 type Replica struct {
 	curView    int
-	wishCounts map[int]int
 	me         int // this peer's index into peers[]
 	threshold  int
 	dead       int32 // set by Kill()
-	timer      *time.Timer
-	timout     time.Duration
+	isByz      bool  // true if the replica is Byzantine
+	state      State
 	wakeup     chan bool
 	viewSync   chan int
-
-	mu        sync.Mutex          // Lock to protect shared access to this peer's state
-	peers     []*labrpc.ClientEnd // RPC end points of all peers
-	persister *Persister          // Object to hold this peer's persisted state
-
-	votedFor int  // candidateID that received vote in current term (or nil if none)
-	isByz    bool // true if the replica is Byzantine
+	timer      *time.Timer
+	timout     time.Duration
+	mu         sync.Mutex // Lock to protect shared access to this peer's state
+	wishCounts map[int]int
+	persister  *Persister          // Object to hold this peer's persisted state
+	peers      []*labrpc.ClientEnd // RPC end points of all peers
 }
 
-// return currentTerm and whether this server
+type State string
+
+const (
+	REPLICA = "follower"
+	LEADER  = "leader"
+)
+
+// GetState returns currentTerm and whether this server
 // believes it is the leader.
 func (r *Replica) GetState() (int, bool) {
 
-	var term int
+	var view int
 	var isleader bool
-	// Your code here (2A). Done.
 
-	return term, isleader
+	r.mu.Lock()
+	view = r.curView
+	isleader = r.state == LEADER
+	defer r.mu.Unlock()
+
+	return view, isleader
 }
 
 // Kill kills a replica instance
@@ -54,13 +62,6 @@ func (r *Replica) Kill() {
 func (r *Replica) killed() bool {
 	z := atomic.LoadInt32(&r.dead)
 	return z == 1
-}
-
-func (r *Replica) onTimeout() {
-	r.sendWish(r.curView + 1)
-}
-
-func (r *Replica) sendWish(view int) {
 }
 
 // HandleViewSync handles ViewSync msg
@@ -107,10 +108,28 @@ func (r *Replica) HandleWish(args *WishArgs, reply *WishReply) {
 	reply.Success = false
 }
 
+// CallWish issues Wish RPC
+func (r *Replica) CallWish(nodeID int, view int) (bool, *WishReply) {
+	r.mu.Lock()
+	cv := r.curView
+	r.mu.Unlock()
+	args := WishArgs{
+		WishView:     view,
+		VerifiedView: cv,
+		NodeID:       r.me,
+	}
+	var reply WishReply
+	ok := r.sendWish(nodeID, &args, &reply)
+	if ok {
+		return true, &reply
+	}
+	return false, nil
+}
+
 // CallViewSync issues ViewSync RPC
 func (r *Replica) CallViewSync(nodeID int, view int) (bool, *ViewSyncReply) {
 	args := ViewSyncArgs{
-		VerifiedView: r.curView,
+		VerifiedView: view,
 		NodeID:       r.me,
 	}
 	var reply ViewSyncReply
@@ -134,7 +153,29 @@ func (r *Replica) ViewSync(view int) {
 			if ok {
 				// TODO: process reply
 			} else {
-				fmt.Errorf("network error")
+				DPrintf("[%d] did not get ViewSync reply from %d", r.me, nodeID)
+			}
+			wg.Done()
+		}(index)
+		wg.Wait()
+	}
+}
+
+// WishView sends RPCs to the rest of the replicas
+func (r *Replica) WishView(view int) {
+	var wg sync.WaitGroup
+	for index := 0; index < len(r.peers); index++ {
+		if index == r.me {
+			r.wishCounts[view]++
+			continue
+		}
+		wg.Add(1)
+		go func(nodeID int) {
+			ok, _ := r.CallWish(nodeID, view)
+			if ok {
+				// TODO: process reply
+			} else {
+				DPrintf("[%d] did not get Wish reply from %d", r.me, nodeID)
 			}
 			wg.Done()
 		}(index)
@@ -147,76 +188,67 @@ func (r *Replica) sendViewSync(nodeID int, args *ViewSyncArgs, reply *ViewSyncRe
 	return ok
 }
 
-func Init() *Replica {
-	timer := time.NewTimer(2 * time.Second)
-	return &Replica{
-		timer: timer,
-	}
+func (r *Replica) sendWish(nodeID int, args *WishArgs, reply *WishReply) bool {
+	ok := r.peers[nodeID].Call("Zeitgeber.HandleWish", args, reply)
+	return ok
 }
 
+// Run kicks off the protocol
 func (r *Replica) Run() {
-	r.resettimer()
+	r.ResetTimer()
 	for !r.killed() {
 		select {
 		case <-r.timer.C:
-			r.onTimeout()
+			r.mu.Lock()
+			view := r.curView + 1
+			r.mu.Unlock()
+			r.WishView(view)
 		case <-r.wakeup:
-			r.resettimer()
+			r.ResetTimer()
 		case view := <-r.viewSync:
 			r.ViewSync(view)
 		}
 	}
 }
 
-func (r *Replica) resettimer() {
+// ResetTimer resets the timer. There could be more
+// advanced strategies to adjust the timer according
+// to the network status
+func (r *Replica) ResetTimer() {
 	r.timer.Reset(r.timout)
 }
 
-//
 // restore previously persisted state.
-//
-func (rf *Replica) readPersist(data []byte) {
+func (r *Replica) readPersist(data []byte) {
 	if data == nil || len(data) < 1 { // bootstrap without any state?
 		return
 	}
-	// Your code here (2C).
-	// Example:
-	// r := bytes.NewBuffer(data)
-	// d := labgob.NewDecoder(r)
-	// var xxx
-	// var yyy
-	// if d.Decode(&xxx) != nil ||
-	//    d.Decode(&yyy) != nil {
-	//   error...
-	// } else {
-	//   rf.xxx = xxx
-	//   rf.yyy = yyy
-	// }
 }
 
-//
-// the service or tester wants to create a Raft server. the ports
-// of all the Raft servers (including this one) are in peers[]. this
+// Make makes an instance of the Replica.
+// the service or tester wants to create a replica server. the ports
+// of all the replica servers (including this one) are in peers[]. this
 // server's port is peers[me]. all the servers' peers[] arrays
 // have the same order. persister is a place for this server to
 // save its persistent state, and also initially holds the most
 // recent saved state, if any. applyCh is a channel on which the
-// tester or service expects Raft to send ApplyMsg messages.
+// tester or service expects replica to send ApplyMsg messages.
 // Make() must return quickly, so it should start goroutines
 // for any long-running work.
-//
 func Make(peers []*labrpc.ClientEnd, me int,
-	persister *Persister, applyCh chan ApplyMsg, isByz bool) *Replica {
-	rf := &Replica{}
-	rf.peers = peers
-	rf.persister = persister
-	rf.me = me
-	rf.curView = 0
-	rf.isByz = isByz
+	persister *Persister, applyCh chan ApplyMsg, isByz bool, threshold int) *Replica {
+	r := &Replica{}
+	r.peers = peers
+	r.persister = persister
+	r.me = me
+	r.curView = 0
+	r.isByz = isByz
+	r.threshold = threshold
+	r.timer = time.NewTimer(2 * time.Second)
 
-	go rf.Run()
+	go r.Run()
 
-	rf.readPersist(persister.ReadRaftState())
+	r.readPersist(persister.ReadRaftState())
 
-	return rf
+	return r
 }
