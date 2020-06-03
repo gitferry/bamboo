@@ -92,7 +92,7 @@ func make_config(t *testing.T, n int, f int, unreliable bool) *config {
 	// create a full set of replicas.
 	for i := 0; i < cfg.n; i++ {
 		cfg.logs[i] = map[int]interface{}{}
-		cfg.start1(i, cfg.isByz(i))
+		cfg.start1(i, cfg.isByz(i), 2*f+1)
 	}
 
 	// connect everyone
@@ -149,7 +149,7 @@ func (cfg *config) crash1(i int) {
 // state persister, to isolate previous instance of
 // this server. since we cannot really kill it.
 //
-func (cfg *config) start1(i int, isByz bool) {
+func (cfg *config) start1(i int, isByz bool, threshold int) {
 	cfg.crash1(i)
 
 	// a fresh set of outgoing ClientEnd names.
@@ -218,7 +218,7 @@ func (cfg *config) start1(i int, isByz bool) {
 		}
 	}()
 
-	rf := Make(ends, i, cfg.saved[i], applyCh, isByz)
+	rf := Make(ends, i, cfg.saved[i], applyCh, isByz, threshold)
 
 	cfg.mu.Lock()
 	cfg.replicas[i] = rf
