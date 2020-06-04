@@ -7,8 +7,8 @@ import (
 )
 
 func TestFailStop(t *testing.T) {
-	// serverNo := 10
-	// byzantineNo := 2
+	serverNo := 7
+	byzantineNo := 2
 	// cfg := make_config(t, serverNo, byzantineNo, false)
 }
 

@@ -97,15 +97,8 @@ func (r *Replica) HandleWish(args *WishArgs, reply *WishReply) {
 	if args.WishView > r.curView {
 		r.wishCounts[args.WishView]++
 		DPrintf("[%d] has %d Wish msg for view %d", r.me, r.wishCounts[args.WishView], args.WishView)
-		if r.wishCounts[args.WishView] >= r.threshold {
-			r.curView = args.WishView
-			r.mu.Unlock()
-			// send ViewSync to the leader of the view
-			DPrintf("[%d] collect enough Wish msg for view %d", r.me, args.WishView)
-			nextLeader := r.FindLeaderForView(args.WishView)
-			r.CallViewSync(nextLeader, args.WishView)
-			DPrintf("[%d] is going to send ViewSync msg to the leader %d for view %d", r.me, nextLeader, args.WishView)
-		}
+		r.mu.Unlock()
+		r.checkAndSync(args.WishView)
 		reply.Success = true
 	}
 	r.mu.Unlock()
@@ -177,6 +170,8 @@ func (r *Replica) WishView(view int) {
 	for index := 0; index < len(r.peers); index++ {
 		if index == r.me {
 			r.wishCounts[view]++
+			r.checkAndSync(view)
+			DPrintf("[%d] wishes to enter view %d", r.me, view)
 			continue
 		}
 		wg.Add(1)
@@ -191,6 +186,20 @@ func (r *Replica) WishView(view int) {
 		}(index)
 		wg.Wait()
 	}
+}
+
+func (r *Replica) checkAndSync(view int) {
+	r.mu.Lock()
+	if r.wishCounts[view] < r.threshold {
+		return
+	}
+	r.curView = view
+	r.mu.Unlock()
+	// send ViewSync to the leader of the view
+	DPrintf("[%d] collect enough Wish msg for view %d", r.me, view)
+	nextLeader := r.FindLeaderForView(view)
+	r.CallViewSync(nextLeader, view)
+	DPrintf("[%d] is going to send ViewSync msg to the leader %d for view %d", r.me, nextLeader, view)
 }
 
 func (r *Replica) sendViewSync(nodeID int, args *ViewSyncArgs, reply *ViewSyncReply) bool {
@@ -245,6 +254,11 @@ func (r *Replica) readPersist(data []byte) {
 
 // IsSelfLeader checks if the replica is leader based on current view
 func (r *Replica) IsSelfLeader(view int) bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if view < r.curView {
+		return false
+	}
 	return view%len(r.peers) == r.me
 }
 
