@@ -2,14 +2,33 @@ package zeitgeber
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
 
-func TestFailStop(t *testing.T) {
+func TestLeaderElection(t *testing.T) {
 	serverNo := 7
 	byzantineNo := 2
-	// cfg := make_config(t, serverNo, byzantineNo, false)
+	cfg := make_config(t, serverNo, byzantineNo, false)
+	view, isLeader := cfg.replicas[0].GetState()
+	require.Equal(t, 1, view)
+	require.True(t, isLeader)
+}
+
+func TestFailStop(t *testing.T) {
+	serverNo := 4
+	byzantineNo := 1
+	cfg := make_config(t, serverNo, byzantineNo, false)
+	// var view int
+	// var isLeader bool
+	// for _, r := range cfg.replicas {
+	// 	view, isLeader = r.GetState()
+	// 	require.Equal(t, 1, view)
+	// }
+	cfg.begin("Fail-stop testing with 1 byzantine nodes out of 4")
+	time.Sleep(10 * time.Second)
+	defer cfg.cleanup()
 }
 
 func TestRandomPick(t *testing.T) {

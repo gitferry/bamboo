@@ -9,7 +9,6 @@ package zeitgeber
 //
 
 import (
-	"log"
 	"math/rand"
 	"runtime"
 	"sync"
@@ -46,9 +45,8 @@ type config struct {
 	f         int // number of Byzantine nodes
 	replicas  []*Replica
 	byzIDs    []int
-	applyErr  []string // from apply channel readers
-	connected []bool   // whether each server is on the net
-	saved     []*Persister
+	applyErr  []string              // from apply channel readers
+	connected []bool                // whether each server is on the net
 	endnames  [][]string            // the port file names each sends to
 	logs      []map[int]interface{} // copy of each server's committed entries
 	start     time.Time             // time at which make_config() was called
@@ -79,7 +77,6 @@ func make_config(t *testing.T, n int, f int, unreliable bool) *config {
 	cfg.applyErr = make([]string, cfg.n)
 	cfg.replicas = make([]*Replica, cfg.n)
 	cfg.connected = make([]bool, cfg.n)
-	cfg.saved = make([]*Persister, cfg.n)
 	cfg.endnames = make([][]string, cfg.n)
 	cfg.logs = make([]map[int]interface{}, cfg.n)
 	cfg.start = time.Now()
@@ -118,14 +115,6 @@ func (cfg *config) crash1(i int) {
 
 	cfg.mu.Lock()
 	defer cfg.mu.Unlock()
-
-	// a fresh persister, in case old instance
-	// continues to update the Persister.
-	// but copy old persister's content so that we always
-	// pass Make() the last persisted state.
-	if cfg.saved[i] != nil {
-		cfg.saved[i] = cfg.saved[i].Copy()
-	}
 
 	rf := cfg.replicas[i]
 	if rf != nil {
@@ -166,65 +155,13 @@ func (cfg *config) start1(i int, isByz bool, threshold int) {
 		cfg.net.Connect(cfg.endnames[i][j], j)
 	}
 
-	cfg.mu.Lock()
-
-	// a fresh persister, so old instance doesn't overwrite
-	// new instance's persisted state.
-	// but copy old persister's content so that we always
-	// pass Make() the last persisted state.
-	if cfg.saved[i] != nil {
-		cfg.saved[i] = cfg.saved[i].Copy()
-	} else {
-		cfg.saved[i] = MakePersister()
-	}
-
-	cfg.mu.Unlock()
-
-	// listen to messages from Raft indicating newly committed messages.
-	applyCh := make(chan ApplyMsg)
-	go func() {
-		for m := range applyCh {
-			err_msg := ""
-			if m.CommandValid == false {
-				// ignore other types of ApplyMsg
-			} else {
-				v := m.Command
-				cfg.mu.Lock()
-				for j := 0; j < len(cfg.logs); j++ {
-					if old, oldok := cfg.logs[j][m.CommandIndex]; oldok && old != v {
-						// some server has already committed a different value for this entry!
-						err_msg = fmt.Sprintf("commit index=%v server=%v %v != server=%v %v",
-							m.CommandIndex, i, m.Command, j, old)
-					}
-				}
-				_, prevok := cfg.logs[i][m.CommandIndex-1]
-				cfg.logs[i][m.CommandIndex] = v
-				if m.CommandIndex > cfg.maxIndex {
-					cfg.maxIndex = m.CommandIndex
-				}
-				cfg.mu.Unlock()
-
-				if m.CommandIndex > 1 && prevok == false {
-					err_msg = fmt.Sprintf("server %v apply out of order %v", i, m.CommandIndex)
-				}
-			}
-
-			if err_msg != "" {
-				log.Fatalf("apply error: %v\n", err_msg)
-				cfg.applyErr[i] = err_msg
-				// keep reading after error so that Raft doesn't block
-				// holding locks...
-			}
-		}
-	}()
-
-	rf := Make(ends, i, cfg.saved[i], applyCh, isByz, threshold)
+	r := Make(ends, i, isByz, threshold)
 
 	cfg.mu.Lock()
-	cfg.replicas[i] = rf
+	cfg.replicas[i] = r
 	cfg.mu.Unlock()
 
-	svc := labrpc.MakeService(rf)
+	svc := labrpc.MakeService(r)
 	srv := labrpc.MakeServer()
 	srv.AddService(svc)
 	cfg.net.AddServer(i, srv)

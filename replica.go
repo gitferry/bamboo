@@ -15,19 +15,16 @@ type ApplyMsg struct {
 }
 
 type Replica struct {
+	mu         sync.Mutex // Lock to protect shared access to this peer's state
 	curView    int
 	me         int // this peer's index into peers[]
 	threshold  int
 	dead       int32 // set by Kill()
 	isByz      bool  // true if the replica is Byzantine
 	state      State
-	wakeup     chan bool
 	viewSync   chan int
-	timer      *time.Timer
-	timout     time.Duration
-	mu         sync.Mutex // Lock to protect shared access to this peer's state
+	timeout    time.Duration
 	wishCounts map[int]int
-	persister  *Persister          // Object to hold this peer's persisted state
 	peers      []*labrpc.ClientEnd // RPC end points of all peers
 }
 
@@ -72,13 +69,15 @@ func (r *Replica) HandleViewSync(args *ViewSyncArgs, reply *ViewSyncReply) {
 	defer r.mu.Unlock()
 	if args.VerifiedView > r.curView {
 		r.curView = args.VerifiedView
-		reply.Success = true
-		// wake up sleep gorutine to reset timer
-		r.wakeup <- true
-		r.viewSync <- r.curView
-	} else {
-		reply.Success = false
+		nextView := r.curView + 1
+		r.mu.Unlock()
+		if r.IsSelfLeader(nextView) {
+			DPrintf("[%d] is the leader for the next view %d", r.me, nextView)
+			r.viewSync <- nextView
+		}
+		r.mu.Lock()
 	}
+	reply.Success = true
 	reply.VerifiedView = r.curView
 }
 
@@ -86,12 +85,14 @@ func (r *Replica) HandleViewSync(args *ViewSyncArgs, reply *ViewSyncReply) {
 func (r *Replica) HandleWish(args *WishArgs, reply *WishReply) {
 	DPrintf("[%d] received Wish msg from %d", r.me, args.NodeID)
 	r.mu.Lock()
+
 	if args.VerifiedView > r.curView {
 		DPrintf("[%d] update curView from %d to %d via Wish msg from %d", r.me, r.curView, args.VerifiedView, args.NodeID)
 		r.curView = args.VerifiedView
 		reply.Success = true
-		r.wakeup <- true
 		reply.VerifiedView = r.curView
+		r.viewSync <- r.curView
+		r.mu.Unlock()
 		return
 	}
 	if args.WishView > r.curView {
@@ -100,11 +101,12 @@ func (r *Replica) HandleWish(args *WishArgs, reply *WishReply) {
 		r.mu.Unlock()
 		r.checkAndSync(args.WishView)
 		reply.Success = true
+		return
 	}
-	r.mu.Unlock()
 	DPrintf("[%d] Wish msg from %d for view %d is stale", r.me, args.NodeID, args.WishView)
 	reply.VerifiedView = r.curView
-	reply.Success = false
+	r.mu.Unlock()
+	reply.Success = true
 }
 
 // CallWish issues Wish RPC
@@ -118,6 +120,7 @@ func (r *Replica) CallWish(nodeID int, view int) (bool, *WishReply) {
 		NodeID:       r.me,
 	}
 	var reply WishReply
+
 	ok := r.sendWish(nodeID, &args, &reply)
 	if ok {
 		return true, &reply
@@ -141,17 +144,21 @@ func (r *Replica) CallViewSync(nodeID int, view int) (bool, *ViewSyncReply) {
 
 // ViewSync sends RPCs to the rest of the replicas
 func (r *Replica) ViewSync(view int) {
-	var wg sync.WaitGroup
-	if !r.IsSelfLeader(view) {
+	if !r.IsSelfLeader(view) || r.isByz {
+		if r.isByz {
+			DPrintf("[%d] is Byzantine, abort sending ViewSync", r.me)
+		}
 		return
 	}
-	DPrintf("[%d] is going to send ViewSync msg for view %d", r.me, view)
+	var wg sync.WaitGroup
+	DPrintf("[%d] has %d peers", r.me, len(r.peers))
 	for index := 0; index < len(r.peers); index++ {
 		if index == r.me {
 			continue
 		}
 		wg.Add(1)
 		go func(nodeID int) {
+			DPrintf("[%d] is going to send ViewSync for view %d to %d", r.me, view, nodeID)
 			ok, _ := r.CallViewSync(nodeID, view)
 			if ok {
 				// TODO: process reply
@@ -160,12 +167,19 @@ func (r *Replica) ViewSync(view int) {
 			}
 			wg.Done()
 		}(index)
-		wg.Wait()
 	}
+	wg.Wait()
 }
 
 // WishView sends RPCs to the rest of the replicas
-func (r *Replica) WishView(view int) {
+func (r *Replica) WishView() {
+	if r.isByz {
+		DPrintf("[%d] is Byzantine, abort sending Wish", r.me)
+		return
+	}
+	r.mu.Lock()
+	view := r.curView + 1
+	r.mu.Unlock()
 	var wg sync.WaitGroup
 	for index := 0; index < len(r.peers); index++ {
 		if index == r.me {
@@ -191,6 +205,7 @@ func (r *Replica) WishView(view int) {
 func (r *Replica) checkAndSync(view int) {
 	r.mu.Lock()
 	if r.wishCounts[view] < r.threshold {
+		r.mu.Unlock()
 		return
 	}
 	r.curView = view
@@ -203,46 +218,15 @@ func (r *Replica) checkAndSync(view int) {
 }
 
 func (r *Replica) sendViewSync(nodeID int, args *ViewSyncArgs, reply *ViewSyncReply) bool {
-	if r.isByz {
-		DPrintf("[%d] is Byzantine, abort sending ViewSync", r.me)
-		return false
-	}
-	ok := r.peers[nodeID].Call("Zeitgeber.HandleViewSync", args, reply)
+	time.Sleep(20 * time.Millisecond)
+	ok := r.peers[nodeID].Call("Replica.HandleViewSync", args, reply)
 	return ok
 }
 
 func (r *Replica) sendWish(nodeID int, args *WishArgs, reply *WishReply) bool {
-	if r.isByz {
-		DPrintf("[%d] is Byzantine, abort sending Wish", r.me)
-		return false
-	}
-	ok := r.peers[nodeID].Call("Zeitgeber.HandleWish", args, reply)
+	time.Sleep(100 * time.Millisecond)
+	ok := r.peers[nodeID].Call("Replica.HandleWish", args, reply)
 	return ok
-}
-
-// Run kicks off the protocol
-func (r *Replica) Run() {
-	r.ResetTimer()
-	for !r.killed() {
-		select {
-		case <-r.timer.C:
-			r.mu.Lock()
-			view := r.curView + 1
-			r.mu.Unlock()
-			r.WishView(view)
-		case <-r.wakeup:
-			r.ResetTimer()
-		case view := <-r.viewSync:
-			r.ViewSync(view)
-		}
-	}
-}
-
-// ResetTimer resets the timer. There could be more
-// advanced strategies to adjust the timer according
-// to the network status
-func (r *Replica) ResetTimer() {
-	r.timer.Reset(r.timout)
 }
 
 // restore previously persisted state.
@@ -257,14 +241,38 @@ func (r *Replica) IsSelfLeader(view int) bool {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if view < r.curView {
+		r.mu.Unlock()
 		return false
 	}
-	return view%len(r.peers) == r.me
+	isLeader := view%len(r.peers) == r.me
+	return isLeader
 }
 
 // FindLeaderForView returns the leader ID for the given view
 func (r *Replica) FindLeaderForView(view int) int {
 	return view % len(r.peers)
+}
+
+// Run kicks off the protocol
+func (r *Replica) Run() {
+	// the leader kicks off
+	if r.IsSelfLeader(1) {
+		r.curView = 1
+		r.ViewSync(r.curView)
+	} else {
+		r.state = REPLICA
+	}
+	for !r.killed() {
+		select {
+		case <-time.After(r.timeout):
+			DPrintf("[%d] timeout", r.me)
+			r.WishView()
+			break
+		case view := <-r.viewSync:
+			r.ViewSync(view)
+			break
+		}
+	}
 }
 
 // Make makes an instance of the Replica.
@@ -277,27 +285,17 @@ func (r *Replica) FindLeaderForView(view int) int {
 // tester or service expects replica to send ApplyMsg messages.
 // Make() must return quickly, so it should start goroutines
 // for any long-running work.
-func Make(peers []*labrpc.ClientEnd, me int,
-	persister *Persister, applyCh chan ApplyMsg, isByz bool, threshold int) *Replica {
+func Make(peers []*labrpc.ClientEnd, me int, isByz bool, threshold int) *Replica {
 	r := &Replica{}
 	r.peers = peers
-	r.persister = persister
 	r.me = me
 	r.curView = 0
 	r.isByz = isByz
 	r.threshold = threshold
-	r.timer = time.NewTimer(2 * time.Second)
-	if r.IsSelfLeader(r.curView) {
-		r.state = LEADER
-		r.curView++
-		go r.ViewSync(r.curView)
-	} else {
-		r.state = REPLICA
-	}
-
+	r.timeout = 2 * time.Second
+	r.wishCounts = make(map[int]int)
+	r.viewSync = make(chan int)
 	go r.Run()
-
-	r.readPersist(persister.ReadRaftState())
 
 	return r
 }
