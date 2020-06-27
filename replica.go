@@ -15,26 +15,22 @@ type ApplyMsg struct {
 }
 
 type Replica struct {
-	mu         sync.Mutex // Lock to protect shared access to this peer's state
-	curView    int
-	me         int // this peer's index into peers[]
-	threshold  int
-	dead       int32 // set by Kill()
-	isByz      bool  // true if the replica is Byzantine
-	state      State
-	viewSync   chan int
-	timeout    time.Duration
-	wishCounts map[int]int
-	peers      []*labrpc.ClientEnd // RPC end points of all peers
+	//mu         sync.Mutex // Lock to protect shared access to this peer's state
+	//curView    int
+	//me         int // this peer's index into peers[]
+	//threshold  int
+	//dead       int32 // set by Kill()
+	//isByz      bool  // true if the replica is Byzantine
+	//state      State
+	//viewSync   chan int
+	//timeout    time.Duration
+	//wishCounts map[int]int
+	//peers      []*labrpc.ClientEnd // RPC end points of all peers
+
+	Node
+	Synchronizer
+	isByz bool
 }
-
-// State indicates the curretn state of the replica
-type State string
-
-const (
-	REPLICA = "replica"
-	LEADER  = "leader"
-)
 
 // GetState returns currentTerm and whether this server
 // believes it is the leader.
@@ -43,23 +39,7 @@ func (r *Replica) GetState() (int, bool) {
 	var view int
 	var isleader bool
 
-	r.mu.Lock()
-	view = r.curView
-	isleader = r.state == LEADER
-	defer r.mu.Unlock()
-
 	return view, isleader
-}
-
-// Kill kills a replica instance
-func (r *Replica) Kill() {
-	atomic.StoreInt32(&r.dead, 1)
-	// Your code here, if desired.
-}
-
-func (r *Replica) killed() bool {
-	z := atomic.LoadInt32(&r.dead)
-	return z == 1
 }
 
 // HandleViewSync handles ViewSync msg
@@ -285,17 +265,8 @@ func (r *Replica) Run() {
 // tester or service expects replica to send ApplyMsg messages.
 // Make() must return quickly, so it should start goroutines
 // for any long-running work.
-func Make(peers []*labrpc.ClientEnd, me int, isByz bool, threshold int) *Replica {
-	r := &Replica{}
-	r.peers = peers
-	r.me = me
-	r.curView = 0
-	r.isByz = isByz
-	r.threshold = threshold
-	r.timeout = 2 * time.Second
-	r.wishCounts = make(map[int]int)
-	r.viewSync = make(chan int)
-	go r.Run()
+func NewReplica(id ID) *Replica {
+	r := new(Replica)
+	r.Node = NewNode(id)
 
-	return r
 }
