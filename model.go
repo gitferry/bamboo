@@ -1,5 +1,7 @@
 package zeitgeber
 
+import "time"
+
 type View int
 
 type QC struct {
@@ -10,30 +12,37 @@ type TC struct {
 	view View
 }
 
-func NewTC(view View) *TC  {
-	return &TC{view:view}
+func NewTC(view View) *TC {
+	return &TC{view: view}
+}
+
+func NewQC(view View) *QC {
+	return &TC{view: view}
 }
 
 // Quorum records each acknowledgement and check for different types of quorum satisfied
 type Quorum struct {
-	acks  map[View]map[ID]bool
+	acks       map[View]map[ID]bool
+	timestamps map[View]time.Time // keeps track of the time of first receiving the wish for each view
 }
 
 // NewQuorum returns a new Quorum
 func NewQuorum() *Quorum {
 	q := &Quorum{
-		acks:  make(map[View]map[ID]bool),
+		acks:       make(map[View]map[ID]bool),
+		timestamps: make(map[View]time.Time),
 	}
 	return q
 }
 
 // ACK adds id to quorum ack records
 func (q *Quorum) ACK(view View, id ID) {
-	_, exist := q.acks[view][id]
-	if exist {
-		return
+	_, exist := q.acks[view]
+	if !exist {
+		//	first time of receiving the wish for this view
+		q.acks[view] = make(map[ID]bool)
+		q.timestamps[view] = time.Now()
 	}
-	q.acks[view] = make(map[ID]bool)
 	q.acks[view][id] = true
 }
 
@@ -58,65 +67,65 @@ func (q *Quorum) Majority(view View) bool {
 
 // Super majority quorum satisfied
 func (q *Quorum) SuperMajority(view View) bool {
-	return q.size > config.n*2/3
+	return q.Size(view) > config.n*2/3
 }
 
 // FastQuorum from fast paxos
-func (q *Quorum) FastQuorum() bool {
-	return q.size >= config.n*3/4
-}
-
-// AllZones returns true if there is at one ack from each zone
-func (q *Quorum) AllZones() bool {
-	return len(q.zones) == config.z
-}
-
-// ZoneMajority returns true if majority quorum satisfied in any zone
-func (q *Quorum) ZoneMajority() bool {
-	for z, n := range q.zones {
-		if n > config.npz[z]/2 {
-			return true
-		}
-	}
-	return false
-}
-
-// GridRow == AllZones
-func (q *Quorum) GridRow() bool {
-	return q.AllZones()
-}
+//func (q *Quorum) FastQuorum() bool {
+//	return q.size >= config.n*3/4
+//}
+//
+//// AllZones returns true if there is at one ack from each zone
+//func (q *Quorum) AllZones() bool {
+//	return len(q.zones) == config.z
+//}
+//
+//// ZoneMajority returns true if majority quorum satisfied in any zone
+//func (q *Quorum) ZoneMajority() bool {
+//	for z, n := range q.zones {
+//		if n > config.npz[z]/2 {
+//			return true
+//		}
+//	}
+//	return false
+//}
+//
+//// GridRow == AllZones
+//func (q *Quorum) GridRow() bool {
+//	return q.AllZones()
+//}
 
 // GridColumn == all nodes in one zone
-func (q *Quorum) GridColumn() bool {
-	for z, n := range q.zones {
-		if n == config.npz[z] {
-			return true
-		}
-	}
-	return false
-}
+//func (q *Quorum) GridColumn() bool {
+//	for z, n := range q.zones {
+//		if n == config.npz[z] {
+//			return true
+//		}
+//	}
+//	return false
+//}
 
 // FGridQ1 is flexible grid quorum for phase 1
-func (q *Quorum) FGridQ1(Fz int) bool {
-	zone := 0
-	for z, n := range q.zones {
-		if n > config.npz[z]/2 {
-			zone++
-		}
-	}
-	return zone >= config.z-Fz
-}
+//func (q *Quorum) FGridQ1(Fz int) bool {
+//	zone := 0
+//	for z, n := range q.zones {
+//		if n > config.npz[z]/2 {
+//			zone++
+//		}
+//	}
+//	return zone >= config.z-Fz
+//}
 
 // FGridQ2 is flexible grid quorum for phase 2
-func (q *Quorum) FGridQ2(Fz int) bool {
-	zone := 0
-	for z, n := range q.zones {
-		if n > config.npz[z]/2 {
-			zone++
-		}
-	}
-	return zone >= Fz+1
-}
+//func (q *Quorum) FGridQ2(Fz int) bool {
+//	zone := 0
+//	for z, n := range q.zones {
+//		if n > config.npz[z]/2 {
+//			zone++
+//		}
+//	}
+//	return zone >= Fz+1
+//}
 
 /*
 // Q1 returns true if config.Quorum type is satisfied
@@ -157,5 +166,3 @@ func (q *Quorum) Q2() bool {
 	}
 }
 */
-
-

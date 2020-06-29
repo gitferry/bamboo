@@ -1,6 +1,7 @@
 package zeitgeber
 
-
 type Synchronizer interface {
-	AdvanceView(view int)
+	NewView(view View)
+	TimeoutFor(view View)
+	GetCurView() View
 }

@@ -1,59 +1,100 @@
 package bdb
 
 import (
-	"fmt"
 	"sync"
+
+	"github.com/gitferry/zeitgeber/log"
 
 	"github.com/gitferry/zeitgeber"
 )
 
-type Bdb struct {
+type Bcd struct {
 	zeitgeber.Node
+	zeitgeber.Election
 
-	CurView zeitgeber.View
-	quorum *zeitgeber.Quorum
+	curView zeitgeber.View
+	quorum  *zeitgeber.Quorum
 
 	mu sync.Mutex
 }
 
-func NewBdb() *Bdb {
-	return &Bdb{
-		quorum:zeitgeber.NewQuorum(),
-	}
+func NewBdb(n zeitgeber.Node, election zeitgeber.Election) *Bcd {
+	bdb := new(Bcd)
+	bdb.Node = n
+	bdb.Election = election
+	bdb.quorum = zeitgeber.NewQuorum()
+	bdb.Register(TCMsg{}, bdb.HandleTC)
+	bdb.Register(TmoMsg{}, bdb.HandleTmo)
+
+	return bdb
 }
 
-func (b *Bdb) handleWish(wish zeitgeber.WishMsg) (bool, *zeitgeber.TC) {
-	b.quorum.ACK(wish.View, wish.NodeID)
-
-	if b.quorum.SuperMajority(wish.View) {
-		return true, zeitgeber.NewTC(wish.View)
-	}
-
-	return false, nil
-}
-
-func (b *Bdb) WishAdvance(highQC zeitgeber.QC) {
+func (b *Bcd) HandleTmo(wish zeitgeber.WishMsg) {
 	b.mu.Lock()
-	wishView := b.CurView+1
-	b.mu.Unlock()
-	wishMsh := WishMsg{
-		View:   wishView,
-		NodeID: b.ID(),
-		HighQC: highQC,
+	if wish.View <= b.curView {
+		log.Warningf("[%s] received with msg with view %d lower thant the current view %d", b.ID(), wish.View, b.curView)
+		b.mu.Unlock()
+		return
 	}
-	b.Broadcast(wishMsh)
+	b.mu.Unlock()
+	// store the wish
+	b.quorum.ACK(wish.View, wish.NodeID)
+	if !b.quorum.SuperMajority(wish.View) {
+		return
+	}
+	// TC is generated
+	log.Infof("[%s] a time certificate for view %d is generated", b.ID(), wish.View)
+	b.NewView(wish.View)
 }
 
-func (b *Bdb) NewView (view zeitgeber.View) error {
+func (b *Bcd) HandleTC(tc *TCMsg) {
+	log.Infof("[%s] received tc from %d for view %v", b.ID(), tc.NodeID, tc.View)
+	b.mu.Lock()
+	if tc.View < b.curView {
+		log.Warningf("[%s] received tc's view %v is lower than current view %v", b.ID(), tc.View, b.curView)
+		b.mu.Unlock()
+		return
+	}
+	b.mu.Unlock()
+	b.NewView(tc.View)
+}
+
+// WishAdvance broadcasts the wish msg for the view when it timeouts
+func (b *Bcd) TimeoutFor(view zeitgeber.View) {
+	tmoMsg := TmoMsg{
+		View:   view,
+		NodeID: b.ID(),
+	}
+	b.Broadcast(tmoMsg)
+}
+
+func (b *Bcd) NewView(view zeitgeber.View) {
+	b.mu.Lock()
+	if view < b.curView {
+		log.Warningf("the view %d is lower than current view %d", view, b.curView)
+	}
+	// TODO: stop local timer for the view
+	b.curView = view + 1
+	b.mu.Unlock()
+	curView := view + 1
+	if !b.IsLeader(b.ID(), curView) {
+		log.Warningf("[%s] is not the leader of view %v", b.ID(), curView)
+		b.Send(b.FindLeaderFor(curView), TCMsg{View: curView})
+		return
+	}
+	// TODO: start timer for the view + 1
+	// TODO: change this part into pub-sub pattern
+	proposal := &zeitgeber.ProposalMsg{
+		NodeID:   b.ID(),
+		View:     curView,
+		TimeCert: zeitgeber.NewTC(view),
+	}
+	log.Infof("[%s] is proposing for view %v", b.ID(), curView)
+	b.Broadcast(proposal)
+}
+
+func (b *Bcd) GetCurView() zeitgeber.View {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-
-	if view < b.CurView {
-		return fmt.Errorf("the view %d is lower than current view %d", view, b.CurView)
-	}
-	b.CurView = view
-
-	return nil
+	return b.curView
 }
-
-

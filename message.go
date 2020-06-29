@@ -1,8 +1,8 @@
 package zeitgeber
 
 import (
-"encoding/gob"
-"fmt"
+	"encoding/gob"
+	"fmt"
 )
 
 func init() {
@@ -23,16 +23,17 @@ func init() {
  *********************************/
 
 type WishMsg struct {
-	View View
+	View   View
 	NodeID ID
 	HighQC QC
 }
 
 type ProposalMsg struct {
-	NodeID ID
-	TimeCert TC
-	HighQC QC
-	Command Command
+	NodeID   ID
+	View     View
+	TimeCert *TC
+	HighQC   *QC
+	Command  Command
 }
 
 /***************************
@@ -126,4 +127,3 @@ type Register struct {
 	ID     ID
 	Addr   string
 }
-
