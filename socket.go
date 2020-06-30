@@ -8,15 +8,11 @@ import (
 	"github.com/gitferry/zeitgeber/log"
 )
 
-
 // Socket integrates all networking interface and fault injections
 type Socket interface {
 
 	// Send put message to outbound queue
 	Send(to ID, m interface{})
-
-	// MulticastZone send msg to all nodes in the same site
-	MulticastZone(zone int, m interface{})
 
 	// MulticastQuorum sends msg to random number of nodes
 	MulticastQuorum(quorum int, m interface{})
@@ -129,30 +125,17 @@ func (s *socket) Recv() interface{} {
 	}
 }
 
-func (s *socket) MulticastZone(zone int, m interface{}) {
-	//log.Debugf("node %s broadcasting message %+v in zone %d", s.id, m, zone)
-	for id := range s.addresses {
-		if id == s.id {
-			continue
-		}
-		if id.Zone() == zone {
-			s.Send(id, m)
-		}
-	}
-}
-
 func (s *socket) MulticastQuorum(quorum int, m interface{}) {
 	//log.Debugf("node %s multicasting message %+v for %d nodes", s.id, m, quorum)
-	i := 0
-	for id := range s.addresses {
-		if id == s.id {
+	sent := map[int]struct{}{}
+	for i := 0; i < quorum; i++ {
+		r := rand.Intn(len(s.addresses)) + 1
+		_, exists := sent[r]
+		if exists {
 			continue
 		}
-		s.Send(id, m)
-		i++
-		if i == quorum {
-			break
-		}
+		s.Send(NewID(r), m)
+		sent[r] = struct{}{}
 	}
 }
 

@@ -24,6 +24,7 @@ type Config struct {
 	ChanBufferSize int  `json:"chan_buffer_size"` // buffer size for channels
 	MultiVersion   bool `json:"multiversion"`     // create multi-version database
 	Timeout        int  `json:"timeout"`
+	ByzNo          int  `json:"byzNo"`
 	//Benchmark      Bconfig `json:"benchmark"`        // benchmark configuration
 
 	// for future implementation

@@ -95,6 +95,10 @@ func (b *bcb) NewView(view zeitgeber.View) {
 		TimeCert: zeitgeber.NewTC(view),
 	}
 	log.Infof("[%s] is proposing for view %v", b.ID(), curView)
+	if b.IsByz() {
+		b.MulticastQuorum(zeitgeber.GetConfig().ByzNo, proposal)
+		return
+	}
 	b.Broadcast(proposal)
 }
 

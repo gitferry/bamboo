@@ -18,6 +18,7 @@ type Node interface {
 	Retry(r Request)
 	Forward(id ID, r Request)
 	Register(m interface{}, f interface{})
+	IsByz() bool
 }
 
 // node implements Node interface
@@ -29,16 +30,18 @@ type node struct {
 	MessageChan chan interface{}
 	handles     map[string]reflect.Value
 	server      *http.Server
+	isByz       bool
 
 	sync.RWMutex
 	forwards map[string]*Request
 }
 
 // NewNode creates a new Node object from configuration
-func NewNode(id ID) Node {
+func NewNode(id ID, isByz bool) Node {
 	return &node{
-		id:          id,
-		Socket:      NewSocket(id, config.Addrs),
+		id:     id,
+		isByz:  isByz,
+		Socket: NewSocket(id, config.Addrs),
 		//Database:    NewDatabase(),
 		MessageChan: make(chan interface{}, config.ChanBufferSize),
 		handles:     make(map[string]reflect.Value),
@@ -48,6 +51,10 @@ func NewNode(id ID) Node {
 
 func (n *node) ID() ID {
 	return n.id
+}
+
+func (n *node) IsByz() bool {
+	return n.isByz
 }
 
 func (n *node) Retry(r Request) {

@@ -11,17 +11,6 @@ type Replica struct {
 	Node
 	Synchronizer
 	Election
-	isByz bool
-}
-
-// GetState returns currentTerm and whether this server
-// believes it is the leader.
-func (r *Replica) GetState() (int, bool) {
-
-	var view int
-	var isleader bool
-
-	return view, isleader
 }
 
 func (r *Replica) HandleProposal(proposal ProposalMsg) {
@@ -38,7 +27,10 @@ func (r *Replica) HandleProposal(proposal ProposalMsg) {
 	}
 }
 
-func (r *Replica) StartTimer() {
+func (r *Replica) startTimer() {
+	if r.IsLeader(r.ID(), 1) {
+		r.NewView(0) // kick off the protocol
+	}
 	for {
 		timer := time.NewTimer(GetTimer())
 		go func() {
@@ -58,8 +50,7 @@ func (r *Replica) handleTimeout() {
 
 func NewReplica(id ID, syncAlg string, isByz bool) *Replica {
 	r := new(Replica)
-	r.Node = NewNode(id)
-	r.isByz = isByz
+	r.Node = NewNode(id, isByz)
 	elect := NewRotation(GetConfig().N())
 	r.Election = elect
 	switch syncAlg {
@@ -69,5 +60,6 @@ func NewReplica(id ID, syncAlg string, isByz bool) *Replica {
 		r.Synchronizer = bcb.NewBcb(r.Node, elect)
 	}
 	r.Register(ProposalMsg{}, r.HandleProposal)
+	go r.startTimer()
 	return r
 }
