@@ -5,19 +5,19 @@ import "time"
 type View int
 
 type QC struct {
-	view View
+	View View
 }
 
 type TC struct {
-	view View
+	View View
 }
 
 func NewTC(view View) *TC {
-	return &TC{view: view}
+	return &TC{View: view}
 }
 
 func NewQC(view View) *QC {
-	return &TC{view: view}
+	return &QC{View: view}
 }
 
 // Quorum records each acknowledgement and check for different types of quorum satisfied

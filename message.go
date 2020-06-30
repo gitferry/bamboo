@@ -14,26 +14,6 @@ func init() {
 	gob.Register(TransactionReply{})
 	gob.Register(Register{})
 	gob.Register(Config{})
-	gob.Register(WishMsg{})
-	gob.Register(ProposalMsg{})
-}
-
-/*********************************
- * View Synchronization Messages *
- *********************************/
-
-type WishMsg struct {
-	View   View
-	NodeID ID
-	HighQC QC
-}
-
-type ProposalMsg struct {
-	NodeID   ID
-	View     View
-	TimeCert *TC
-	HighQC   *QC
-	Command  Command
 }
 
 /***************************

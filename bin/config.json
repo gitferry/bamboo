@@ -1,0 +1,40 @@
+{
+  "address": {
+    "1": "tcp://127.0.0.1:1735",
+    "2": "tcp://127.0.0.1:1736",
+    "3": "tcp://127.0.0.1:1737",
+    "4": "tcp://127.0.0.1:1738"
+  },
+  "http_address": {
+    "1": "http://127.0.0.1:8080",
+    "2": "http://127.0.0.1:8081",
+    "3": "http://127.0.0.1:8082",
+    "4": "http://127.0.0.1:8083"
+  },
+  "policy": "majority",
+  "threshold": 3,
+  "thrifty": false,
+  "chan_buffer_size": 1024,
+  "buffer_size": 1024,
+  "multiversion": false,
+  "timeout": 100,
+  "benchmark": {
+    "T": 60,
+    "N": 0,
+    "K": 1000,
+    "W": 0.5,
+    "Throttle": 1000,
+    "Concurrency": 1,
+    "Distribution": "uniform",
+    "LinearizabilityCheck": false,
+    "Conflicts": 0,
+    "Min": 0,
+    "Mu": 500,
+    "Sigma": 50,
+    "Move": false,
+    "Speed": 10,
+    "Zipfian_s": 2,
+    "Zipfian_v": 1,
+    "Lambda": 0.01
+  }
+}

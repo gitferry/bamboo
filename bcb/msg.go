@@ -1,4 +1,4 @@
-package bdb
+package bcb
 
 import "github.com/gitferry/zeitgeber"
 
