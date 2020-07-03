@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/gitferry/zeitgeber"
+	"github.com/gitferry/zeitgeber/bcb"
 	"github.com/gitferry/zeitgeber/log"
 )
 
@@ -15,7 +16,20 @@ var isByz = flag.Bool("isByz", false, "this is a Byzantine node")
 
 func replica(id zeitgeber.ID, isByz bool) {
 	log.Infof("node %v starting...", id)
-	zeitgeber.NewReplica(id, *algorithm, isByz).Run()
+
+	r := zeitgeber.NewReplica(id, isByz)
+
+	switch *algorithm {
+	case "bcb":
+		r.Synchronizer = bcb.NewBcb(r.Node, r.Election)
+	default:
+		r.Synchronizer = bcb.NewBcb(r.Node, r.Election)
+	}
+	if r.IsLeader(id, 1) {
+		log.Debugf("[%v] should kick off", id)
+		go r.MakeProposal(1)
+	}
+	r.Run()
 }
 
 func main() {
@@ -30,7 +44,8 @@ func main() {
 			if id.Node() <= zeitgeber.GetConfig().ByzNo {
 				isByz = true
 			}
-			go replica(id, isByz)
+			n := id
+			go replica(n, isByz)
 		}
 		wg.Wait()
 	} else {

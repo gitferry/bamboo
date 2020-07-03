@@ -66,6 +66,15 @@ func (n *node) Retry(r Request) {
 func (n *node) Register(m interface{}, f interface{}) {
 	t := reflect.TypeOf(m)
 	fn := reflect.ValueOf(f)
+
+	if fn.Kind() != reflect.Func {
+		panic("handle function is not func")
+	}
+
+	if fn.Type().In(0) != t {
+		panic("func type is not t")
+	}
+
 	if fn.Kind() != reflect.Func || fn.Type().NumIn() != 1 || fn.Type().In(0) != t {
 		panic("register handle function error")
 	}
@@ -79,7 +88,7 @@ func (n *node) Run() {
 		go n.handle()
 		go n.recv()
 	}
-	//n.http()
+	n.http()
 }
 
 // recv receives messages from socket and pass to message channel

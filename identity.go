@@ -2,7 +2,6 @@ package zeitgeber
 
 import (
 	"strconv"
-	"strings"
 
 	"github.com/gitferry/zeitgeber/log"
 )
@@ -37,12 +36,7 @@ func NewID(node int) ID {
 // Node returns Node ID component
 func (i ID) Node() int {
 	var s string
-	if !strings.Contains(string(i), ".") {
-		log.Warningf("id %s does not contain \".\"\n", i)
-		s = string(i)
-	} else {
-		s = strings.Split(string(i), ".")[1]
-	}
+	s = string(i)
 	node, err := strconv.ParseUint(s, 10, 64)
 	if err != nil {
 		log.Errorf("Failed to convert Node %s to int\n", s)
@@ -55,6 +49,7 @@ type IDs []ID
 
 func (a IDs) Len() int      { return len(a) }
 func (a IDs) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
+
 //func (a IDs) Less(i, j int) bool {
 //	if a[i].Zone() < a[j].Zone() {
 //		return true

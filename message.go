@@ -14,6 +14,9 @@ func init() {
 	gob.Register(TransactionReply{})
 	gob.Register(Register{})
 	gob.Register(Config{})
+	gob.Register(ProposalMsg{})
+	gob.Register(TmoMsg{})
+	gob.Register(TCMsg{})
 }
 
 /***************************

@@ -3,7 +3,9 @@ package zeitgeber
 type Synchronizer interface {
 	NewView(view View)
 	TimeoutFor(view View)
-	HandleTC(tc *TC)
+	HandleTC(tc TCMsg)
+	HandleTmo(tmo TmoMsg)
 	GetCurView() View
-	ResetTimer() chan bool
+	GetHighCert() *TC
+	EnteringViewEvent() chan View
 }

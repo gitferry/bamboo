@@ -12,65 +12,71 @@ type bcb struct {
 	zeitgeber.Node
 	zeitgeber.Election
 
-	curView zeitgeber.View
-	quorum  *zeitgeber.Quorum
+	curView  zeitgeber.View
+	quorum   *zeitgeber.Quorum
+	highCert *zeitgeber.TC
 
-	Reset chan bool
+	newViewChan chan zeitgeber.View
 
 	mu sync.Mutex
 }
 
-func NewBcb(n zeitgeber.Node, election zeitgeber.Election) *bcb {
+func NewBcb(n zeitgeber.Node, election zeitgeber.Election) zeitgeber.Synchronizer {
 	bcb := new(bcb)
 	bcb.Node = n
 	bcb.Election = election
-	bcb.Reset = make(chan bool)
+	bcb.newViewChan = make(chan zeitgeber.View)
 	bcb.quorum = zeitgeber.NewQuorum()
-	bcb.Register(TCMsg{}, bcb.HandleTC)
-	bcb.Register(TmoMsg{}, bcb.HandleTmo)
-
+	bcb.Register(zeitgeber.TCMsg{}, bcb.HandleTC)
+	bcb.Register(zeitgeber.TmoMsg{}, bcb.HandleTmo)
+	bcb.highCert = zeitgeber.NewTC(0)
 	return bcb
 }
 
-func (b *bcb) HandleTmo(tmo TmoMsg) {
+func (b *bcb) HandleTmo(tmo zeitgeber.TmoMsg) {
 	b.mu.Lock()
-	if tmo.View <= b.curView {
-		log.Warningf("[%s] received with msg with view %d lower thant the current view %d", b.ID(), tmo.View, b.curView)
+	if tmo.View < b.curView {
+		log.Warningf("[%s] received timeout msg with view %d lower thant the current view %d", b.ID(), tmo.View, b.curView)
 		b.mu.Unlock()
 		return
 	}
-	b.mu.Unlock()
 	// store the wish
 	b.quorum.ACK(tmo.View, tmo.NodeID)
 	if !b.quorum.SuperMajority(tmo.View) {
 		return
 	}
 	// TC is generated
-	log.Infof("[%s] a time certificate for view %d is generated", b.ID(), tmo.View)
+	b.mu.Unlock()
+	b.Send(b.FindLeaderFor(tmo.View), zeitgeber.TCMsg{View: tmo.View})
+	log.Infof("[%s] a time certificate for view %d is sent", b.ID(), tmo.View)
 	b.NewView(tmo.View)
 }
 
-func (b *bcb) HandleTCMsg(tc *TCMsg) {
-	log.Infof("[%s] received tc from %d for view %v", b.ID(), tc.NodeID, tc.View)
-	b.HandleTC(zeitgeber.NewTC(tc.View))
-}
-
-func (b *bcb) HandleTC(tc *zeitgeber.TC) {
+func (b *bcb) HandleTC(tc zeitgeber.TCMsg) {
+	log.Infof("[%v] received tc from %v for view %v", b.ID(), tc.NodeID, tc.View)
 	b.mu.Lock()
 	if tc.View < b.curView {
 		log.Warningf("[%s] received tc's view %v is lower than current view %v", b.ID(), tc.View, b.curView)
 		b.mu.Unlock()
 		return
 	}
+	if tc.View > b.highCert.View {
+		b.highCert = zeitgeber.NewTC(tc.View)
+	}
 	b.mu.Unlock()
 	b.NewView(tc.View)
 }
 
-// WishAdvance broadcasts the wish msg for the view when it timeouts
+// TimeoutFor broadcasts the timeout msg for the view when it timeouts
 func (b *bcb) TimeoutFor(view zeitgeber.View) {
-	tmoMsg := TmoMsg{
+	tmoMsg := zeitgeber.TmoMsg{
 		View:   view,
 		NodeID: b.ID(),
+	}
+	log.Debugf("[%s] is timeout for view %v", b.ID(), view)
+	if b.IsByz() {
+		b.MulticastQuorum(zeitgeber.GetConfig().ByzNo, tmoMsg)
+		return
 	}
 	b.Broadcast(tmoMsg)
 }
@@ -78,36 +84,27 @@ func (b *bcb) TimeoutFor(view zeitgeber.View) {
 func (b *bcb) NewView(view zeitgeber.View) {
 	b.mu.Lock()
 	if view < b.curView {
-		log.Warningf("the view %d is lower than current view %d", view, b.curView)
+		log.Warningf("the view %v is lower than current view %v", view, b.curView)
+		b.mu.Unlock()
+		return
 	}
-	b.Reset <- true // reset timer for the next view
 	b.curView = view + 1
 	b.mu.Unlock()
-	curView := view + 1
-	if !b.IsLeader(b.ID(), curView) {
-		log.Warningf("[%s] is not the leader of view %v", b.ID(), curView)
-		b.Send(b.FindLeaderFor(curView), TCMsg{View: curView})
-		return
-	}
-	proposal := &zeitgeber.ProposalMsg{
-		NodeID:   b.ID(),
-		View:     curView,
-		TimeCert: zeitgeber.NewTC(view),
-	}
-	log.Infof("[%s] is proposing for view %v", b.ID(), curView)
-	if b.IsByz() {
-		b.MulticastQuorum(zeitgeber.GetConfig().ByzNo, proposal)
-		return
-	}
-	b.Broadcast(proposal)
+	b.newViewChan <- view + 1 // reset timer for the next view
 }
 
-func (b *bcb) ResetTimer() chan bool {
-	return b.Reset
+func (b *bcb) EnteringViewEvent() chan zeitgeber.View {
+	return b.newViewChan
 }
 
 func (b *bcb) GetCurView() zeitgeber.View {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	return b.curView
+}
+
+func (b *bcb) GetHighCert() *zeitgeber.TC {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.highCert
 }

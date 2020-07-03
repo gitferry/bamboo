@@ -2,7 +2,7 @@ package zeitgeber
 
 import (
 	"crypto/sha1"
-	"strconv"
+	"encoding/binary"
 )
 
 type Election interface {
@@ -22,12 +22,17 @@ func NewRotation(peerNo int) *rotation {
 
 func (r *rotation) IsLeader(id ID, view View) bool {
 	h := sha1.New()
-	h.Write([]byte(strconv.Itoa(int(view))))
-	bs, _ := strconv.Atoi(string(h.Sum(nil)))
-	return bs%r.peerNo == id.Node()
+	h.Write([]byte(string(view)))
+	bs := h.Sum(nil)
+	data := binary.BigEndian.Uint64(bs)
+	return data%uint64(r.peerNo) == uint64(id.Node()-1)
 }
 
 func (r *rotation) FindLeaderFor(view View) ID {
-	id := int(view) % r.peerNo
-	return NewID(id)
+	h := sha1.New()
+	h.Write([]byte(string(view)))
+	bs := h.Sum(nil)
+	data := binary.BigEndian.Uint64(bs)
+	id := data%uint64(r.peerNo) + 1
+	return NewID(int(id))
 }

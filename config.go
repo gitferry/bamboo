@@ -50,7 +50,7 @@ func GetConfig() Config {
 }
 
 func GetTimer() time.Duration {
-	return time.Duration(config.Timeout)
+	return time.Duration(time.Duration(config.Timeout) * time.Millisecond)
 }
 
 // Simulation enable go channel transportation to simulate distributed environment
