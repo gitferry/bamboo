@@ -11,7 +11,7 @@ type ProposalMsg struct {
 type TmoMsg struct {
 	View   View
 	NodeID ID
-	HighQC QC
+	HighTC *TC
 }
 
 type TCMsg struct {

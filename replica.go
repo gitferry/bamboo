@@ -13,6 +13,7 @@ type Replica struct {
 }
 
 func (r *Replica) HandleProposal(proposal ProposalMsg) {
+	log.Infof("[%v] received a proposal from %v, view is %v", r.ID(), proposal.NodeID, proposal.View)
 	r.HandleTC(TCMsg{
 		View:   proposal.TimeCert.View,
 		NodeID: proposal.NodeID,
@@ -38,12 +39,13 @@ func (r *Replica) MakeProposal(view View) {
 		View:     view,
 		TimeCert: NewTC(curView),
 	}
+	time.Sleep(20 * time.Millisecond)
 	log.Infof("[%v] is proposing for view %v", r.ID(), curView)
 	if r.IsByz() {
 		r.MulticastQuorum(GetConfig().ByzNo, proposal)
-		return
+	} else {
+		r.Broadcast(proposal)
 	}
-	r.Broadcast(proposal)
 	r.HandleProposal(proposal)
 }
 

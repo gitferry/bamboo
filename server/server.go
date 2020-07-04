@@ -16,6 +16,9 @@ var isByz = flag.Bool("isByz", false, "this is a Byzantine node")
 
 func replica(id zeitgeber.ID, isByz bool) {
 	log.Infof("node %v starting...", id)
+	if isByz {
+		log.Infof("node %v is Byzantine", id)
+	}
 
 	r := zeitgeber.NewReplica(id, isByz)
 
