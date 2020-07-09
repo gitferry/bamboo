@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/gitferry/zeitgeber/log"
@@ -111,6 +112,20 @@ func (c *Config) Load() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	// test
+	for i := 1; i <= 10; i++ {
+		id := NewID(i)
+		port := strconv.Itoa(3000 + i)
+		addr := "tcp://127.0.0.1:" + port
+		portHttp := strconv.Itoa(9000 + i)
+		addrHttp := "http://127.0.0.1:" + portHttp
+		c.Addrs[id] = addr
+		c.HTTPAddrs[id] = addrHttp
+	}
+
+	c.ByzNo = 3
+	c.Threshold = 7
 
 	c.n = len(c.Addrs)
 	//c.npz = make(map[int]int)

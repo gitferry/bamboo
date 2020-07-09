@@ -1,6 +1,6 @@
 package zeitgeber
 
-type Synchronizer interface {
+type Pacemaker interface {
 	NewView(view View)
 	TimeoutFor(view View)
 	HandleTC(tc TCMsg)

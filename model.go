@@ -1,15 +1,21 @@
 package zeitgeber
 
-import "time"
+import (
+	"math/rand"
+	"time"
+)
 
 type View int
 
+type AggSig []byte
+
 type QC struct {
 	View View
+	AggSig
 }
 
 type TC struct {
-	View View
+	View
 }
 
 func NewTC(view View) *TC {
@@ -17,7 +23,12 @@ func NewTC(view View) *TC {
 }
 
 func NewQC(view View) *QC {
-	return &QC{View: view}
+	qc := new(QC)
+	qc.View = view
+	// placeholder
+	qc.AggSig = make([]byte, 65)
+	rand.Read(qc.AggSig)
+	return qc
 }
 
 // Quorum records each acknowledgement and check for different types of quorum satisfied
@@ -63,6 +74,11 @@ func (q *Quorum) All(view View) bool {
 // Majority quorum satisfied
 func (q *Quorum) Majority(view View) bool {
 	return q.Size(view) > config.n/2
+}
+
+func (q *Quorum) GenerateQC(view View) (*QC, error) {
+	if q.SuperMajority()
+	return NewQC(view)
 }
 
 // Super majority quorum satisfied

@@ -24,9 +24,9 @@ func replica(id zeitgeber.ID, isByz bool) {
 
 	switch *algorithm {
 	case "bcb":
-		r.Synchronizer = bcb.NewBcb(r.Node, r.Election)
+		r.Pacemaker = bcb.NewBcb(r.Node, r.Election)
 	default:
-		r.Synchronizer = bcb.NewBcb(r.Node, r.Election)
+		r.Pacemaker = bcb.NewBcb(r.Node, r.Election)
 	}
 	if r.IsLeader(id, 1) {
 		log.Debugf("[%v] should kick off", id)
