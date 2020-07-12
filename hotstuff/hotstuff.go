@@ -7,7 +7,7 @@ import (
 	"github.com/gitferry/zeitgeber/log"
 )
 
-type Hotstuff struct {
+type HotStuff struct {
 	zeitgeber.Node
 	zeitgeber.Pacemaker
 	producer *Producer
@@ -15,7 +15,7 @@ type Hotstuff struct {
 	bt       *blockTree
 }
 
-func (hs *Hotstuff) HandleProposal(proposal ProposalMsg) {
+func (hs *HotStuff) HandleProposal(proposal ProposalMsg) {
 	log.Infof("[%v] received a proposal from %v, view is %v", hs.ID(), proposal.NodeID, proposal.View)
 	r.HandleTC(TCMsg{
 		View:   proposal.TimeCert.View,
@@ -32,6 +32,10 @@ func (hs *Hotstuff) HandleProposal(proposal ProposalMsg) {
 			r.ID(), proposal.View, proposal.NodeID)
 		return
 	}
+}
+
+func (hs *HotStuff) HandleRequest(r zeitgeber.Request) {
+	//	store the request into the transaction pool
 }
 
 func (r *Replica) MakeProposal(view View) {
@@ -78,17 +82,4 @@ func (r *Replica) startTimer() {
 
 func (r *Replica) handleTimeout() {
 	r.Pacemaker.TimeoutFor(r.GetCurView())
-}
-
-func NewReplica(id ID, isByz bool) *Replica {
-	r := new(Replica)
-	r.Node = NewNode(id, isByz)
-	if isByz {
-		log.Infof("[%v] is Byzantine", r.ID())
-	}
-	elect := NewRotation(GetConfig().N())
-	r.Election = elect
-	r.Register(ProposalMsg{}, r.HandleProposal)
-	go r.startTimer()
-	return r
 }

@@ -26,6 +26,7 @@ type Config struct {
 	MultiVersion   bool `json:"multiversion"`     // create multi-version database
 	Timeout        int  `json:"timeout"`
 	ByzNo          int  `json:"byzNo"`
+	BSize          int  `json:"bsize"`
 	//Benchmark      Bconfig `json:"benchmark"`        // benchmark configuration
 
 	// for future implementation

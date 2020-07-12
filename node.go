@@ -12,6 +12,7 @@ import (
 // it includes networking, state machine and RESTful API server
 type Node interface {
 	Socket
+	MemPool
 	//Database
 	ID() ID
 	Run()
@@ -26,6 +27,7 @@ type node struct {
 	id ID
 
 	Socket
+	MemPool
 	//Database
 	MessageChan chan interface{}
 	handles     map[string]reflect.Value
@@ -39,9 +41,10 @@ type node struct {
 // NewNode creates a new Node object from configuration
 func NewNode(id ID, isByz bool) Node {
 	return &node{
-		id:     id,
-		isByz:  isByz,
-		Socket: NewSocket(id, config.Addrs),
+		id:      id,
+		isByz:   isByz,
+		Socket:  NewSocket(id, config.Addrs),
+		MemPool: NewMemPool(GetConfig().BSize),
 		//Database:    NewDatabase(),
 		MessageChan: make(chan interface{}, config.ChanBufferSize),
 		handles:     make(map[string]reflect.Value),
