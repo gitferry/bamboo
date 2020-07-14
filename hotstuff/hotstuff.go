@@ -12,10 +12,10 @@ type HotStuff struct {
 	zeitgeber.Pacemaker
 	producer *Producer
 	quorum   *zeitgeber.Quorum
-	bt       *blockTree
+	bt       *zeitgeber.Blockchain
 }
 
-func (hs *HotStuff) HandleProposal(proposal ProposalMsg) {
+func (hs *HotStuff) HandleBlock(block zeitgeber.Block) {
 	log.Infof("[%v] received a proposal from %v, view is %v", hs.ID(), proposal.NodeID, proposal.View)
 	r.HandleTC(TCMsg{
 		View:   proposal.TimeCert.View,

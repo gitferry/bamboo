@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
+	"reflect"
 	"time"
 
+	"github.com/gitferry/zeitgeber/crypto"
 	"github.com/gitferry/zeitgeber/log"
 )
 
@@ -109,4 +111,16 @@ func ConnectToMaster(addr string, client bool, id ID) {
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+func MapRandomKeyGet(mapI interface{}) interface{} {
+	keys := reflect.ValueOf(mapI).MapKeys()
+
+	return keys[rand.Intn(len(keys))].Interface()
+}
+
+func IdentifierFixture() crypto.Identifier {
+	var id crypto.Identifier
+	_, _ = rand.Read(id[:])
+	return id
 }
