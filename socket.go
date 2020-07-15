@@ -12,7 +12,7 @@ import (
 type Socket interface {
 
 	// Send put message to outbound queue
-	Send(to ID, m interface{})
+	Send(to NodeID, m interface{})
 
 	// MulticastQuorum sends msg to random number of nodes
 	MulticastQuorum(quorum int, m interface{})
@@ -26,35 +26,35 @@ type Socket interface {
 	Close()
 
 	// Fault injection
-	Drop(id ID, t int)             // drops every message send to ID last for t seconds
-	Slow(id ID, d int, t int)      // delays every message send to ID for d ms and last for t seconds
-	Flaky(id ID, p float64, t int) // drop message by chance p for t seconds
-	Crash(t int)                   // node crash for t seconds
+	Drop(id NodeID, t int)             // drops every message send to NodeID last for t seconds
+	Slow(id NodeID, d int, t int)      // delays every message send to NodeID for d ms and last for t seconds
+	Flaky(id NodeID, p float64, t int) // drop message by chance p for t seconds
+	Crash(t int)                       // node crash for t seconds
 }
 
 type socket struct {
-	id        ID
-	addresses map[ID]string
-	nodes     map[ID]Transport
+	id        NodeID
+	addresses map[NodeID]string
+	nodes     map[NodeID]Transport
 
 	crash bool
-	drop  map[ID]bool
-	slow  map[ID]int
-	flaky map[ID]float64
+	drop  map[NodeID]bool
+	slow  map[NodeID]int
+	flaky map[NodeID]float64
 
 	lock sync.RWMutex // locking map nodes
 }
 
-// NewSocket return Socket interface instance given self ID, node list, transport and codec name
-func NewSocket(id ID, addrs map[ID]string) Socket {
+// NewSocket return Socket interface instance given self NodeID, node list, transport and codec name
+func NewSocket(id NodeID, addrs map[NodeID]string) Socket {
 	socket := &socket{
 		id:        id,
 		addresses: addrs,
-		nodes:     make(map[ID]Transport),
+		nodes:     make(map[NodeID]Transport),
 		crash:     false,
-		drop:      make(map[ID]bool),
-		slow:      make(map[ID]int),
-		flaky:     make(map[ID]float64),
+		drop:      make(map[NodeID]bool),
+		slow:      make(map[NodeID]int),
+		flaky:     make(map[NodeID]float64),
 	}
 
 	socket.nodes[id] = NewTransport(addrs[id])
@@ -63,7 +63,7 @@ func NewSocket(id ID, addrs map[ID]string) Socket {
 	return socket
 }
 
-func (s *socket) Send(to ID, m interface{}) {
+func (s *socket) Send(to NodeID, m interface{}) {
 	log.Debugf("node %s send message %+v to %v", s.id, m, to)
 
 	if s.crash {
@@ -134,7 +134,7 @@ func (s *socket) MulticastQuorum(quorum int, m interface{}) {
 		if exists {
 			continue
 		}
-		s.Send(NewID(r), m)
+		s.Send(NewNodeID(r), m)
 		sent[r] = struct{}{}
 	}
 }
@@ -155,7 +155,7 @@ func (s *socket) Close() {
 	}
 }
 
-func (s *socket) Drop(id ID, t int) {
+func (s *socket) Drop(id NodeID, t int) {
 	s.drop[id] = true
 	timer := time.NewTimer(time.Duration(t) * time.Second)
 	go func() {
@@ -164,7 +164,7 @@ func (s *socket) Drop(id ID, t int) {
 	}()
 }
 
-func (s *socket) Slow(id ID, delay int, t int) {
+func (s *socket) Slow(id NodeID, delay int, t int) {
 	s.slow[id] = delay
 	timer := time.NewTimer(time.Duration(t) * time.Second)
 	go func() {
@@ -173,7 +173,7 @@ func (s *socket) Slow(id ID, delay int, t int) {
 	}()
 }
 
-func (s *socket) Flaky(id ID, p float64, t int) {
+func (s *socket) Flaky(id NodeID, p float64, t int) {
 	s.flaky[id] = p
 	timer := time.NewTimer(time.Duration(t) * time.Second)
 	go func() {

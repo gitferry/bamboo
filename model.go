@@ -8,11 +8,10 @@ import (
 
 type View int
 
-type AggSig []byte
-
-type QC struct {
-	View View
-	AggSig
+type TMO struct {
+	View   View
+	NodeID NodeID
+	HighTC *TC
 }
 
 type TC struct {
@@ -34,25 +33,25 @@ func NewQC(view View) *QC {
 
 // Quorum records each acknowledgement and check for different types of quorum satisfied
 type Quorum struct {
-	acks       map[View]map[ID]bool
+	acks       map[View]map[NodeID]bool
 	timestamps map[View]time.Time // keeps track of the time of first receiving the wish for each view
 }
 
 // NewQuorum returns a new Quorum
 func NewQuorum() *Quorum {
 	q := &Quorum{
-		acks:       make(map[View]map[ID]bool),
+		acks:       make(map[View]map[NodeID]bool),
 		timestamps: make(map[View]time.Time),
 	}
 	return q
 }
 
 // ACK adds id to quorum ack records
-func (q *Quorum) ACK(view View, id ID) {
+func (q *Quorum) ACK(view View, id NodeID) {
 	_, exist := q.acks[view]
 	if !exist {
 		//	first time of receiving the wish for this view
-		q.acks[view] = make(map[ID]bool)
+		q.acks[view] = make(map[NodeID]bool)
 		q.timestamps[view] = time.Now()
 	}
 	q.acks[view][id] = true
@@ -65,7 +64,7 @@ func (q *Quorum) Size(view View) int {
 
 // Reset resets the quorum to empty
 func (q *Quorum) Reset() {
-	q.acks = make(map[View]map[ID]bool)
+	q.acks = make(map[View]map[NodeID]bool)
 }
 
 func (q *Quorum) All(view View) bool {

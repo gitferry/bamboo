@@ -50,7 +50,7 @@ func (n *node) handleRoot(w http.ResponseWriter, r *http.Request) {
 	req.Properties = make(map[string]string)
 	for k := range r.Header {
 		if k == HTTPClientID {
-			cmd.ClientID = ID(r.Header.Get(HTTPClientID))
+			cmd.ClientID = NodeID(r.Header.Get(HTTPClientID))
 			continue
 		}
 		if k == HTTPCommandID {
@@ -158,5 +158,5 @@ func (n *node) handleDrop(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalide time", http.StatusBadRequest)
 		return
 	}
-	n.Drop(ID(id), t)
+	n.Drop(NodeID(id), t)
 }

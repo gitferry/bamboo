@@ -6,8 +6,8 @@ import (
 )
 
 type Election interface {
-	IsLeader(id ID, view View) bool
-	FindLeaderFor(view View) ID
+	IsLeader(id NodeID, view View) bool
+	FindLeaderFor(view View) NodeID
 }
 
 type rotation struct {
@@ -20,7 +20,7 @@ func NewRotation(peerNo int) *rotation {
 	}
 }
 
-func (r *rotation) IsLeader(id ID, view View) bool {
+func (r *rotation) IsLeader(id NodeID, view View) bool {
 	h := sha1.New()
 	h.Write([]byte(string(view)))
 	bs := h.Sum(nil)
@@ -28,11 +28,11 @@ func (r *rotation) IsLeader(id ID, view View) bool {
 	return data%uint64(r.peerNo) == uint64(id.Node()-1)
 }
 
-func (r *rotation) FindLeaderFor(view View) ID {
+func (r *rotation) FindLeaderFor(view View) NodeID {
 	h := sha1.New()
 	h.Write([]byte(string(view)))
 	bs := h.Sum(nil)
 	data := binary.BigEndian.Uint64(bs)
 	id := data%uint64(r.peerNo) + 1
-	return NewID(int(id))
+	return NewNodeID(int(id))
 }

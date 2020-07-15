@@ -94,7 +94,7 @@ func Schedule(f func(), delay time.Duration) chan bool {
 }
 
 // ConnectToMaster connects to master node and set global Config
-func ConnectToMaster(addr string, client bool, id ID) {
+func ConnectToMaster(addr string, client bool, id NodeID) {
 	conn, err := net.Dial("tcp", addr)
 	if err != nil {
 		log.Fatal(err)

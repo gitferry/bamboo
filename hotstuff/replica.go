@@ -18,7 +18,7 @@ func (r *Replica) handleRequest(m zeitgeber.Request) {
 	r.StoreTxn(m)
 }
 
-func NewReplica(id zeitgeber.ID, isByz bool) *Replica {
+func NewReplica(id zeitgeber.NodeID, isByz bool) *Replica {
 	r := new(Replica)
 	r.Node = zeitgeber.NewNode(id, isByz)
 	if isByz {

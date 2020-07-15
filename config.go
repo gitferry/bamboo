@@ -14,8 +14,8 @@ var configFile = flag.String("config", "config.json", "Configuration file for pa
 
 // Config contains every system configuration
 type Config struct {
-	Addrs     map[ID]string `json:"address"`      // address for node communication
-	HTTPAddrs map[ID]string `json:"http_address"` // address for client server communication
+	Addrs     map[NodeID]string `json:"address"`      // address for node communication
+	HTTPAddrs map[NodeID]string `json:"http_address"` // address for client server communication
 
 	Policy    string  `json:"policy"`    // leader change policy {consecutive, majority}
 	Threshold float64 `json:"threshold"` // threshold for policy in WPaxos {n consecutive or time interval in ms}
@@ -74,8 +74,8 @@ func MakeDefaultConfig() Config {
 }
 
 // IDs returns all node ids
-func (c Config) IDs() []ID {
-	ids := make([]ID, 0)
+func (c Config) IDs() []NodeID {
+	ids := make([]NodeID, 0)
 	for id := range c.Addrs {
 		ids = append(ids, id)
 	}
@@ -116,7 +116,7 @@ func (c *Config) Load() {
 
 	// test
 	for i := 1; i <= 10; i++ {
-		id := NewID(i)
+		id := NewNodeID(i)
 		port := strconv.Itoa(3000 + i)
 		addr := "tcp://127.0.0.1:" + port
 		portHttp := strconv.Itoa(9000 + i)

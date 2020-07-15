@@ -18,7 +18,7 @@ type Value []byte
 type Command struct {
 	Key       Key
 	Value     Value
-	ClientID  ID
+	ClientID  NodeID
 	CommandID int
 }
 

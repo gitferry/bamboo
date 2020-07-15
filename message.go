@@ -3,6 +3,8 @@ package zeitgeber
 import (
 	"encoding/gob"
 	"fmt"
+
+	"github.com/gitferry/zeitgeber/blockchain"
 )
 
 func init() {
@@ -14,9 +16,9 @@ func init() {
 	gob.Register(TransactionReply{})
 	gob.Register(Register{})
 	gob.Register(Config{})
-	gob.Register(ProposalMsg{})
-	gob.Register(TmoMsg{})
-	gob.Register(TCMsg{})
+	gob.Register(blockchain.Block{})
+	gob.Register(TMO{})
+	gob.Register(TC{})
 }
 
 /***************************
@@ -28,7 +30,7 @@ type Request struct {
 	Command    Command
 	Properties map[string]string
 	Timestamp  int64
-	NodeID     ID         // forward by node
+	NodeID     NodeID     // forward by node
 	c          chan Reply // reply channel created by request receiver
 }
 
@@ -107,6 +109,6 @@ type TransactionReply struct {
 // Register message type is used to regitster self (node or client) with master node
 type Register struct {
 	Client bool
-	ID     ID
+	ID     NodeID
 	Addr   string
 }

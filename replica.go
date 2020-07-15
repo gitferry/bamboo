@@ -13,7 +13,7 @@ type Replica struct {
 }
 
 func (r *Replica) HandleProposal(proposal ProposalMsg) {
-	//log.Infof("[%v] received a proposal from %v, view is %v", r.ID(), proposal.NodeID, proposal.View)
+	//log.Infof("[%v] received a proposal from %v, view is %v", r.NodeID(), proposal.NodeID, proposal.View)
 	r.HandleTC(TCMsg{
 		View:   proposal.TimeCert.View,
 		NodeID: proposal.NodeID,
@@ -40,7 +40,7 @@ func (r *Replica) MakeProposal(view View) {
 		TimeCert: NewTC(curView),
 	}
 	time.Sleep(20 * time.Millisecond)
-	//log.Infof("[%v] is proposing for view %v", r.ID(), curView)
+	//log.Infof("[%v] is proposing for view %v", r.NodeID(), curView)
 	if r.IsByz() {
 		r.MulticastQuorum(GetConfig().ByzNo, proposal)
 	} else {
@@ -50,7 +50,7 @@ func (r *Replica) MakeProposal(view View) {
 }
 
 func (r *Replica) ProcessNewView(newView View) {
-	//log.Debugf("[%v] is processing new view: %v", r.ID(), newView)
+	//log.Debugf("[%v] is processing new view: %v", r.NodeID(), newView)
 	if !r.IsLeader(r.ID(), newView+1) {
 		return
 	}
@@ -77,7 +77,7 @@ func (r *Replica) handleTimeout() {
 	r.Pacemaker.TimeoutFor(r.GetCurView())
 }
 
-func NewReplica(id ID, isByz bool) *Replica {
+func NewReplica(id NodeID, isByz bool) *Replica {
 	r := new(Replica)
 	r.Node = NewNode(id, isByz)
 	if isByz {

@@ -10,11 +10,11 @@ import (
 )
 
 var algorithm = flag.String("algorithm", "bcb", "synchronizer algorithm")
-var id = flag.String("id", "", "ID of the node")
+var id = flag.String("id", "", "NodeID of the node")
 var simulation = flag.Bool("sim", false, "simulation mode")
 var isByz = flag.Bool("isByz", false, "this is a Byzantine node")
 
-func replica(id zeitgeber.ID, isByz bool) {
+func replica(id zeitgeber.NodeID, isByz bool) {
 	log.Infof("node %v starting...", id)
 	if isByz {
 		log.Infof("node %v is Byzantine", id)
@@ -52,6 +52,6 @@ func main() {
 		}
 		wg.Wait()
 	} else {
-		replica(zeitgeber.ID(*id), *isByz)
+		replica(zeitgeber.NodeID(*id), *isByz)
 	}
 }

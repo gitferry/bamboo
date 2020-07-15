@@ -14,17 +14,17 @@ type Node interface {
 	Socket
 	MemPool
 	//Database
-	ID() ID
+	ID() NodeID
 	Run()
 	Retry(r Request)
-	Forward(id ID, r Request)
+	Forward(id NodeID, r Request)
 	Register(m interface{}, f interface{})
 	IsByz() bool
 }
 
 // node implements Node interface
 type node struct {
-	id ID
+	id NodeID
 
 	Socket
 	MemPool
@@ -39,7 +39,7 @@ type node struct {
 }
 
 // NewNode creates a new Node object from configuration
-func NewNode(id ID, isByz bool) Node {
+func NewNode(id NodeID, isByz bool) Node {
 	return &node{
 		id:      id,
 		isByz:   isByz,
@@ -52,7 +52,7 @@ func NewNode(id ID, isByz bool) Node {
 	}
 }
 
-func (n *node) ID() ID {
+func (n *node) ID() NodeID {
 	return n.id
 }
 
@@ -134,11 +134,11 @@ func (n *node) handle() {
 }
 
 /*
-func (n *node) Forward(id ID, m Request) {
+func (n *node) Forward(id NodeID, m Request) {
 	key := m.Command.Key
 	url := config.HTTPAddrs[id] + "/" + strconv.Itoa(int(key))
 
-	log.Debugf("Node %v forwarding %v to %s", n.ID(), m, id)
+	log.Debugf("Node %v forwarding %v to %s", n.NodeID(), m, id)
 
 	method := http.MethodGet
 	var body io.Reader
@@ -181,7 +181,7 @@ func (n *node) Forward(id ID, m Request) {
 }
 */
 
-func (n *node) Forward(id ID, m Request) {
+func (n *node) Forward(id NodeID, m Request) {
 	log.Debugf("Node %v forwarding %v to %s", n.ID(), m, id)
 	m.NodeID = n.id
 	n.Lock()
