@@ -1,44 +1,53 @@
-package bcb
+package zeitgeber
 
 import (
 	"sync"
 	"time"
 
+	"github.com/gitferry/zeitgeber/blockchain"
 	"github.com/gitferry/zeitgeber/log"
-
-	"github.com/gitferry/zeitgeber"
 )
 
-type bcb struct {
-	zeitgeber.Node
-	zeitgeber.Election
+type Pacemaker interface {
+	NewView(view View)
+	TimeoutFor(view View)
+	ProcessQC(qc *blockchain.QC)
+	ProcessTmo(tmo *TMO)
+	GetCurView() View
+	GetHighCert() *TC
+	EnteringViewEvent() chan View
+}
 
-	curView      zeitgeber.View
-	quorum       *zeitgeber.Quorum
-	highCert     *zeitgeber.TC
+type pacemaker struct {
+	Node
+	Election
+
+	curView      View
+	quorum       *Quorum
+	highCert     *TC
 	lastViewTime time.Time
-	viewDuration map[zeitgeber.View]time.Duration
+	viewDuration map[View]time.Duration
 
-	newViewChan chan zeitgeber.View
+	newViewChan chan View
 
 	mu sync.Mutex
 }
 
-func NewBcb(n zeitgeber.Node, election zeitgeber.Election) zeitgeber.Pacemaker {
-	bcb := new(bcb)
+func NewBcb(n Node, election Election) Pacemaker {
+	bcb := new(pacemaker)
 	bcb.Node = n
 	bcb.Election = election
-	bcb.newViewChan = make(chan zeitgeber.View)
-	bcb.quorum = zeitgeber.NewQuorum()
-	bcb.Register(zeitgeber.TCMsg{}, bcb.HandleTC)
-	bcb.Register(zeitgeber.TmoMsg{}, bcb.HandleTmo)
-	bcb.highCert = zeitgeber.NewTC(0)
+	bcb.newViewChan = make(chan View)
+	bcb.quorum = NewQuorum()
+	bcb.Register(TCMsg{}, bcb.HandleTC)
+	bcb.Register(TmoMsg{}, bcb.HandleTmo)
+	bcb.highCert = NewTC(0)
 	bcb.lastViewTime = time.Now()
-	bcb.viewDuration = make(map[zeitgeber.View]time.Duration)
+	bcb.viewDuration = make(map[View]time.Duration)
 	return bcb
 }
 
-func (b *bcb) HandleTmo(tmo zeitgeber.TmoMsg) {
+func (b *pacemaker) HandleTmo(tmo TmoMsg) {
 	b.mu.Lock()
 	if tmo.View < b.curView {
 		//log.Warningf("[%v] received timeout msg with view %v lower than the current view %v", b.NodeID(), tmo.View, b.curView)
@@ -48,7 +57,7 @@ func (b *bcb) HandleTmo(tmo zeitgeber.TmoMsg) {
 	b.quorum.ACK(tmo.View, tmo.NodeID)
 	if b.quorum.SuperMajority(tmo.View) {
 		//log.Infof("[%v] a time certificate for view %v is generated", b.NodeID(), tmo.View)
-		b.Send(b.FindLeaderFor(tmo.View), zeitgeber.TCMsg{View: tmo.View})
+		b.Send(b.FindLeaderFor(tmo.View), TCMsg{View: tmo.View})
 		b.mu.Unlock()
 		b.NewView(tmo.View)
 		return
@@ -61,7 +70,7 @@ func (b *bcb) HandleTmo(tmo zeitgeber.TmoMsg) {
 	b.mu.Unlock()
 }
 
-func (b *bcb) HandleTC(tc zeitgeber.TCMsg) {
+func (b *pacemaker) HandleTC(tc TCMsg) {
 	//log.Infof("[%v] is processing tc for view %v", b.NodeID(), tc.View)
 	b.mu.Lock()
 	if tc.View < b.curView {
@@ -70,29 +79,29 @@ func (b *bcb) HandleTC(tc zeitgeber.TCMsg) {
 		return
 	}
 	if tc.View > b.highCert.View {
-		b.highCert = zeitgeber.NewTC(tc.View)
+		b.highCert = NewTC(tc.View)
 	}
 	b.mu.Unlock()
 	b.NewView(tc.View)
 }
 
 // TimeoutFor broadcasts the timeout msg for the view when it timeouts
-func (b *bcb) TimeoutFor(view zeitgeber.View) {
-	tmoMsg := zeitgeber.TmoMsg{
+func (b *pacemaker) TimeoutFor(view View) {
+	tmoMsg := TmoMsg{
 		View:   view,
 		NodeID: b.ID(),
-		HighTC: zeitgeber.NewTC(view - 1),
+		HighTC: NewTC(view - 1),
 	}
 	//log.Debugf("[%s] is timeout for view %v", b.NodeID(), view)
 	if b.IsByz() {
-		b.MulticastQuorum(zeitgeber.GetConfig().ByzNo, tmoMsg)
+		b.MulticastQuorum(GetConfig().ByzNo, tmoMsg)
 		return
 	}
 	b.Broadcast(tmoMsg)
 	b.HandleTmo(tmoMsg)
 }
 
-func (b *bcb) NewView(view zeitgeber.View) {
+func (b *pacemaker) NewView(view View) {
 	b.mu.Lock()
 	if view < b.curView {
 		//log.Warningf("the view %v is lower than current view %v", view, b.curView)
@@ -109,24 +118,24 @@ func (b *bcb) NewView(view zeitgeber.View) {
 	b.newViewChan <- view + 1 // reset timer for the next view
 }
 
-func (b *bcb) printViewTime() {
+func (b *pacemaker) printViewTime() {
 	//log.Infof("[%v] is printing view duration", b.NodeID())
 	for view, duration := range b.viewDuration {
 		log.Infof("view %v duration: %v seconds", view, duration.Seconds())
 	}
 }
 
-func (b *bcb) EnteringViewEvent() chan zeitgeber.View {
+func (b *pacemaker) EnteringViewEvent() chan View {
 	return b.newViewChan
 }
 
-func (b *bcb) GetCurView() zeitgeber.View {
+func (b *pacemaker) GetCurView() View {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	return b.curView
 }
 
-func (b *bcb) GetHighCert() *zeitgeber.TC {
+func (b *pacemaker) GetHighCert() *TC {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	return b.highCert

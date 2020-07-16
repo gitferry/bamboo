@@ -5,11 +5,10 @@ import (
 	"sync"
 
 	"github.com/gitferry/zeitgeber"
-	"github.com/gitferry/zeitgeber/bcb"
 	"github.com/gitferry/zeitgeber/log"
 )
 
-var algorithm = flag.String("algorithm", "bcb", "synchronizer algorithm")
+var algorithm = flag.String("algorithm", "pacemaker", "synchronizer algorithm")
 var id = flag.String("id", "", "NodeID of the node")
 var simulation = flag.Bool("sim", false, "simulation mode")
 var isByz = flag.Bool("isByz", false, "this is a Byzantine node")
@@ -23,10 +22,10 @@ func replica(id zeitgeber.NodeID, isByz bool) {
 	r := zeitgeber.NewReplica(id, isByz)
 
 	switch *algorithm {
-	case "bcb":
-		r.Pacemaker = bcb.NewBcb(r.Node, r.Election)
+	case "pacemaker":
+		r.Pacemaker = zeitgeber.NewBcb(r.Node, r.Election)
 	default:
-		r.Pacemaker = bcb.NewBcb(r.Node, r.Election)
+		r.Pacemaker = zeitgeber.NewBcb(r.Node, r.Election)
 	}
 	if r.IsLeader(id, 1) {
 		log.Debugf("[%v] should kick off", id)

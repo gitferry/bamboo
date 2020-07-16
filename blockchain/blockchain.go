@@ -15,44 +15,44 @@ type BlockChain struct {
 }
 
 func NewBlkTree(n int) *BlockChain {
-	bt := new(BlockChain)
-	bt.forrest = NewLevelledForest()
-	bt.quorum = NewQuorum(n)
-	return bt
+	bc := new(BlockChain)
+	bc.forrest = NewLevelledForest()
+	bc.quorum = NewQuorum(n)
+	return bc
 }
 
-func (bt *BlockChain) AddBlock(block *Block) {
+func (bc *BlockChain) AddBlock(block *Block) {
 	blockContainer := &BlockContainer{block}
 	// TODO: add checks
-	bt.forrest.AddVertex(blockContainer)
-	err := bt.UpdateHighQC(block.QC)
+	bc.forrest.AddVertex(blockContainer)
+	err := bc.UpdateHighQC(block.QC)
 	if err != nil {
 		log.Warningf("found stale qc, view: %v", block.QC.View)
 	}
 }
 
-func (bt *BlockChain) AddVote(vote *Vote) (bool, *QC) {
-	bt.quorum.Add(vote)
-	return bt.GenerateQC(vote.View, vote.BlockID)
+func (bc *BlockChain) AddVote(vote *Vote) (bool, *QC) {
+	bc.quorum.Add(vote)
+	return bc.GenerateQC(vote.View, vote.BlockID)
 }
 
-func (bt *BlockChain) GetHighQC() *QC {
-	return bt.highQC
+func (bc *BlockChain) GetHighQC() *QC {
+	return bc.highQC
 }
 
-func (bt *BlockChain) UpdateHighQC(qc *QC) error {
-	if qc.View <= bt.highQC.View {
+func (bc *BlockChain) UpdateHighQC(qc *QC) error {
+	if qc.View <= bc.highQC.View {
 		return fmt.Errorf("cannot update high QC")
 	}
-	bt.highQC = qc
+	bc.highQC = qc
 	return nil
 }
 
-func (bt *BlockChain) GenerateQC(view zeitgeber.View, blockID crypto.Identifier) (bool, *QC) {
-	if !bt.quorum.SuperMajority(blockID) {
+func (bc *BlockChain) GenerateQC(view zeitgeber.View, blockID crypto.Identifier) (bool, *QC) {
+	if !bc.quorum.SuperMajority(blockID) {
 		return false, nil
 	}
-	sigs, err := bt.quorum.GetSigs(blockID)
+	sigs, err := bc.quorum.GetSigs(blockID)
 	if err != nil {
 		log.Warningf("cannot get signatures, %w", err)
 		return false, nil
@@ -65,16 +65,12 @@ func (bt *BlockChain) GenerateQC(view zeitgeber.View, blockID crypto.Identifier)
 		Signature: nil,
 	}
 
-	err = bt.UpdateHighQC(qc)
+	err = bc.UpdateHighQC(qc)
 	if err != nil {
 		log.Warningf("generated a stale qc, view: %v", qc.View)
 	}
 
 	return true, qc
-}
-
-func (bt *BlockChain) GenerateProposal(view zeitgeber.View, payload []zeitgeber.Request) *Block {
-	return MakeBlock(view, bt.highQC, payload)
 }
 
 func (bc *BlockChain) CalForkingRate() float32 {
