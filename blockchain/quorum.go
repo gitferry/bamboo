@@ -26,6 +26,14 @@ type Quorum struct {
 	votes map[crypto.Identifier]map[zeitgeber.NodeID]*Vote
 }
 
+func MakeVote(view zeitgeber.View, voter zeitgeber.NodeID, id crypto.Identifier) *Vote {
+	return &Vote{
+		View:    view,
+		Voter:   voter,
+		BlockID: id,
+	}
+}
+
 func NewQuorum(total int) *Quorum {
 	votes := make(map[crypto.Identifier]map[zeitgeber.NodeID]*Vote)
 	return &Quorum{

@@ -100,3 +100,27 @@ func (bc *BlockChain) GetLatestBlock() *Block {
 	//latestBlock := bc.Blocks[bc.Height][latestBlockID]
 	return block
 }
+
+// CommitBlock prunes blocks and returns committed blocks up to the last committed one
+func (bc *BlockChain) CommitBlock(id crypto.Identifier) ([]*Block, error) {
+	vertex, ok := bc.forrest.GetVertex(id)
+	if !ok {
+		return nil, fmt.Errorf("cannot find the block, id: %x", id)
+	}
+	committedNo := vertex.Level() - bc.forrest.LowestLevel
+	committedBlocks := make([]*Block, committedNo)
+	for i := uint64(0); i < committedNo; i++ {
+		committedBlocks = append(committedBlocks, vertex.GetBlock())
+		parentID, _ := vertex.Parent()
+		parentVertex, exists := bc.forrest.GetVertex(parentID)
+		if !exists {
+			return nil, fmt.Errorf("cannot find the parent block, id: %x", parentID)
+		}
+		vertex = parentVertex
+	}
+	err := bc.forrest.PruneUpToLevel(vertex.Level())
+	if err != nil {
+		return nil, fmt.Errorf("cannot prune the blockchain to the committed block, id: %w", err)
+	}
+	return committedBlocks, nil
+}

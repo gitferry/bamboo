@@ -1,40 +1,20 @@
-package zeitgeber
+package pacemaker
 
 import (
-	"sync"
 	"time"
 
-	"github.com/gitferry/zeitgeber/blockchain"
+	"github.com/gitferry/zeitgeber"
 	"github.com/gitferry/zeitgeber/log"
 )
 
-type Pacemaker interface {
-	NewView(view View)
-	TimeoutFor(view View)
-	ProcessQC(qc *blockchain.QC)
-	ProcessTmo(tmo *TMO)
-	GetCurView() View
-	GetHighCert() *TC
-	EnteringViewEvent() chan View
-}
-
-type pacemaker struct {
-	Node
-	Election
-
-	curView      View
-	quorum       *Quorum
-	highCert     *TC
-	lastViewTime time.Time
-	viewDuration map[View]time.Duration
-
-	newViewChan chan View
-
-	mu sync.Mutex
+type Pacemaker struct {
+	curView           zeitgeber.View
+	timeoutController *TimeoutController
+	timeouts          map[zeitgeber.View]map[zeitgeber.NodeID]struct{}
 }
 
 func NewBcb(n Node, election Election) Pacemaker {
-	bcb := new(pacemaker)
+	bcb := new(Pacemaker)
 	bcb.Node = n
 	bcb.Election = election
 	bcb.newViewChan = make(chan View)
@@ -47,11 +27,9 @@ func NewBcb(n Node, election Election) Pacemaker {
 	return bcb
 }
 
-func (b *pacemaker) HandleTmo(tmo TmoMsg) {
-	b.mu.Lock()
+func (p *Pacemaker) ProcessRemoteTmo(tmo TMO) {
 	if tmo.View < b.curView {
 		//log.Warningf("[%v] received timeout msg with view %v lower than the current view %v", b.NodeID(), tmo.View, b.curView)
-		b.mu.Unlock()
 		return
 	}
 	b.quorum.ACK(tmo.View, tmo.NodeID)
@@ -59,18 +37,21 @@ func (b *pacemaker) HandleTmo(tmo TmoMsg) {
 		//log.Infof("[%v] a time certificate for view %v is generated", b.NodeID(), tmo.View)
 		b.Send(b.FindLeaderFor(tmo.View), TCMsg{View: tmo.View})
 		b.mu.Unlock()
-		b.NewView(tmo.View)
+		b.AdvanceView(tmo.View)
 		return
 	}
 	if tmo.HighTC.View >= b.curView {
 		b.mu.Unlock()
-		b.NewView(tmo.HighTC.View)
+		b.AdvanceView(tmo.HighTC.View)
 		return
 	}
-	b.mu.Unlock()
 }
 
-func (b *pacemaker) HandleTC(tc TCMsg) {
+func (p *Pacemaker) ProcessLocalTmo() {
+
+}
+
+func (b *Pacemaker) HandleTC(tc TCMsg) {
 	//log.Infof("[%v] is processing tc for view %v", b.NodeID(), tc.View)
 	b.mu.Lock()
 	if tc.View < b.curView {
@@ -82,11 +63,11 @@ func (b *pacemaker) HandleTC(tc TCMsg) {
 		b.highCert = NewTC(tc.View)
 	}
 	b.mu.Unlock()
-	b.NewView(tc.View)
+	b.AdvanceView(tc.View)
 }
 
 // TimeoutFor broadcasts the timeout msg for the view when it timeouts
-func (b *pacemaker) TimeoutFor(view View) {
+func (b *Pacemaker) TimeoutFor(view View) {
 	tmoMsg := TmoMsg{
 		View:   view,
 		NodeID: b.ID(),
@@ -101,7 +82,7 @@ func (b *pacemaker) TimeoutFor(view View) {
 	b.HandleTmo(tmoMsg)
 }
 
-func (b *pacemaker) NewView(view View) {
+func (b *Pacemaker) AdvanceView(view View) {
 	b.mu.Lock()
 	if view < b.curView {
 		//log.Warningf("the view %v is lower than current view %v", view, b.curView)
@@ -118,24 +99,24 @@ func (b *pacemaker) NewView(view View) {
 	b.newViewChan <- view + 1 // reset timer for the next view
 }
 
-func (b *pacemaker) printViewTime() {
+func (b *Pacemaker) printViewTime() {
 	//log.Infof("[%v] is printing view duration", b.NodeID())
 	for view, duration := range b.viewDuration {
 		log.Infof("view %v duration: %v seconds", view, duration.Seconds())
 	}
 }
 
-func (b *pacemaker) EnteringViewEvent() chan View {
+func (b *Pacemaker) EnteringViewEvent() chan View {
 	return b.newViewChan
 }
 
-func (b *pacemaker) GetCurView() View {
+func (b *Pacemaker) GetCurView() zeitgeber.View {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	return b.curView
 }
 
-func (b *pacemaker) GetHighCert() *TC {
+func (b *Pacemaker) GetHighCert() *TC {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	return b.highCert

@@ -11,6 +11,8 @@ type Vertex interface {
 	Level() uint64
 	// Parent returns the returns the parents (level, ID)
 	Parent() (crypto.Identifier, uint64)
+	// GetBlock returns the block contained in vertex
+	GetBlock() *Block
 }
 
 // VertexIterator is a stateful iterator for VertexList.

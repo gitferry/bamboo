@@ -1,38 +1,56 @@
 package zeitgeber
 
 import (
-	"time"
-
 	"github.com/gitferry/zeitgeber/blockchain"
 	"github.com/gitferry/zeitgeber/log"
+	"github.com/gitferry/zeitgeber/mempool"
+	"github.com/gitferry/zeitgeber/pacemaker"
 )
+
+type View int
 
 type Replica struct {
 	Node
-	pacemaker.Pacemaker
 	Election
 	Safety
-	Producer
+	pd         *mempool.Producer
 	bc         *blockchain.BlockChain
+	pm         *pacemaker.Pacemaker
 	blockMsg   chan *blockchain.Block
 	voteMsg    chan *blockchain.Vote
-	timeoutMsg chan *pacemaker.Pacemaker.TMO
+	qcMsg      chan *blockchain.QC
+	timeoutMsg chan *pacemaker.TMO
 	newView    chan View
 }
 
 func (r *Replica) HandleBlock(block blockchain.Block) {
 	log.Debugf("[%v] received a block from %v, view is %v", r.ID(), block.Proposer, block.View)
+	if block.View < r.pm.GetCurView() {
+		return
+	}
 	r.blockMsg <- &block
 }
 
 func (r *Replica) HandleVote(vote blockchain.Vote) {
 	log.Debugf("[%v] received a vote from %v, blockID is %x", r.ID(), vote.Voter, vote.BlockID)
+	if vote.View < r.pm.GetCurView() {
+		return
+	}
 	r.voteMsg <- &vote
 }
 
+func (r *Replica) HandleQC(qc blockchain.QC) {
+	log.Debugf("[%v] received a qc from, blockID is %x", r.ID(), qc.BlockID)
+	if qc.View < r.pm.GetCurView() {
+		return
+	}
+	r.qcMsg <- &qc
+}
+
 func (r *Replica) processBlock(block *blockchain.Block) {
-	r.ProcessQC(block.QC)
-	curView := r.GetCurView()
+	// TODO: process TC
+	r.processCertificate(block.QC)
+	curView := r.pm.GetCurView()
 	if block.View != curView {
 		log.Warningf("[%v] received a stale proposal", r.ID())
 		return
@@ -44,8 +62,33 @@ func (r *Replica) processBlock(block *blockchain.Block) {
 		return
 	}
 	r.bc.AddBlock(block)
-	r.updateConsensusState()
-	//	TODO: check safety and liveness rules to vote
+	if r.VotingRule(block) {
+		vote := blockchain.MakeVote(block.View, r.ID(), block.ID)
+		// TODO: sign the vote
+		go r.Send(r.FindLeaderFor(curView+1), vote)
+		r.processVote(vote)
+	}
+}
+
+func (r *Replica) processCertificate(qc *blockchain.QC) {
+	r.pm.AdvanceView(qc.View)
+	r.UpdateState(qc)
+	if !r.IsLeader(r.ID(), r.pm.GetCurView()) {
+		go r.Send(r.FindLeaderFor(r.pm.GetCurView()), qc)
+	}
+	ok, commitBlockID := r.CommitRule(qc)
+	if !ok {
+		return
+	}
+	committedBlocks, err := r.bc.CommitBlock(commitBlockID)
+	if err != nil {
+		log.Errorf("[%v] cannot commit blocks", r.ID())
+	}
+	r.processCommittedBlocks(committedBlocks)
+}
+
+func (r *Replica) processCommittedBlocks([]*blockchain.Block) {
+	//	TODO
 }
 
 func (r *Replica) processVote(vote *blockchain.Vote) {
@@ -53,73 +96,43 @@ func (r *Replica) processVote(vote *blockchain.Vote) {
 	if !isBuilt {
 		return
 	}
-	r.ProcessQC(qc)
-}
-
-func (r *Replica) updateConsensusState() {
-	//	TODO: update locked QC and commit
+	r.processCertificate(qc)
 }
 
 func (r *Replica) HandleRequest(request Request) {
 	//	store the request into the transaction pool
 }
 
-//func (r *Replica) MakeProposal(view View) {
-//	curView := r.GetCurView()
-//	// the replica should propose if it is the leader
-//	proposal := ProposalMsg{
-//		NodeID:   r.ID(),
-//		View:     view,
-//		TimeCert: NewTC(curView),
-//	}
-//	time.Sleep(20 * time.Millisecond)
-//	//log.Infof("[%v] is proposing for view %v", r.NodeID(), curView)
-//	if r.IsByz() {
-//		r.MulticastQuorum(GetConfig().ByzNo, proposal)
-//	} else {
-//		r.Broadcast(proposal)
-//	}
-//	r.HandleProposal(proposal)
-//}
-
 func (r *Replica) processNewView(newView View) {
-	//log.Debugf("[%v] is processing new view: %v", r.NodeID(), newView)
+	log.Debugf("[%v] is processing new view: %v", r.ID(), newView)
 	if !r.IsLeader(r.ID(), newView+1) {
 		return
 	}
-	r.producer.MakeProposal(newView+1, r.bc.GetHighQC(), r.bc.MakeForkChoice())
+	block := r.pd.ProduceBlock(newView+1, r.bc.GetHighQC())
+	//	TODO: sign the block
+	r.Broadcast(block)
 }
 
 func (r *Replica) startTimer() {
-	duration := GetTimer()
-	timer := time.NewTimer(duration)
 	for {
-		timer.Reset(duration)
-		go func() {
-			<-timer.C
-			r.handleTimeout()
-			return
-		}()
+		// TODO: add timeout handler
 		select {
-		case newView := <-r.Pacemaker.EnteringViewEvent():
-			timer.Stop()
+		case newView := <-r.pm.EnteringViewEvent():
 			go r.processNewView(newView)
 		case newBlock := <-r.blockMsg:
 			go r.processBlock(newBlock)
 		case newVote := <-r.voteMsg:
 			go r.processVote(newVote)
+		case newQC := <-r.qcMsg:
+			go r.processCertificate(newQC)
 		}
 	}
-}
-
-func (r *Replica) handleTimeout() {
-	r.Pacemaker.TimeoutFor(r.GetCurView())
 }
 
 func (r *Replica) handleRequest(m Request) {
 	log.Debugf("[%v] received txn %v\n", r.ID(), m)
 	go r.Broadcast(m)
-	r.StoreTxn(m)
+	r.pd.CollectTxn(m)
 }
 
 func NewReplica(id NodeID, isByz bool) *Replica {

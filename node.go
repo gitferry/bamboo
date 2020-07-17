@@ -6,13 +6,14 @@ import (
 	"sync"
 
 	"github.com/gitferry/zeitgeber/log"
+	"github.com/gitferry/zeitgeber/mempool"
 )
 
 // Node is the primary access point for every replica
 // it includes networking, state machine and RESTful API server
 type Node interface {
 	Socket
-	MemPool
+	mempool.MemPool
 	//Database
 	ID() NodeID
 	Run()
@@ -27,7 +28,7 @@ type node struct {
 	id NodeID
 
 	Socket
-	MemPool
+	mempool.MemPool
 	//Database
 	MessageChan chan interface{}
 	handles     map[string]reflect.Value

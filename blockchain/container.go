@@ -15,3 +15,4 @@ func (b *BlockContainer) Level() uint64               { return uint64(b.Block.Vi
 func (b *BlockContainer) Parent() (crypto.Identifier, uint64) {
 	return b.Block.QC.BlockID, uint64(b.Block.QC.View)
 }
+func (b *BlockContainer) GetBlock() *Block { return b.Block }
