@@ -64,6 +64,10 @@ func (r *Replica) processBlock(block *blockchain.Block) {
 	r.bc.AddBlock(block)
 	if r.VotingRule(block) {
 		vote := blockchain.MakeVote(block.View, r.ID(), block.ID)
+		err := r.UpdateStateByView(vote.View)
+		if err != nil {
+			log.Errorf("cannot update state after voting: %w", err)
+		}
 		// TODO: sign the vote
 		go r.Send(r.FindLeaderFor(curView+1), vote)
 		r.processVote(vote)
@@ -72,7 +76,10 @@ func (r *Replica) processBlock(block *blockchain.Block) {
 
 func (r *Replica) processCertificate(qc *blockchain.QC) {
 	r.pm.AdvanceView(qc.View)
-	r.UpdateState(qc)
+	err := r.UpdateStateByQC(qc)
+	if err != nil {
+		log.Errorf("cannot update state when processing qc: %w", err)
+	}
 	if !r.IsLeader(r.ID(), r.pm.GetCurView()) {
 		go r.Send(r.FindLeaderFor(r.pm.GetCurView()), qc)
 	}
@@ -144,8 +151,9 @@ func NewReplica(id NodeID, isByz bool) *Replica {
 	elect := NewRotation(GetConfig().N())
 	r.Election = elect
 	r.Register(Request{}, r.handleRequest)
-	//TODO:
-	//1. register hotstuff handlers
-	//2. first leader kicks off
+	r.Register(blockchain.QC{}, r.HandleQC)
+	r.Register(blockchain.Block{}, r.HandleBlock)
+	r.Register(blockchain.Vote{}, r.HandleVote)
+	//TODO: first leader kicks off
 	return r
 }

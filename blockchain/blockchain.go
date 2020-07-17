@@ -101,6 +101,27 @@ func (bc *BlockChain) GetLatestBlock() *Block {
 	return block
 }
 
+func (bc *BlockChain) GetParentBlock(id crypto.Identifier) (*Block, error) {
+	vertex, exists := bc.forrest.GetVertex(id)
+	if !exists {
+		return nil, fmt.Errorf("the block does not exist, id: %x", id)
+	}
+	parentID, _ := vertex.Parent()
+	parentVertex, exists := bc.forrest.GetVertex(parentID)
+	if !exists {
+		return nil, fmt.Errorf("parent block does not exist, id: %x", parentID)
+	}
+	return parentVertex.GetBlock(), nil
+}
+
+func (bc *BlockChain) GetGrandParentBlock(id crypto.Identifier) (*Block, error) {
+	parentBlock, err := bc.GetParentBlock(id)
+	if err != nil {
+		return nil, fmt.Errorf("cannot get parent block: %w", err)
+	}
+	return bc.GetParentBlock(parentBlock.ID)
+}
+
 // CommitBlock prunes blocks and returns committed blocks up to the last committed one
 func (bc *BlockChain) CommitBlock(id crypto.Identifier) ([]*Block, error) {
 	vertex, ok := bc.forrest.GetVertex(id)

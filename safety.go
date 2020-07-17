@@ -6,7 +6,8 @@ import (
 )
 
 type Safety interface {
-	UpdateState(qc *blockchain.QC)
+	UpdateStateByQC(qc *blockchain.QC) error
+	UpdateStateByView(view View) error
 	CommitRule(qc *blockchain.QC) (bool, crypto.Identifier)
 	VotingRule(block *blockchain.Block) bool
 }
