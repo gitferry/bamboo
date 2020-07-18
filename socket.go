@@ -5,14 +5,17 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gitferry/zeitgeber/identity"
 	"github.com/gitferry/zeitgeber/log"
+	"github.com/gitferry/zeitgeber/transport"
+	"github.com/gitferry/zeitgeber/utils"
 )
 
 // Socket integrates all networking interface and fault injections
 type Socket interface {
 
 	// Send put message to outbound queue
-	Send(to NodeID, m interface{})
+	Send(to identity.NodeID, m interface{})
 
 	// MulticastQuorum sends msg to random number of nodes
 	MulticastQuorum(quorum int, m interface{})
@@ -26,44 +29,44 @@ type Socket interface {
 	Close()
 
 	// Fault injection
-	Drop(id NodeID, t int)             // drops every message send to NodeID last for t seconds
-	Slow(id NodeID, d int, t int)      // delays every message send to NodeID for d ms and last for t seconds
-	Flaky(id NodeID, p float64, t int) // drop message by chance p for t seconds
-	Crash(t int)                       // node crash for t seconds
+	Drop(id identity.NodeID, t int)             // drops every message send to NodeID last for t seconds
+	Slow(id identity.NodeID, d int, t int)      // delays every message send to NodeID for d ms and last for t seconds
+	Flaky(id identity.NodeID, p float64, t int) // drop message by chance p for t seconds
+	Crash(t int)                                // node crash for t seconds
 }
 
 type socket struct {
-	id        NodeID
-	addresses map[NodeID]string
-	nodes     map[NodeID]Transport
+	id        identity.NodeID
+	addresses map[identity.NodeID]string
+	nodes     map[identity.NodeID]transport.Transport
 
 	crash bool
-	drop  map[NodeID]bool
-	slow  map[NodeID]int
-	flaky map[NodeID]float64
+	drop  map[identity.NodeID]bool
+	slow  map[identity.NodeID]int
+	flaky map[identity.NodeID]float64
 
 	lock sync.RWMutex // locking map nodes
 }
 
 // NewSocket return Socket interface instance given self NodeID, node list, transport and codec name
-func NewSocket(id NodeID, addrs map[NodeID]string) Socket {
+func NewSocket(id identity.NodeID, addrs map[identity.NodeID]string) Socket {
 	socket := &socket{
 		id:        id,
 		addresses: addrs,
-		nodes:     make(map[NodeID]Transport),
+		nodes:     make(map[identity.NodeID]transport.Transport),
 		crash:     false,
-		drop:      make(map[NodeID]bool),
-		slow:      make(map[NodeID]int),
-		flaky:     make(map[NodeID]float64),
+		drop:      make(map[identity.NodeID]bool),
+		slow:      make(map[identity.NodeID]int),
+		flaky:     make(map[identity.NodeID]float64),
 	}
 
-	socket.nodes[id] = NewTransport(addrs[id])
+	socket.nodes[id] = transport.NewTransport(addrs[id])
 	socket.nodes[id].Listen()
 
 	return socket
 }
 
-func (s *socket) Send(to NodeID, m interface{}) {
+func (s *socket) Send(to identity.NodeID, m interface{}) {
 	log.Debugf("node %s send message %+v to %v", s.id, m, to)
 
 	if s.crash {
@@ -91,8 +94,8 @@ func (s *socket) Send(to NodeID, m interface{}) {
 			log.Errorf("socket does not have address of node %s", to)
 			return
 		}
-		t = NewTransport(address)
-		err := Retry(t.Dial, 100, time.Duration(50)*time.Millisecond)
+		t = transport.NewTransport(address)
+		err := utils.Retry(t.Dial, 100, time.Duration(50)*time.Millisecond)
 		if err != nil {
 			panic(err)
 		}
@@ -134,7 +137,7 @@ func (s *socket) MulticastQuorum(quorum int, m interface{}) {
 		if exists {
 			continue
 		}
-		s.Send(NewNodeID(r), m)
+		s.Send(identity.NewNodeID(r), m)
 		sent[r] = struct{}{}
 	}
 }
@@ -155,7 +158,7 @@ func (s *socket) Close() {
 	}
 }
 
-func (s *socket) Drop(id NodeID, t int) {
+func (s *socket) Drop(id identity.NodeID, t int) {
 	s.drop[id] = true
 	timer := time.NewTimer(time.Duration(t) * time.Second)
 	go func() {
@@ -164,7 +167,7 @@ func (s *socket) Drop(id NodeID, t int) {
 	}()
 }
 
-func (s *socket) Slow(id NodeID, delay int, t int) {
+func (s *socket) Slow(id identity.NodeID, delay int, t int) {
 	s.slow[id] = delay
 	timer := time.NewTimer(time.Duration(t) * time.Second)
 	go func() {
@@ -173,7 +176,7 @@ func (s *socket) Slow(id NodeID, delay int, t int) {
 	}()
 }
 
-func (s *socket) Flaky(id NodeID, p float64, t int) {
+func (s *socket) Flaky(id identity.NodeID, p float64, t int) {
 	s.flaky[id] = p
 	timer := time.NewTimer(time.Duration(t) * time.Second)
 	go func() {

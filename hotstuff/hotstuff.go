@@ -3,13 +3,13 @@ package hotstuff
 import (
 	"fmt"
 
-	"github.com/gitferry/zeitgeber"
 	"github.com/gitferry/zeitgeber/blockchain"
+	"github.com/gitferry/zeitgeber/types"
 )
 
 type HotStuff struct {
-	lastVotedView zeitgeber.View
-	preferredView zeitgeber.View
+	lastVotedView types.View
+	preferredView types.View
 	lockedQC      blockchain.QC
 	bc            *blockchain.BlockChain
 }
@@ -46,7 +46,7 @@ func (hs *HotStuff) CommitRule(qc *blockchain.QC) (bool, *blockchain.Block, erro
 	return false, nil, nil
 }
 
-func (hs *HotStuff) UpdateStateByView(view zeitgeber.View) error {
+func (hs *HotStuff) UpdateStateByView(view types.View) error {
 	return hs.updateLastVotedView(view)
 }
 
@@ -54,7 +54,7 @@ func (hs *HotStuff) UpdateStateByQC(qc *blockchain.QC) error {
 	return hs.updatePreferredView(qc)
 }
 
-func (hs *HotStuff) updateLastVotedView(targetView zeitgeber.View) error {
+func (hs *HotStuff) updateLastVotedView(targetView types.View) error {
 	if targetView < hs.lastVotedView {
 		return fmt.Errorf("target view is lower than the last voted view")
 	}

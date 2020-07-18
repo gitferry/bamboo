@@ -5,30 +5,30 @@ import (
 	"reflect"
 	"sync"
 
+	"github.com/gitferry/zeitgeber/config"
+	"github.com/gitferry/zeitgeber/identity"
 	"github.com/gitferry/zeitgeber/log"
-	"github.com/gitferry/zeitgeber/mempool"
+	"github.com/gitferry/zeitgeber/message"
 )
 
 // Node is the primary access point for every replica
 // it includes networking, state machine and RESTful API server
 type Node interface {
 	Socket
-	mempool.MemPool
 	//Database
-	ID() NodeID
+	ID() identity.NodeID
 	Run()
-	Retry(r Request)
-	Forward(id NodeID, r Request)
+	Retry(r message.Request)
+	Forward(id identity.NodeID, r message.Request)
 	Register(m interface{}, f interface{})
 	IsByz() bool
 }
 
 // node implements Node interface
 type node struct {
-	id NodeID
+	id identity.NodeID
 
 	Socket
-	mempool.MemPool
 	//Database
 	MessageChan chan interface{}
 	handles     map[string]reflect.Value
@@ -36,24 +36,23 @@ type node struct {
 	isByz       bool
 
 	sync.RWMutex
-	forwards map[string]*Request
+	forwards map[string]*message.Request
 }
 
 // NewNode creates a new Node object from configuration
-func NewNode(id NodeID, isByz bool) Node {
+func NewNode(id identity.NodeID, isByz bool) Node {
 	return &node{
-		id:      id,
-		isByz:   isByz,
-		Socket:  NewSocket(id, config.Addrs),
-		MemPool: NewMemPool(GetConfig().BSize),
+		id:     id,
+		isByz:  isByz,
+		Socket: NewSocket(id, config.Configuration.Addrs),
 		//Database:    NewDatabase(),
-		MessageChan: make(chan interface{}, config.ChanBufferSize),
+		MessageChan: make(chan interface{}, config.Configuration.ChanBufferSize),
 		handles:     make(map[string]reflect.Value),
-		forwards:    make(map[string]*Request),
+		forwards:    make(map[string]*message.Request),
 	}
 }
 
-func (n *node) ID() NodeID {
+func (n *node) ID() identity.NodeID {
 	return n.id
 }
 
@@ -61,7 +60,7 @@ func (n *node) IsByz() bool {
 	return n.isByz
 }
 
-func (n *node) Retry(r Request) {
+func (n *node) Retry(r message.Request) {
 	log.Debugf("node %v retry reqeust %v", n.id, r)
 	n.MessageChan <- r
 }
@@ -100,15 +99,15 @@ func (n *node) recv() {
 	for {
 		m := n.Recv()
 		switch m := m.(type) {
-		case Request:
-			m.c = make(chan Reply, 1)
-			go func(r Request) {
-				n.Send(r.NodeID, <-r.c)
+		case message.Request:
+			m.C = make(chan message.Reply, 1)
+			go func(r message.Request) {
+				n.Send(r.NodeID, <-r.C)
 			}(m)
 			n.MessageChan <- m
 			continue
 
-		case Reply:
+		case message.Reply:
 			n.RLock()
 			r := n.forwards[m.Command.String()]
 			log.Debugf("node %v received reply %v", n.id, m)
@@ -182,7 +181,7 @@ func (n *node) Forward(id NodeID, m Request) {
 }
 */
 
-func (n *node) Forward(id NodeID, m Request) {
+func (n *node) Forward(id identity.NodeID, m message.Request) {
 	log.Debugf("Node %v forwarding %v to %s", n.ID(), m, id)
 	m.NodeID = n.id
 	n.Lock()

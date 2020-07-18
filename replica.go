@@ -2,16 +2,19 @@ package zeitgeber
 
 import (
 	"github.com/gitferry/zeitgeber/blockchain"
+	"github.com/gitferry/zeitgeber/config"
+	"github.com/gitferry/zeitgeber/election"
+	"github.com/gitferry/zeitgeber/identity"
 	"github.com/gitferry/zeitgeber/log"
 	"github.com/gitferry/zeitgeber/mempool"
+	"github.com/gitferry/zeitgeber/message"
 	"github.com/gitferry/zeitgeber/pacemaker"
+	"github.com/gitferry/zeitgeber/types"
 )
-
-type View int
 
 type Replica struct {
 	Node
-	Election
+	election.Election
 	Safety
 	pd         *mempool.Producer
 	bc         *blockchain.BlockChain
@@ -20,7 +23,7 @@ type Replica struct {
 	voteMsg    chan *blockchain.Vote
 	qcMsg      chan *blockchain.QC
 	timeoutMsg chan *pacemaker.TMO
-	newView    chan View
+	newView    chan types.View
 }
 
 func (r *Replica) HandleBlock(block blockchain.Block) {
@@ -106,7 +109,7 @@ func (r *Replica) processVote(vote *blockchain.Vote) {
 	r.processCertificate(qc)
 }
 
-func (r *Replica) HandleRequest(request Request) {
+func (r *Replica) HandleRequest(request message.Request) {
 	//	store the request into the transaction pool
 }
 
@@ -136,21 +139,21 @@ func (r *Replica) startTimer() {
 	}
 }
 
-func (r *Replica) handleRequest(m Request) {
+func (r *Replica) handleRequest(m message.Request) {
 	log.Debugf("[%v] received txn %v\n", r.ID(), m)
 	go r.Broadcast(m)
 	r.pd.CollectTxn(m)
 }
 
-func NewReplica(id NodeID, isByz bool) *Replica {
+func NewReplica(id identity.NodeID, isByz bool) *Replica {
 	r := new(Replica)
 	r.Node = NewNode(id, isByz)
 	if isByz {
 		log.Infof("[%v] is Byzantine", r.ID())
 	}
-	elect := NewRotation(GetConfig().N())
+	elect := election.NewRotation(config.GetConfig().N())
 	r.Election = elect
-	r.Register(Request{}, r.handleRequest)
+	r.Register(message.Request{}, r.handleRequest)
 	r.Register(blockchain.QC{}, r.HandleQC)
 	r.Register(blockchain.Block{}, r.HandleBlock)
 	r.Register(blockchain.Vote{}, r.HandleVote)

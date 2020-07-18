@@ -3,19 +3,20 @@ package blockchain
 import (
 	"fmt"
 
-	"github.com/gitferry/zeitgeber"
 	"github.com/gitferry/zeitgeber/crypto"
+	"github.com/gitferry/zeitgeber/identity"
+	"github.com/gitferry/zeitgeber/types"
 )
 
 type Vote struct {
-	zeitgeber.View
-	Voter   zeitgeber.NodeID
+	types.View
+	Voter   identity.NodeID
 	BlockID crypto.Identifier
 	crypto.Signature
 }
 
 type QC struct {
-	View    zeitgeber.View
+	View    types.View
 	BlockID crypto.Identifier
 	crypto.AggSig
 	crypto.Signature
@@ -23,10 +24,10 @@ type QC struct {
 
 type Quorum struct {
 	total int
-	votes map[crypto.Identifier]map[zeitgeber.NodeID]*Vote
+	votes map[crypto.Identifier]map[identity.NodeID]*Vote
 }
 
-func MakeVote(view zeitgeber.View, voter zeitgeber.NodeID, id crypto.Identifier) *Vote {
+func MakeVote(view types.View, voter identity.NodeID, id crypto.Identifier) *Vote {
 	return &Vote{
 		View:    view,
 		Voter:   voter,
@@ -35,7 +36,7 @@ func MakeVote(view zeitgeber.View, voter zeitgeber.NodeID, id crypto.Identifier)
 }
 
 func NewQuorum(total int) *Quorum {
-	votes := make(map[crypto.Identifier]map[zeitgeber.NodeID]*Vote)
+	votes := make(map[crypto.Identifier]map[identity.NodeID]*Vote)
 	return &Quorum{
 		total: total,
 		votes: votes,
@@ -47,7 +48,7 @@ func (q *Quorum) Add(vote *Vote) {
 	_, exist := q.votes[vote.BlockID]
 	if !exist {
 		//	first time of receiving the vote for this block
-		q.votes[vote.BlockID] = make(map[zeitgeber.NodeID]*Vote)
+		q.votes[vote.BlockID] = make(map[identity.NodeID]*Vote)
 	}
 	q.votes[vote.BlockID][vote.Voter] = vote
 }

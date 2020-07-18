@@ -1,4 +1,4 @@
-package zeitgeber
+package utils
 
 import (
 	"encoding/gob"
@@ -8,8 +8,11 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/gitferry/zeitgeber/config"
 	"github.com/gitferry/zeitgeber/crypto"
+	"github.com/gitferry/zeitgeber/identity"
 	"github.com/gitferry/zeitgeber/log"
+	"github.com/gitferry/zeitgeber/message"
 )
 
 func FindIntSlice(slice []int, val int) bool {
@@ -94,20 +97,20 @@ func Schedule(f func(), delay time.Duration) chan bool {
 }
 
 // ConnectToMaster connects to master node and set global Config
-func ConnectToMaster(addr string, client bool, id NodeID) {
+func ConnectToMaster(addr string, client bool, id identity.NodeID) {
 	conn, err := net.Dial("tcp", addr)
 	if err != nil {
 		log.Fatal(err)
 	}
 	dec := gob.NewDecoder(conn)
 	enc := gob.NewEncoder(conn)
-	msg := &Register{
+	msg := &message.Register{
 		ID:     id,
 		Client: client,
 		Addr:   "",
 	}
 	enc.Encode(msg)
-	err = dec.Decode(&config)
+	err = dec.Decode(&config.Configuration)
 	if err != nil {
 		log.Fatal(err)
 	}

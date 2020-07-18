@@ -1,22 +1,24 @@
 package blockchain
 
 import (
-	"github.com/gitferry/zeitgeber"
 	"github.com/gitferry/zeitgeber/crypto"
+	"github.com/gitferry/zeitgeber/identity"
+	"github.com/gitferry/zeitgeber/message"
+	"github.com/gitferry/zeitgeber/types"
 )
 
 type Block struct {
-	zeitgeber.View
+	types.View
 	QC       *QC
-	Proposer zeitgeber.NodeID
-	Payload  []zeitgeber.Request
+	Proposer identity.NodeID
+	Payload  []message.Request
 	PrevID   crypto.Identifier
 	Sig      crypto.Signature
 	ID       crypto.Identifier
 }
 
 // MakeBlock creates an unsigned block
-func MakeBlock(view zeitgeber.View, qc *QC, payload []zeitgeber.Request) *Block {
+func MakeBlock(view types.View, qc *QC, payload []message.Request) *Block {
 	b := new(Block)
 	b.View = view
 	b.QC = qc

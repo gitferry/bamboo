@@ -1,10 +1,12 @@
-package zeitgeber
+package message
 
 import (
 	"encoding/gob"
 	"fmt"
 
-	"github.com/gitferry/zeitgeber/blockchain"
+	"github.com/gitferry/zeitgeber/config"
+	"github.com/gitferry/zeitgeber/db"
+	"github.com/gitferry/zeitgeber/identity"
 )
 
 func init() {
@@ -15,10 +17,7 @@ func init() {
 	gob.Register(Transaction{})
 	gob.Register(TransactionReply{})
 	gob.Register(Register{})
-	gob.Register(Config{})
-	gob.Register(blockchain.Block{})
-	gob.Register(TMO{})
-	gob.Register(TC{})
+	gob.Register(config.Config{})
 }
 
 /***************************
@@ -27,16 +26,16 @@ func init() {
 
 // Request is client reqeust with http response channel
 type Request struct {
-	Command    Command
+	Command    db.Command
 	Properties map[string]string
 	Timestamp  int64
-	NodeID     NodeID     // forward by node
-	c          chan Reply // reply channel created by request receiver
+	NodeID     identity.NodeID // forward by node
+	C          chan Reply      // reply channel created by request receiver
 }
 
 // Reply replies to current client session
 func (r *Request) Reply(reply Reply) {
-	r.c <- reply
+	r.C <- reply
 }
 
 func (r Request) String() string {
@@ -45,8 +44,8 @@ func (r Request) String() string {
 
 // Reply includes all info that might replies to back the client for the coresponding reqeust
 type Reply struct {
-	Command    Command
-	Value      Value
+	Command    db.Command
+	Value      db.Value
 	Properties map[string]string
 	Timestamp  int64
 	Err        error
@@ -59,7 +58,7 @@ func (r Reply) String() string {
 // Read can be used as a special request that directly read the value of key without go through replication protocol in Replica
 type Read struct {
 	CommandID int
-	Key       Key
+	Key       db.Key
 }
 
 func (r Read) String() string {
@@ -69,7 +68,7 @@ func (r Read) String() string {
 // ReadReply cid and value of reading key
 type ReadReply struct {
 	CommandID int
-	Value     Value
+	Value     db.Value
 }
 
 func (r ReadReply) String() string {
@@ -79,7 +78,7 @@ func (r ReadReply) String() string {
 // Transaction contains arbitrary number of commands in one request
 // TODO read-only or write-only transactions
 type Transaction struct {
-	Commands  []Command
+	Commands  []db.Command
 	Timestamp int64
 
 	c chan TransactionReply
@@ -97,7 +96,7 @@ func (t Transaction) String() string {
 // TransactionReply is the result of transaction struct
 type TransactionReply struct {
 	OK        bool
-	Commands  []Command
+	Commands  []db.Command
 	Timestamp int64
 	Err       error
 }
@@ -109,6 +108,6 @@ type TransactionReply struct {
 // Register message type is used to regitster self (node or client) with master node
 type Register struct {
 	Client bool
-	ID     NodeID
+	ID     identity.NodeID
 	Addr   string
 }

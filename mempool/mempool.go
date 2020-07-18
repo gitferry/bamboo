@@ -1,16 +1,18 @@
 package mempool
 
-import "github.com/gitferry/zeitgeber"
+import (
+	"github.com/gitferry/zeitgeber/message"
+)
 
 type MemPool struct {
-	txns []zeitgeber.Request
+	txns []message.Request
 }
 
-func (m *MemPool) GetPayload() []zeitgeber.Request {
-	var payload []zeitgeber.Request
+func (m *MemPool) GetPayload() []message.Request {
+	var payload []message.Request
 	return payload
 }
 
-func (m *MemPool) StoreTxn(request zeitgeber.Request) {
+func (m *MemPool) StoreTxn(request message.Request) {
 	m.txns = append(m.txns, request)
 }

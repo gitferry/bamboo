@@ -3,14 +3,15 @@ package pacemaker
 import (
 	"time"
 
-	"github.com/gitferry/zeitgeber"
+	"github.com/gitferry/zeitgeber/identity"
 	"github.com/gitferry/zeitgeber/log"
+	"github.com/gitferry/zeitgeber/types"
 )
 
 type Pacemaker struct {
-	curView           zeitgeber.View
+	curView           types.View
 	timeoutController *TimeoutController
-	timeouts          map[zeitgeber.View]map[zeitgeber.NodeID]struct{}
+	timeouts          map[types.View]map[identity.NodeID]struct{}
 }
 
 func NewBcb(n Node, election Election) Pacemaker {
@@ -110,7 +111,7 @@ func (b *Pacemaker) EnteringViewEvent() chan View {
 	return b.newViewChan
 }
 
-func (b *Pacemaker) GetCurView() zeitgeber.View {
+func (b *Pacemaker) GetCurView() types.View {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	return b.curView

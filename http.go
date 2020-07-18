@@ -9,7 +9,10 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/gitferry/zeitgeber/db"
+	"github.com/gitferry/zeitgeber/identity"
 	"github.com/gitferry/zeitgeber/log"
+	"github.com/gitferry/zeitgeber/message"
 )
 
 // http request header names
@@ -28,7 +31,7 @@ func (n *node) http() {
 	mux.HandleFunc("/crash", n.handleCrash)
 	mux.HandleFunc("/drop", n.handleDrop)
 	// http string should be in form of ":8080"
-	url, err := url.Parse(config.HTTPAddrs[n.id])
+	url, err := url.Parse(config.config.HTTPAddrs[n.id])
 	if err != nil {
 		log.Fatal("http url parse error: ", err)
 	}
@@ -42,15 +45,15 @@ func (n *node) http() {
 }
 
 func (n *node) handleRoot(w http.ResponseWriter, r *http.Request) {
-	var req Request
-	var cmd Command
+	var req message.Request
+	var cmd db.Command
 	var err error
 
 	// get all http headers
 	req.Properties = make(map[string]string)
 	for k := range r.Header {
 		if k == HTTPClientID {
-			cmd.ClientID = NodeID(r.Header.Get(HTTPClientID))
+			cmd.ClientID = identity.NodeID(r.Header.Get(HTTPClientID))
 			continue
 		}
 		if k == HTTPCommandID {
@@ -71,7 +74,7 @@ func (n *node) handleRoot(w http.ResponseWriter, r *http.Request) {
 			log.Error(err)
 			return
 		}
-		cmd.Key = Key(i)
+		cmd.Key = db.Key(i)
 		if r.Method == http.MethodPut || r.Method == http.MethodPost {
 			body, err := ioutil.ReadAll(r.Body)
 			if err != nil {
@@ -79,7 +82,7 @@ func (n *node) handleRoot(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, "cannot read body", http.StatusBadRequest)
 				return
 			}
-			cmd.Value = Value(body)
+			cmd.Value = db.Value(body)
 		}
 	} else {
 		body, err := ioutil.ReadAll(r.Body)
@@ -94,7 +97,7 @@ func (n *node) handleRoot(w http.ResponseWriter, r *http.Request) {
 	req.Command = cmd
 	req.Timestamp = time.Now().UnixNano()
 	req.NodeID = n.id // TODO does this work when forward twice
-	req.c = make(chan Reply, 1)
+	req.c = make(chan message.Reply, 1)
 
 	n.MessageChan <- req
 
@@ -158,5 +161,5 @@ func (n *node) handleDrop(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalide time", http.StatusBadRequest)
 		return
 	}
-	n.Drop(NodeID(id), t)
+	n.Drop(identity.NodeID(id), t)
 }

@@ -1,4 +1,4 @@
-package zeitgeber
+package transport
 
 import (
 	"bytes"
@@ -13,7 +13,7 @@ import (
 	"github.com/gitferry/zeitgeber/log"
 )
 
-var scheme = flag.String("transport", "tcp", "transport scheme (tcp, udp, chan), default tcp")
+var Scheme = flag.String("transport", "tcp", "transport scheme (tcp, udp, chan), default tcp")
 
 // Transport = transport + pipe + client + server
 type Transport interface {
@@ -39,7 +39,7 @@ type Transport interface {
 // NewTransport creates new transport object with url
 func NewTransport(addr string) Transport {
 	if !strings.Contains(addr, "://") {
-		addr = *scheme + "://" + addr
+		addr = *Scheme + "://" + addr
 	}
 	uri, err := url.Parse(addr)
 	if err != nil {
@@ -48,8 +48,8 @@ func NewTransport(addr string) Transport {
 
 	transport := &transport{
 		uri:   uri,
-		send:  make(chan interface{}, config.ChanBufferSize),
-		recv:  make(chan interface{}, config.ChanBufferSize),
+		send:  make(chan interface{}, 1024),
+		recv:  make(chan interface{}, 1024),
 		close: make(chan struct{}),
 	}
 
@@ -264,7 +264,7 @@ func (c *channel) Dial() error {
 func (c *channel) Listen() {
 	chansLock.Lock()
 	defer chansLock.Unlock()
-	chans[c.uri.Host] = make(chan interface{}, config.ChanBufferSize)
+	chans[c.uri.Host] = make(chan interface{}, 1024)
 	go func(conn <-chan interface{}) {
 		for {
 			select {

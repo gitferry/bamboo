@@ -3,9 +3,9 @@ package blockchain
 import (
 	"fmt"
 
-	"github.com/gitferry/zeitgeber"
 	"github.com/gitferry/zeitgeber/crypto"
 	"github.com/gitferry/zeitgeber/log"
+	"github.com/gitferry/zeitgeber/types"
 )
 
 type BlockChain struct {
@@ -14,10 +14,11 @@ type BlockChain struct {
 	quorum  *Quorum
 }
 
-func NewBlkTree(n int) *BlockChain {
+func NewBlockchain(n int) *BlockChain {
 	bc := new(BlockChain)
 	bc.forrest = NewLevelledForest()
 	bc.quorum = NewQuorum(n)
+	bc.highQC = &QC{View: 0}
 	return bc
 }
 
@@ -41,14 +42,14 @@ func (bc *BlockChain) GetHighQC() *QC {
 }
 
 func (bc *BlockChain) UpdateHighQC(qc *QC) error {
-	if qc.View <= bc.highQC.View {
+	if qc.View < bc.highQC.View {
 		return fmt.Errorf("cannot update high QC")
 	}
 	bc.highQC = qc
 	return nil
 }
 
-func (bc *BlockChain) GenerateQC(view zeitgeber.View, blockID crypto.Identifier) (bool, *QC) {
+func (bc *BlockChain) GenerateQC(view types.View, blockID crypto.Identifier) (bool, *QC) {
 	if !bc.quorum.SuperMajority(blockID) {
 		return false, nil
 	}
@@ -85,20 +86,6 @@ func (bc *BlockChain) CalForkingRate() float32 {
 	//
 	//forkingrate := float32(bc.Height) / float32(total)
 	return forkingRate
-}
-
-// MakeForkChoice returns a random highest block hash
-func (bc *BlockChain) MakeForkChoice() crypto.Identifier {
-	var id crypto.Identifier
-	return id
-}
-
-// GetLatestBlock randomly returns the highest block
-func (bc *BlockChain) GetLatestBlock() *Block {
-	var block *Block
-	//latestBlockID := zeitgeber.MapRandomKeyGet(bc.Blocks[bc.Height]).(crypto.Identifier)
-	//latestBlock := bc.Blocks[bc.Height][latestBlockID]
-	return block
 }
 
 func (bc *BlockChain) GetParentBlock(id crypto.Identifier) (*Block, error) {

@@ -1,4 +1,4 @@
-package zeitgeber
+package election
 
 import (
 	"testing"

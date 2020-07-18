@@ -1,10 +1,13 @@
-package zeitgeber
+package db
 
 import (
 	"bytes"
 	"encoding/json"
 	"fmt"
 	"sync"
+
+	"github.com/gitferry/zeitgeber/config"
+	"github.com/gitferry/zeitgeber/identity"
 )
 
 // Key type of the key-value database
@@ -18,7 +21,7 @@ type Value []byte
 type Command struct {
 	Key       Key
 	Value     Value
-	ClientID  NodeID
+	ClientID  identity.NodeID
 	CommandID int
 }
 
@@ -71,7 +74,7 @@ func NewDatabase() Database {
 	return &database{
 		data:         make(map[Key]Value),
 		version:      0,
-		multiversion: config.MultiVersion,
+		multiversion: config.Configuration.MultiVersion,
 		history:      make(map[Key][]Value),
 	}
 }

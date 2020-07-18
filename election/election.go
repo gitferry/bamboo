@@ -1,13 +1,16 @@
-package zeitgeber
+package election
 
 import (
 	"crypto/sha1"
 	"encoding/binary"
+
+	"github.com/gitferry/zeitgeber/identity"
+	"github.com/gitferry/zeitgeber/types"
 )
 
 type Election interface {
-	IsLeader(id NodeID, view View) bool
-	FindLeaderFor(view View) NodeID
+	IsLeader(id identity.NodeID, view types.View) bool
+	FindLeaderFor(view types.View) identity.NodeID
 }
 
 type rotation struct {
@@ -20,7 +23,7 @@ func NewRotation(peerNo int) *rotation {
 	}
 }
 
-func (r *rotation) IsLeader(id NodeID, view View) bool {
+func (r *rotation) IsLeader(id identity.NodeID, view types.View) bool {
 	h := sha1.New()
 	h.Write([]byte(string(view)))
 	bs := h.Sum(nil)
@@ -28,11 +31,11 @@ func (r *rotation) IsLeader(id NodeID, view View) bool {
 	return data%uint64(r.peerNo) == uint64(id.Node()-1)
 }
 
-func (r *rotation) FindLeaderFor(view View) NodeID {
+func (r *rotation) FindLeaderFor(view types.View) identity.NodeID {
 	h := sha1.New()
 	h.Write([]byte(string(view)))
 	bs := h.Sum(nil)
 	data := binary.BigEndian.Uint64(bs)
 	id := data%uint64(r.peerNo) + 1
-	return NewNodeID(int(id))
+	return identity.NewNodeID(int(id))
 }
