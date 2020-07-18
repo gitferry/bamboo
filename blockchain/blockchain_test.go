@@ -69,3 +69,160 @@ func TestAddBlock(t *testing.T) {
 	highQC := bc.GetHighQC()
 	require.Equal(t, qc, highQC)
 }
+
+// add two blocks with parent-child relationship
+func TestParentBlock1(t *testing.T) {
+	bc := NewBlockchain(10)
+	qc1 := &QC{
+		View:    1,
+		BlockID: utils.IdentifierFixture(),
+	}
+	b1 := MakeBlock(2, qc1, nil)
+	bc.AddBlock(b1)
+	qc2 := &QC{
+		View:    2,
+		BlockID: b1.ID,
+	}
+	b2 := MakeBlock(3, qc2, nil)
+	bc.AddBlock(b2)
+	parent, err := bc.GetParentBlock(b2.ID)
+	require.NoError(t, err)
+	require.Equal(t, b1, parent)
+}
+
+// add two blocks without parent-child relationship
+func TestParentBlock2(t *testing.T) {
+	bc := NewBlockchain(10)
+	qc1 := &QC{
+		View:    1,
+		BlockID: utils.IdentifierFixture(),
+	}
+	b1 := MakeBlock(2, qc1, nil)
+	bc.AddBlock(b1)
+	qc2 := &QC{
+		View:    2,
+		BlockID: utils.IdentifierFixture(),
+	}
+	b2 := MakeBlock(3, qc2, nil)
+	bc.AddBlock(b2)
+	parent, err := bc.GetParentBlock(b2.ID)
+	require.Error(t, err)
+	require.Nil(t, parent)
+}
+
+// add three blocks with grandparent-parent-child relationship
+func TestGrandParentBlock1(t *testing.T) {
+	bc := NewBlockchain(10)
+	qc1 := &QC{
+		View:    1,
+		BlockID: utils.IdentifierFixture(),
+	}
+	b1 := MakeBlock(2, qc1, nil)
+	bc.AddBlock(b1)
+	qc2 := &QC{
+		View:    2,
+		BlockID: b1.ID,
+	}
+	b2 := MakeBlock(3, qc2, nil)
+	bc.AddBlock(b2)
+	qc3 := &QC{
+		View:    3,
+		BlockID: b2.ID,
+	}
+	b3 := MakeBlock(4, qc3, nil)
+	bc.AddBlock(b3)
+	grandParent, err := bc.GetGrandParentBlock(b3.ID)
+	require.NoError(t, err)
+	require.Equal(t, b1, grandParent)
+}
+
+// add three blocks without grandparent-parent-child relationship
+func TestGrandParentBlock2(t *testing.T) {
+	bc := NewBlockchain(10)
+	qc1 := &QC{
+		View:    1,
+		BlockID: utils.IdentifierFixture(),
+	}
+	b1 := MakeBlock(2, qc1, nil)
+	bc.AddBlock(b1)
+	qc2 := &QC{
+		View:    2,
+		BlockID: b1.ID,
+	}
+	b2 := MakeBlock(3, qc2, nil)
+	bc.AddBlock(b2)
+	qc3 := &QC{
+		View:    3,
+		BlockID: utils.IdentifierFixture(),
+	}
+	b3 := MakeBlock(4, qc3, nil)
+	bc.AddBlock(b3)
+	grandParent, err := bc.GetGrandParentBlock(b3.ID)
+	require.Error(t, err)
+	require.Nil(t, grandParent)
+}
+
+// add one block and commit the block
+func TestCommitBlock1(t *testing.T) {
+	bc := NewBlockchain(10)
+	qc1 := &QC{
+		View:    0,
+		BlockID: utils.IdentifierFixture(),
+	}
+	b1 := MakeBlock(1, qc1, nil)
+	bc.AddBlock(b1)
+	blocks, err := bc.CommitBlock(b1.ID)
+	require.NoError(t, err)
+	require.Equal(t, 1, len(blocks))
+	require.Equal(t, b1, blocks[0])
+}
+
+// add two blocks and commit the blocks
+func TestCommitBlock2(t *testing.T) {
+	bc := NewBlockchain(10)
+	qc1 := &QC{
+		View:    0,
+		BlockID: utils.IdentifierFixture(),
+	}
+	b1 := MakeBlock(1, qc1, nil)
+	bc.AddBlock(b1)
+	qc2 := &QC{
+		View:    1,
+		BlockID: b1.ID,
+	}
+	b2 := MakeBlock(2, qc2, nil)
+	bc.AddBlock(b2)
+	blocks, err := bc.CommitBlock(b2.ID)
+	require.NoError(t, err)
+	require.Equal(t, 2, len(blocks))
+	require.Equal(t, b2, blocks[0])
+	require.Equal(t, b1, blocks[1])
+}
+
+// add three blocks with a fork
+func TestCommitBlock3(t *testing.T) {
+	bc := NewBlockchain(10)
+	qc1 := &QC{
+		View:    0,
+		BlockID: utils.IdentifierFixture(),
+	}
+	b1 := MakeBlock(1, qc1, nil)
+	bc.AddBlock(b1)
+	qc2 := &QC{
+		View:    1,
+		BlockID: b1.ID,
+	}
+	b2 := MakeBlock(2, qc2, nil)
+	bc.AddBlock(b2)
+	qc3 := &QC{
+		View:    0,
+		BlockID: utils.IdentifierFixture(),
+	}
+	b3 := MakeBlock(1, qc3, nil)
+	bc.AddBlock(b3)
+	blocks, err := bc.CommitBlock(b2.ID)
+	require.NoError(t, err)
+	require.Equal(t, 2, len(blocks))
+	require.Equal(t, b2, blocks[0])
+	require.Equal(t, b1, blocks[1])
+}

@@ -116,15 +116,19 @@ func (bc *BlockChain) CommitBlock(id crypto.Identifier) ([]*Block, error) {
 		return nil, fmt.Errorf("cannot find the block, id: %x", id)
 	}
 	committedNo := vertex.Level() - bc.forrest.LowestLevel
-	committedBlocks := make([]*Block, committedNo)
-	for i := uint64(0); i < committedNo; i++ {
-		committedBlocks = append(committedBlocks, vertex.GetBlock())
+	if committedNo < 1 {
+		return nil, fmt.Errorf("cannot commit the block")
+	}
+	var committedBlocks []*Block
+	committedBlocks = append(committedBlocks, vertex.GetBlock())
+	for i := uint64(0); i < committedNo-1; i++ {
 		parentID, _ := vertex.Parent()
 		parentVertex, exists := bc.forrest.GetVertex(parentID)
 		if !exists {
 			return nil, fmt.Errorf("cannot find the parent block, id: %x", parentID)
 		}
 		vertex = parentVertex
+		committedBlocks = append(committedBlocks, vertex.GetBlock())
 	}
 	err := bc.forrest.PruneUpToLevel(vertex.Level())
 	if err != nil {
