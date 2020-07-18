@@ -36,10 +36,9 @@ func MakeVote(view types.View, voter identity.NodeID, id crypto.Identifier) *Vot
 }
 
 func NewQuorum(total int) *Quorum {
-	votes := make(map[crypto.Identifier]map[identity.NodeID]*Vote)
 	return &Quorum{
 		total: total,
-		votes: votes,
+		votes: make(map[crypto.Identifier]map[identity.NodeID]*Vote),
 	}
 }
 
