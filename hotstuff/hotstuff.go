@@ -51,6 +51,9 @@ func (hs *HotStuff) UpdateStateByView(view types.View) error {
 }
 
 func (hs *HotStuff) UpdateStateByQC(qc *blockchain.QC) error {
+	if qc.View <= 2 {
+		return nil
+	}
 	return hs.updatePreferredView(qc)
 }
 

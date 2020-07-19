@@ -113,7 +113,7 @@ func (r *Replica) HandleRequest(request message.Request) {
 	//	store the request into the transaction pool
 }
 
-func (r *Replica) processNewView(newView View) {
+func (r *Replica) processNewView(newView types.View) {
 	log.Debugf("[%v] is processing new view: %v", r.ID(), newView)
 	if !r.IsLeader(r.ID(), newView+1) {
 		return
