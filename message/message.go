@@ -105,7 +105,7 @@ type TransactionReply struct {
  *     Config Related     *
  **************************/
 
-// Register message type is used to regitster self (node or client) with master node
+// Register message type is used to register self (node or client) with master node
 type Register struct {
 	Client bool
 	ID     identity.NodeID

@@ -15,6 +15,6 @@ func (pd *Producer) ProduceBlock(view types.View, qc *blockchain.QC) *blockchain
 	return block
 }
 
-func (pd *Producer) CollectTxn(request message.Request) {
-	pd.mempool.StoreTxn(request)
+func (pd *Producer) CollectTxn(txn *message.Transaction) {
+	pd.mempool.Add(txn)
 }

@@ -11,14 +11,14 @@ type Block struct {
 	types.View
 	QC       *QC
 	Proposer identity.NodeID
-	Payload  []message.Request
+	Payload  []*message.Transaction
 	PrevID   crypto.Identifier
 	Sig      crypto.Signature
 	ID       crypto.Identifier
 }
 
 // MakeBlock creates an unsigned block
-func MakeBlock(view types.View, qc *QC, payload []message.Request) *Block {
+func MakeBlock(view types.View, qc *QC, payload []*message.Transaction) *Block {
 	b := new(Block)
 	b.View = view
 	b.QC = qc
