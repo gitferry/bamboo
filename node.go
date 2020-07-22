@@ -18,8 +18,8 @@ type Node interface {
 	//Database
 	ID() identity.NodeID
 	Run()
-	Retry(r message.Request)
-	Forward(id identity.NodeID, r message.Request)
+	Retry(r message.Transaction)
+	Forward(id identity.NodeID, r message.Transaction)
 	Register(m interface{}, f interface{})
 	IsByz() bool
 }
@@ -36,7 +36,7 @@ type node struct {
 	isByz       bool
 
 	sync.RWMutex
-	forwards map[string]*message.Request
+	forwards map[string]*message.Transaction
 }
 
 // NewNode creates a new Node object from configuration
@@ -48,7 +48,7 @@ func NewNode(id identity.NodeID, isByz bool) Node {
 		//Database:    NewDatabase(),
 		MessageChan: make(chan interface{}, config.Configuration.ChanBufferSize),
 		handles:     make(map[string]reflect.Value),
-		forwards:    make(map[string]*message.Request),
+		forwards:    make(map[string]*message.Transaction),
 	}
 }
 
@@ -60,7 +60,7 @@ func (n *node) IsByz() bool {
 	return n.isByz
 }
 
-func (n *node) Retry(r message.Request) {
+func (n *node) Retry(r message.Transaction) {
 	log.Debugf("node %v retry reqeust %v", n.id, r)
 	n.MessageChan <- r
 }
@@ -99,15 +99,15 @@ func (n *node) recv() {
 	for {
 		m := n.Recv()
 		switch m := m.(type) {
-		case message.Request:
-			m.C = make(chan message.Reply, 1)
-			go func(r message.Request) {
+		case message.Transaction:
+			m.C = make(chan message.TransactionReply, 1)
+			go func(r message.Transaction) {
 				n.Send(r.NodeID, <-r.C)
 			}(m)
 			n.MessageChan <- m
 			continue
 
-		case message.Reply:
+		case message.TransactionReply:
 			n.RLock()
 			r := n.forwards[m.Command.String()]
 			log.Debugf("node %v received reply %v", n.id, m)
@@ -134,7 +134,7 @@ func (n *node) handle() {
 }
 
 /*
-func (n *node) Forward(id NodeID, m Request) {
+func (n *node) Forward(id NodeID, m Transaction) {
 	key := m.Command.Key
 	url := config.HTTPAddrs[id] + "/" + strconv.Itoa(int(key))
 
@@ -156,7 +156,7 @@ func (n *node) Forward(id NodeID, m Request) {
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		log.Error(err)
-		m.Reply(Reply{
+		m.TransactionReply(TransactionReply{
 			Command: m.Command,
 			Err:     err,
 		})
@@ -168,12 +168,12 @@ func (n *node) Forward(id NodeID, m Request) {
 		if err != nil {
 			log.Error(err)
 		}
-		m.Reply(Reply{
+		m.TransactionReply(TransactionReply{
 			Command: m.Command,
 			Value:   Value(b),
 		})
 	} else {
-		m.Reply(Reply{
+		m.TransactionReply(TransactionReply{
 			Command: m.Command,
 			Err:     errors.New(res.Status),
 		})
@@ -181,7 +181,7 @@ func (n *node) Forward(id NodeID, m Request) {
 }
 */
 
-func (n *node) Forward(id identity.NodeID, m message.Request) {
+func (n *node) Forward(id identity.NodeID, m message.Transaction) {
 	log.Debugf("Node %v forwarding %v to %s", n.ID(), m, id)
 	m.NodeID = n.id
 	n.Lock()

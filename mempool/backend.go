@@ -3,19 +3,24 @@ package mempool
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/gitferry/zeitgeber/crypto"
 	"github.com/gitferry/zeitgeber/message"
 )
 
-// Backdata implements a generic memory pool backed by a Go map.
+type TxnRecord struct {
+	txn          *message.Transaction
+	receivedTime time.Time
+}
+
 type Backdata struct {
-	txns map[crypto.Identifier]*message.Transaction
+	txns map[crypto.Identifier]*TxnRecord
 }
 
 func NewBackdata() *Backdata {
 	return &Backdata{
-		txns: make(map[crypto.Identifier]*message.Transaction),
+		txns: make(map[crypto.Identifier]*TxnRecord),
 	}
 }
 
@@ -27,12 +32,14 @@ func (b *Backdata) Has(id crypto.Identifier) bool {
 
 // Add adds the given item to the pool.
 func (b *Backdata) Add(txn *message.Transaction) {
-	id := crypto.MakeID(txn)
-	_, ok := b.txns[id]
+	_, ok := b.txns[txn.ID]
 	if ok {
 		return
 	}
-	b.txns[id] = txn
+	b.txns[txn.ID] = &TxnRecord{
+		txn:          txn,
+		receivedTime: time.Now(),
+	}
 }
 
 // Rem will remove the item with the given hash.
@@ -52,7 +59,7 @@ func (b *Backdata) ByID(id crypto.Identifier) (*message.Transaction, error) {
 		return nil, fmt.Errorf("transaction does not exist, id: %x", id)
 	}
 	coll := b.txns[id]
-	return coll, nil
+	return coll.txn, nil
 }
 
 // Size will return the size of the backend.
@@ -64,7 +71,7 @@ func (b *Backdata) Size() uint {
 func (b *Backdata) All() []*message.Transaction {
 	entities := make([]*message.Transaction, 0, len(b.txns))
 	for _, item := range b.txns {
-		entities = append(entities, item)
+		entities = append(entities, item.txn)
 	}
 	return entities
 }
@@ -109,6 +116,12 @@ func (b *Backend) ByID(id crypto.Identifier) (*message.Transaction, error) {
 	b.RLock()
 	defer b.RUnlock()
 	return b.Backdata.ByID(id)
+}
+
+func (b *Backend) GetTimestamp(id crypto.Identifier) time.Time {
+	b.RLock()
+	defer b.RUnlock()
+	return b.Backdata.txns[id].receivedTime
 }
 
 // Run fetches the given item from the pool and runs given function on it, returning the entity after

@@ -45,7 +45,7 @@ func (n *node) http() {
 }
 
 func (n *node) handleRoot(w http.ResponseWriter, r *http.Request) {
-	var req message.Request
+	var req message.Transaction
 	var cmd db.Command
 	var err error
 
@@ -97,7 +97,7 @@ func (n *node) handleRoot(w http.ResponseWriter, r *http.Request) {
 	req.Command = cmd
 	req.Timestamp = time.Now().UnixNano()
 	req.NodeID = n.id // TODO does this work when forward twice
-	req.c = make(chan message.Reply, 1)
+	req.c = make(chan message.TransactionReply, 1)
 
 	n.MessageChan <- req
 

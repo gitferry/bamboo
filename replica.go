@@ -4,6 +4,7 @@ import (
 	"github.com/gitferry/zeitgeber/blockchain"
 	"github.com/gitferry/zeitgeber/config"
 	"github.com/gitferry/zeitgeber/election"
+	"github.com/gitferry/zeitgeber/hotstuff"
 	"github.com/gitferry/zeitgeber/identity"
 	"github.com/gitferry/zeitgeber/log"
 	"github.com/gitferry/zeitgeber/mempool"
@@ -25,6 +26,31 @@ type Replica struct {
 	timeoutMsg chan *pacemaker.TMO
 	newView    chan types.View
 }
+
+func NewReplica(id identity.NodeID, isByz bool) *Replica {
+	r := new(Replica)
+	r.Node = NewNode(id, isByz)
+	if isByz {
+		log.Infof("[%v] is Byzantine", r.ID())
+	}
+	r.Election = election.NewRotation(config.GetConfig().N())
+	bc := blockchain.NewBlockchain(config.GetConfig().N())
+	r.Safety = hotstuff.NewHotStuff(bc)
+	r.pd = mempool.NewProducer()
+	r.bc = bc
+	r.blockMsg = make(chan *blockchain.Block, 1)
+	r.voteMsg = make(chan *blockchain.Vote, 1)
+	r.qcMsg = make(chan *blockchain.QC, 1)
+	r.timeoutMsg = make(chan *pacemaker.TMO, 1)
+	r.Register(message.Transaction{}, r.handleTxn)
+	r.Register(blockchain.QC{}, r.HandleQC)
+	r.Register(blockchain.Block{}, r.HandleBlock)
+	r.Register(blockchain.Vote{}, r.HandleVote)
+	//TODO: first leader kicks off
+	return r
+}
+
+/* Message Handlers */
 
 func (r *Replica) HandleBlock(block blockchain.Block) {
 	log.Debugf("[%v] received a block from %v, view is %v", r.ID(), block.Proposer, block.View)
@@ -50,6 +76,14 @@ func (r *Replica) HandleQC(qc blockchain.QC) {
 	r.qcMsg <- &qc
 }
 
+func (r *Replica) handleTxn(m message.Transaction) {
+	log.Debugf("[%v] received txn %v\n", r.ID(), m)
+	go r.Broadcast(m)
+	r.pd.CollectTxn(&m)
+}
+
+/* Processors */
+
 func (r *Replica) processBlock(block *blockchain.Block) {
 	// TODO: process TC
 	r.processCertificate(block.QC)
@@ -65,7 +99,12 @@ func (r *Replica) processBlock(block *blockchain.Block) {
 		return
 	}
 	r.bc.AddBlock(block)
-	if r.VotingRule(block) {
+	shouldVote, err := r.VotingRule(block)
+	if err != nil {
+		log.Errorf("cannot decide whether to vote the block, %w", err)
+		return
+	}
+	if shouldVote {
 		vote := blockchain.MakeVote(block.View, r.ID(), block.ID)
 		err := r.UpdateStateByView(vote.View)
 		if err != nil {
@@ -82,23 +121,34 @@ func (r *Replica) processCertificate(qc *blockchain.QC) {
 	err := r.UpdateStateByQC(qc)
 	if err != nil {
 		log.Errorf("cannot update state when processing qc: %w", err)
+		return
 	}
 	if !r.IsLeader(r.ID(), r.pm.GetCurView()) {
 		go r.Send(r.FindLeaderFor(r.pm.GetCurView()), qc)
 	}
-	ok, commitBlockID := r.CommitRule(qc)
+	ok, block, err := r.CommitRule(qc)
+	if err != nil {
+		log.Errorf("cannot process the qc %w", err)
+		return
+	}
 	if !ok {
 		return
 	}
-	committedBlocks, err := r.bc.CommitBlock(commitBlockID)
+	committedBlocks, err := r.bc.CommitBlock(block.ID)
 	if err != nil {
 		log.Errorf("[%v] cannot commit blocks", r.ID())
+		return
 	}
 	r.processCommittedBlocks(committedBlocks)
 }
 
-func (r *Replica) processCommittedBlocks([]*blockchain.Block) {
-	//	TODO
+func (r *Replica) processCommittedBlocks(blocks []*blockchain.Block) {
+	for _, block := range blocks {
+		for _, txn := range block.Payload {
+			txn.Reply(message.TransactionReply{})
+			r.pd.RemoveTxn(txn.ID)
+		}
+	}
 }
 
 func (r *Replica) processVote(vote *blockchain.Vote) {
@@ -107,10 +157,6 @@ func (r *Replica) processVote(vote *blockchain.Vote) {
 		return
 	}
 	r.processCertificate(qc)
-}
-
-func (r *Replica) HandleRequest(request message.Request) {
-	//	store the request into the transaction pool
 }
 
 func (r *Replica) processNewView(newView types.View) {
@@ -137,26 +183,4 @@ func (r *Replica) startTimer() {
 			go r.processCertificate(newQC)
 		}
 	}
-}
-
-func (r *Replica) handleRequest(m message.Request) {
-	log.Debugf("[%v] received txn %v\n", r.ID(), m)
-	go r.Broadcast(m)
-	r.pd.CollectTxn(m)
-}
-
-func NewReplica(id identity.NodeID, isByz bool) *Replica {
-	r := new(Replica)
-	r.Node = NewNode(id, isByz)
-	if isByz {
-		log.Infof("[%v] is Byzantine", r.ID())
-	}
-	elect := election.NewRotation(config.GetConfig().N())
-	r.Election = elect
-	r.Register(message.Request{}, r.handleRequest)
-	r.Register(blockchain.QC{}, r.HandleQC)
-	r.Register(blockchain.Block{}, r.HandleBlock)
-	r.Register(blockchain.Vote{}, r.HandleVote)
-	//TODO: first leader kicks off
-	return r
 }
