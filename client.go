@@ -6,8 +6,10 @@ import (
 	"errors"
 	"io"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
 	"net/http/httputil"
+	"reflect"
 	"strconv"
 	"sync"
 
@@ -58,7 +60,7 @@ func NewHTTPClient(id identity.NodeID) *HTTPClient {
 // Default implementation of Client interface
 func (c *HTTPClient) Get(key db.Key) (db.Value, error) {
 	c.CID++
-	v, _, err := c.RESTGet(c.ID, key)
+	v, _, err := c.RESTGet(key)
 	return v, err
 }
 
@@ -66,19 +68,21 @@ func (c *HTTPClient) Get(key db.Key) (db.Value, error) {
 // Default implementation of Client interface
 func (c *HTTPClient) Put(key db.Key, value db.Value) error {
 	c.CID++
-	_, _, err := c.RESTPut(c.ID, key, value)
+	_, _, err := c.RESTPut(key, value)
 	return err
 }
 
-func (c *HTTPClient) GetURL(id identity.NodeID, key db.Key) string {
-	return c.HTTP[id] + "/" + strconv.Itoa(int(key))
+func (c *HTTPClient) GetURL(key db.Key) (identity.NodeID, string) {
+	keys := reflect.ValueOf(c.HTTP).MapKeys()
+	replicaID := keys[rand.Intn(len(keys))].Interface().(identity.NodeID)
+	return replicaID, c.HTTP[replicaID] + "/" + strconv.Itoa(int(key))
 }
 
 // rest accesses server's REST API with url = http://ip:port/key
 // if value == nil, it's a read
-func (c *HTTPClient) rest(id identity.NodeID, key db.Key, value db.Value) (db.Value, map[string]string, error) {
+func (c *HTTPClient) rest(key db.Key, value db.Value) (db.Value, map[string]string, error) {
 	// get url
-	url := c.GetURL(id, key)
+	id, url := c.GetURL(key)
 
 	method := http.MethodGet
 	var body io.Reader
@@ -129,13 +133,13 @@ func (c *HTTPClient) rest(id identity.NodeID, key db.Key, value db.Value) (db.Va
 }
 
 // RESTGet issues a http call to node and return value and headers
-func (c *HTTPClient) RESTGet(id identity.NodeID, key db.Key) (db.Value, map[string]string, error) {
-	return c.rest(id, key, nil)
+func (c *HTTPClient) RESTGet(key db.Key) (db.Value, map[string]string, error) {
+	return c.rest(key, nil)
 }
 
 // RESTPut puts new value as http.request body and return previous value
-func (c *HTTPClient) RESTPut(id identity.NodeID, key db.Key, value db.Value) (db.Value, map[string]string, error) {
-	return c.rest(id, key, value)
+func (c *HTTPClient) RESTPut(key db.Key, value db.Value) (db.Value, map[string]string, error) {
+	return c.rest(key, value)
 }
 
 func (c *HTTPClient) json(id identity.NodeID, key db.Key, value db.Value) (db.Value, error) {
@@ -185,7 +189,7 @@ func (c *HTTPClient) MultiGet(n int, key db.Key) ([]db.Value, []map[string]strin
 	i := 0
 	for id := range c.HTTP {
 		go func(id identity.NodeID) {
-			v, meta, err := c.rest(id, key, nil)
+			v, meta, err := c.rest(key, nil)
 			if err != nil {
 				log.Error(err)
 				return
@@ -220,7 +224,7 @@ func (c *HTTPClient) QuorumPut(key db.Key, value db.Value) {
 		}
 		wait.Add(1)
 		go func(id identity.NodeID) {
-			c.rest(id, key, value)
+			c.rest(key, value)
 			wait.Done()
 		}(id)
 	}
@@ -293,3 +297,18 @@ func (c *HTTPClient) Drop(from, to identity.NodeID, t int) {
 	}
 	r.Body.Close()
 }
+
+//// Partition cuts the network between nodes for t seconds
+//func (c *HTTPClient) Partition(t int, nodes ...identity.NodeID) {
+//	s := lib.NewSet()
+//	for _, id := range nodes {
+//		s.Add(id)
+//	}
+//	for from := range c.Addrs {
+//		if !s.Has(from) {
+//			for _, to := range nodes {
+//				c.Drop(from, to, t)
+//			}
+//		}
+//	}
+//}

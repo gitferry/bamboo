@@ -11,10 +11,8 @@ import (
 )
 
 // Key type of the key-value database
-// TODO key should be general too
 type Key int
 
-// Value type of key-value database
 type Value []byte
 
 // Command of key-value database

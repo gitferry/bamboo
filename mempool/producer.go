@@ -16,7 +16,8 @@ func NewProducer() *Producer {
 }
 
 func (pd *Producer) ProduceBlock(view types.View, qc *blockchain.QC) *blockchain.Block {
-	block := blockchain.MakeBlock(view, qc, pd.mempool.GetPayload())
+	payload := pd.mempool.GetPayload()
+	block := blockchain.MakeBlock(view, qc, payload)
 	return block
 }
 

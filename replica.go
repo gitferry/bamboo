@@ -20,6 +20,7 @@ type Replica struct {
 	pd         *mempool.Producer
 	bc         *blockchain.BlockChain
 	pm         *pacemaker.Pacemaker
+	isMaster   bool
 	blockMsg   chan *blockchain.Block
 	voteMsg    chan *blockchain.Vote
 	qcMsg      chan *blockchain.QC
@@ -78,7 +79,6 @@ func (r *Replica) HandleQC(qc blockchain.QC) {
 
 func (r *Replica) handleTxn(m message.Transaction) {
 	log.Debugf("[%v] received txn %v\n", r.ID(), m)
-	go r.Broadcast(m)
 	r.pd.CollectTxn(&m)
 }
 
@@ -146,7 +146,9 @@ func (r *Replica) processCommittedBlocks(blocks []*blockchain.Block) {
 	for _, block := range blocks {
 		for _, txn := range block.Payload {
 			txn.Reply(message.TransactionReply{})
-			r.pd.RemoveTxn(txn.ID)
+			if r.ID() != block.Proposer { // txns are removed when being proposed
+				r.pd.RemoveTxn(txn.ID)
+			}
 		}
 	}
 }
@@ -167,6 +169,9 @@ func (r *Replica) processNewView(newView types.View) {
 	block := r.pd.ProduceBlock(newView+1, r.bc.GetHighQC())
 	//	TODO: sign the block
 	r.Broadcast(block)
+	for _, txn := range block.Payload {
+		r.pd.RemoveTxn(txn.ID)
+	}
 }
 
 func (r *Replica) startTimer() {

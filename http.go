@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/gitferry/zeitgeber/config"
+	"github.com/gitferry/zeitgeber/crypto"
 	"github.com/gitferry/zeitgeber/db"
 	"github.com/gitferry/zeitgeber/identity"
 	"github.com/gitferry/zeitgeber/log"
@@ -31,7 +33,7 @@ func (n *node) http() {
 	mux.HandleFunc("/crash", n.handleCrash)
 	mux.HandleFunc("/drop", n.handleDrop)
 	// http string should be in form of ":8080"
-	url, err := url.Parse(config.config.HTTPAddrs[n.id])
+	url, err := url.Parse(config.Configuration.HTTPAddrs[n.id])
 	if err != nil {
 		log.Fatal("http url parse error: ", err)
 	}
@@ -97,11 +99,12 @@ func (n *node) handleRoot(w http.ResponseWriter, r *http.Request) {
 	req.Command = cmd
 	req.Timestamp = time.Now().UnixNano()
 	req.NodeID = n.id // TODO does this work when forward twice
-	req.c = make(chan message.TransactionReply, 1)
+	req.C = make(chan message.TransactionReply, 1)
+	req.ID = crypto.MakeID(req)
 
 	n.MessageChan <- req
 
-	reply := <-req.c
+	reply := <-req.C
 
 	if reply.Err != nil {
 		http.Error(w, reply.Err.Error(), http.StatusInternalServerError)
