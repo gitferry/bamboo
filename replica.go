@@ -28,7 +28,7 @@ type Replica struct {
 	newView    chan types.View
 }
 
-func NewReplica(id identity.NodeID, isByz bool) *Replica {
+func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 	r := new(Replica)
 	r.Node = NewNode(id, isByz)
 	if isByz {
@@ -36,7 +36,6 @@ func NewReplica(id identity.NodeID, isByz bool) *Replica {
 	}
 	r.Election = election.NewRotation(config.GetConfig().N())
 	bc := blockchain.NewBlockchain(config.GetConfig().N())
-	r.Safety = hotstuff.NewHotStuff(bc)
 	r.pd = mempool.NewProducer()
 	r.bc = bc
 	r.blockMsg = make(chan *blockchain.Block, 1)
@@ -47,7 +46,12 @@ func NewReplica(id identity.NodeID, isByz bool) *Replica {
 	r.Register(blockchain.QC{}, r.HandleQC)
 	r.Register(blockchain.Block{}, r.HandleBlock)
 	r.Register(blockchain.Vote{}, r.HandleVote)
-	//TODO: first leader kicks off
+	switch alg {
+	case "hotsutff":
+		r.Safety = hotstuff.NewHotStuff(bc)
+	default:
+		r.Safety = hotstuff.NewHotStuff(bc)
+	}
 	return r
 }
 
@@ -80,6 +84,10 @@ func (r *Replica) HandleQC(qc blockchain.QC) {
 func (r *Replica) handleTxn(m message.Transaction) {
 	log.Debugf("[%v] received txn %v\n", r.ID(), m)
 	r.pd.CollectTxn(&m)
+	//	kick-off the protocol
+	if r.pm.GetCurView() == 0 && r.IsLeader(r.ID(), 1) {
+		r.proposeBlock(0)
+	}
 }
 
 /* Processors */
@@ -166,7 +174,11 @@ func (r *Replica) processNewView(newView types.View) {
 	if !r.IsLeader(r.ID(), newView+1) {
 		return
 	}
-	block := r.pd.ProduceBlock(newView+1, r.bc.GetHighQC())
+	r.proposeBlock(newView)
+}
+
+func (r *Replica) proposeBlock(view types.View) {
+	block := r.pd.ProduceBlock(view+1, r.bc.GetHighQC())
 	//	TODO: sign the block
 	r.Broadcast(block)
 	for _, txn := range block.Payload {
@@ -174,7 +186,7 @@ func (r *Replica) processNewView(newView types.View) {
 	}
 }
 
-func (r *Replica) startTimer() {
+func (r *Replica) Start() {
 	for {
 		// TODO: add timeout handler
 		select {
