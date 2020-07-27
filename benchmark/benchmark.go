@@ -128,14 +128,8 @@ func (b *Benchmark) worker(keys <-chan int, result chan<- time.Duration) {
 func (b *Benchmark) next() int {
 	var key int
 	switch b.Distribution {
-	case "normal":
-		key = int(rand.NormFloat64()*b.Sigma + b.Mu)
-		for key < 0 {
-			key += b.K
-		}
-		for key > b.K {
-			key -= b.K
-		}
+	case "uniform":
+		key = rand.Intn(b.K) + b.Min
 	default:
 		log.Fatalf("unknown distribution %s", b.Distribution)
 	}

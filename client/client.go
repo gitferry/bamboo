@@ -7,10 +7,8 @@ import (
 	"github.com/gitferry/zeitgeber"
 	"github.com/gitferry/zeitgeber/benchmark"
 	"github.com/gitferry/zeitgeber/db"
-	"github.com/gitferry/zeitgeber/identity"
 )
 
-var id = flag.String("id", "", "node id this client connects to")
 var load = flag.Bool("load", false, "Load K keys into DB")
 
 // Database implements Zeitgeber.DB interface for benchmarking
@@ -38,7 +36,7 @@ func main() {
 	zeitgeber.Init()
 
 	d := new(Database)
-	d.Client = zeitgeber.NewHTTPClient(identity.NodeID(*id))
+	d.Client = zeitgeber.NewHTTPClient()
 	b := benchmark.NewBenchmark(d)
 	b.Run()
 }

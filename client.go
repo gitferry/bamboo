@@ -45,9 +45,8 @@ type HTTPClient struct {
 }
 
 // NewHTTPClient creates a new Client from config
-func NewHTTPClient(id identity.NodeID) *HTTPClient {
+func NewHTTPClient() *HTTPClient {
 	c := &HTTPClient{
-		ID:     id,
 		N:      len(config.Configuration.Addrs),
 		Addrs:  config.Configuration.Addrs,
 		HTTP:   config.Configuration.HTTPAddrs,
