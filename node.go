@@ -99,23 +99,23 @@ func (n *node) Run() {
 func (n *node) recv() {
 	for {
 		m := n.Recv()
-		switch m := m.(type) {
-		case message.Transaction:
-			m.C = make(chan message.TransactionReply, 1)
-			go func(r message.Transaction) {
-				n.Send(r.NodeID, <-r.C)
-			}(m)
-			n.MessageChan <- m
-			continue
-
-		case message.TransactionReply:
-			n.RLock()
-			r := n.forwards[m.Command.String()]
-			log.Debugf("node %v received reply %v", n.id, m)
-			n.RUnlock()
-			r.Reply(m)
-			continue
-		}
+		//switch m := m.(type) {
+		//case message.Transaction:
+		//	m.C = make(chan message.TransactionReply, 1)
+		//	go func(r message.Transaction) {
+		//		n.Send(r.NodeID, <-r.C)
+		//	}(m)
+		//	n.MessageChan <- m
+		//	continue
+		//
+		//case message.TransactionReply:
+		//	n.RLock()
+		//	r := n.forwards[m.Command.String()]
+		//	log.Debugf("node %v received reply %v", n.id, m)
+		//	n.RUnlock()
+		//	r.Reply(m)
+		//	continue
+		//}
 		n.MessageChan <- m
 	}
 }

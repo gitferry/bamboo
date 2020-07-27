@@ -1,6 +1,8 @@
 package zeitgeber
 
 import (
+	"encoding/gob"
+
 	"github.com/gitferry/zeitgeber/blockchain"
 	"github.com/gitferry/zeitgeber/config"
 	"github.com/gitferry/zeitgeber/election"
@@ -20,7 +22,7 @@ type Replica struct {
 	pd         *mempool.Producer
 	bc         *blockchain.BlockChain
 	pm         *pacemaker.Pacemaker
-	isMaster   bool
+	isStarted  bool
 	blockMsg   chan *blockchain.Block
 	voteMsg    chan *blockchain.Vote
 	qcMsg      chan *blockchain.QC
@@ -47,6 +49,10 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 	r.Register(blockchain.QC{}, r.HandleQC)
 	r.Register(blockchain.Block{}, r.HandleBlock)
 	r.Register(blockchain.Vote{}, r.HandleVote)
+	r.Register(message.Transaction{}, r.handleTxn)
+	gob.Register(blockchain.Block{})
+	gob.Register(blockchain.QC{})
+	gob.Register(blockchain.Vote{})
 	switch alg {
 	case "hotsutff":
 		r.Safety = hotstuff.NewHotStuff(bc)
@@ -86,7 +92,8 @@ func (r *Replica) handleTxn(m message.Transaction) {
 	log.Debugf("[%v] received txn %v\n", r.ID(), m)
 	r.pd.CollectTxn(&m)
 	//	kick-off the protocol
-	if r.pm.GetCurView() == 0 && r.IsLeader(r.ID(), 1) {
+	if !r.isStarted && r.pm.GetCurView() == 0 && r.IsLeader(r.ID(), 1) {
+		r.isStarted = true
 		r.proposeBlock(0)
 	}
 }

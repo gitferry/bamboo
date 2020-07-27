@@ -111,14 +111,13 @@ func (n *node) handleRoot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// set all http headers
 	w.Header().Set(HTTPClientID, string(reply.Command.ClientID))
 	w.Header().Set(HTTPCommandID, strconv.Itoa(reply.Command.CommandID))
 	for k, v := range reply.Properties {
 		w.Header().Set(k, v)
 	}
 
-	_, err = io.WriteString(w, string(reply.Value))
+	_, err = io.WriteString(w, reply.String())
 	if err != nil {
 		log.Error(err)
 	}

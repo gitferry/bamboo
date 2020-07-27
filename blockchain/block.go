@@ -17,6 +17,16 @@ type Block struct {
 	ID       crypto.Identifier
 }
 
+type rawBlock struct {
+	types.View
+	QC       *QC
+	Proposer identity.NodeID
+	Payload  []string
+	PrevID   crypto.Identifier
+	Sig      crypto.Signature
+	ID       crypto.Identifier
+}
+
 // MakeBlock creates an unsigned block
 func MakeBlock(view types.View, qc *QC, payload []*message.Transaction) *Block {
 	b := new(Block)
@@ -24,6 +34,22 @@ func MakeBlock(view types.View, qc *QC, payload []*message.Transaction) *Block {
 	b.QC = qc
 	b.Payload = payload
 	b.PrevID = qc.BlockID
-	b.ID = crypto.MakeID(b)
+	b.makeID()
 	return b
+}
+
+func (b *Block) makeID() {
+	raw := &rawBlock{
+		View:     b.View,
+		QC:       b.QC,
+		Proposer: b.Proposer,
+		PrevID:   b.PrevID,
+		Sig:      b.Sig,
+	}
+	var payloadIDs []string
+	for _, txn := range b.Payload {
+		payloadIDs = append(payloadIDs, txn.ID)
+	}
+	raw.Payload = payloadIDs
+	b.ID = crypto.MakeID(raw)
 }
