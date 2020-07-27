@@ -34,6 +34,7 @@ type node struct {
 	handles     map[string]reflect.Value
 	server      *http.Server
 	isByz       bool
+	totalTxn    int
 
 	sync.RWMutex
 	forwards map[string]*message.Transaction

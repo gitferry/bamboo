@@ -3,7 +3,6 @@ package mempool
 import (
 	"time"
 
-	"github.com/gitferry/zeitgeber/crypto"
 	"github.com/gitferry/zeitgeber/message"
 )
 
@@ -26,7 +25,7 @@ func (mp *MemPool) Add(tx *message.Transaction) {
 }
 
 // ByID returns the transaction with the given ID from the mempool.
-func (mp *MemPool) ByID(txID crypto.Identifier) (*message.Transaction, error) {
+func (mp *MemPool) ByID(txID string) (*message.Transaction, error) {
 	txn, err := mp.Backend.ByID(txID)
 	if err != nil {
 		return nil, err
@@ -34,7 +33,7 @@ func (mp *MemPool) ByID(txID crypto.Identifier) (*message.Transaction, error) {
 	return txn, nil
 }
 
-func (mp *MemPool) GetTimestamp(txID crypto.Identifier) time.Time {
+func (mp *MemPool) GetTimestamp(txID string) time.Time {
 	t := mp.Backend.GetTimestamp(txID)
 	return t
 }

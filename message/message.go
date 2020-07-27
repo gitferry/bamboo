@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/gitferry/zeitgeber/config"
-	"github.com/gitferry/zeitgeber/crypto"
 	"github.com/gitferry/zeitgeber/db"
 	"github.com/gitferry/zeitgeber/identity"
 )
@@ -29,7 +28,7 @@ type Transaction struct {
 	Properties map[string]string
 	Timestamp  int64
 	NodeID     identity.NodeID // forward by node
-	ID         crypto.Identifier
+	ID         string
 	C          chan TransactionReply // reply channel created by request receiver
 }
 

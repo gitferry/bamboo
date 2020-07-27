@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/gitferry/zeitgeber/config"
-	"github.com/gitferry/zeitgeber/crypto"
 	"github.com/gitferry/zeitgeber/db"
 	"github.com/gitferry/zeitgeber/identity"
 	"github.com/gitferry/zeitgeber/log"
@@ -96,11 +95,12 @@ func (n *node) handleRoot(w http.ResponseWriter, r *http.Request) {
 		json.Unmarshal(body, &cmd)
 	}
 
+	n.totalTxn++
 	req.Command = cmd
 	req.Timestamp = time.Now().UnixNano()
 	req.NodeID = n.id // TODO does this work when forward twice
 	req.C = make(chan message.TransactionReply, 1)
-	req.ID = crypto.MakeID(req)
+	req.ID = string(n.id) + "." + strconv.Itoa(n.totalTxn)
 
 	n.MessageChan <- req
 

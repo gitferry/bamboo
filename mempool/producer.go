@@ -2,7 +2,6 @@ package mempool
 
 import (
 	"github.com/gitferry/zeitgeber/blockchain"
-	"github.com/gitferry/zeitgeber/crypto"
 	"github.com/gitferry/zeitgeber/message"
 	"github.com/gitferry/zeitgeber/types"
 )
@@ -25,6 +24,6 @@ func (pd *Producer) CollectTxn(txn *message.Transaction) {
 	pd.mempool.Add(txn)
 }
 
-func (pd *Producer) RemoveTxn(id crypto.Identifier) {
+func (pd *Producer) RemoveTxn(id string) {
 	pd.mempool.Rem(id)
 }

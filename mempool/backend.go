@@ -5,7 +5,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gitferry/zeitgeber/crypto"
 	"github.com/gitferry/zeitgeber/message"
 )
 
@@ -15,17 +14,17 @@ type TxnRecord struct {
 }
 
 type Backdata struct {
-	txns map[crypto.Identifier]*TxnRecord
+	txns map[string]*TxnRecord
 }
 
 func NewBackdata() *Backdata {
 	return &Backdata{
-		txns: make(map[crypto.Identifier]*TxnRecord),
+		txns: make(map[string]*TxnRecord),
 	}
 }
 
 // Has checks if we already contain the item with the given hash.
-func (b *Backdata) Has(id crypto.Identifier) bool {
+func (b *Backdata) Has(id string) bool {
 	_, ok := b.txns[id]
 	return ok
 }
@@ -43,7 +42,7 @@ func (b *Backdata) Add(txn *message.Transaction) {
 }
 
 // Rem will remove the item with the given hash.
-func (b *Backdata) Rem(id crypto.Identifier) bool {
+func (b *Backdata) Rem(id string) bool {
 	_, ok := b.txns[id]
 	if !ok {
 		return false
@@ -53,7 +52,7 @@ func (b *Backdata) Rem(id crypto.Identifier) bool {
 }
 
 // ByID returns the given item from the pool.
-func (b *Backdata) ByID(id crypto.Identifier) (*message.Transaction, error) {
+func (b *Backdata) ByID(id string) (*message.Transaction, error) {
 	_, ok := b.txns[id]
 	if !ok {
 		return nil, fmt.Errorf("transaction does not exist, id: %x", id)
@@ -91,7 +90,7 @@ func NewBackend() *Backend {
 }
 
 // Has checks if we already contain the item with the given hash.
-func (b *Backend) Has(id crypto.Identifier) bool {
+func (b *Backend) Has(id string) bool {
 	b.RLock()
 	defer b.RUnlock()
 	return b.Backdata.Has(id)
@@ -105,20 +104,20 @@ func (b *Backend) Add(txn *message.Transaction) {
 }
 
 // Rem will remove the item with the given hash.
-func (b *Backend) Rem(id crypto.Identifier) bool {
+func (b *Backend) Rem(id string) bool {
 	b.Lock()
 	defer b.Unlock()
 	return b.Backdata.Rem(id)
 }
 
 // ByID returns the given item from the pool.
-func (b *Backend) ByID(id crypto.Identifier) (*message.Transaction, error) {
+func (b *Backend) ByID(id string) (*message.Transaction, error) {
 	b.RLock()
 	defer b.RUnlock()
 	return b.Backdata.ByID(id)
 }
 
-func (b *Backend) GetTimestamp(id crypto.Identifier) time.Time {
+func (b *Backend) GetTimestamp(id string) time.Time {
 	b.RLock()
 	defer b.RUnlock()
 	return b.Backdata.txns[id].receivedTime
