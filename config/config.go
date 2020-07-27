@@ -12,7 +12,7 @@ import (
 	"github.com/gitferry/zeitgeber/transport"
 )
 
-var configFile = flag.String("Configuration", "Configuration.json", "Configuration file for zeitgeber replica. Defaults to Configuration.json.")
+var configFile = flag.String("config", "config.json", "Configuration file for zeitgeber replica. Defaults to config.json.")
 
 // Config contains every system configuration
 type Config struct {

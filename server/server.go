@@ -21,7 +21,8 @@ func replica(id identity.NodeID, isByz bool) {
 		log.Infof("node %v is Byzantine", id)
 	}
 
-	zeitgeber.NewReplica(id, *algorithm, isByz).Run()
+	r := zeitgeber.NewReplica(id, *algorithm, isByz)
+	r.Start()
 }
 
 func main() {

@@ -28,6 +28,7 @@ type Replica struct {
 	newView    chan types.View
 }
 
+// NewReplica creates a new replica instance
 func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 	r := new(Replica)
 	r.Node = NewNode(id, isByz)
@@ -36,13 +37,13 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 	}
 	r.Election = election.NewRotation(config.GetConfig().N())
 	bc := blockchain.NewBlockchain(config.GetConfig().N())
-	r.pd = mempool.NewProducer()
 	r.bc = bc
+	r.pd = mempool.NewProducer()
+	r.pm = pacemaker.NewPacemaker()
 	r.blockMsg = make(chan *blockchain.Block, 1)
 	r.voteMsg = make(chan *blockchain.Vote, 1)
 	r.qcMsg = make(chan *blockchain.QC, 1)
 	r.timeoutMsg = make(chan *pacemaker.TMO, 1)
-	r.Register(message.Transaction{}, r.handleTxn)
 	r.Register(blockchain.QC{}, r.HandleQC)
 	r.Register(blockchain.Block{}, r.HandleBlock)
 	r.Register(blockchain.Vote{}, r.HandleVote)
@@ -187,6 +188,7 @@ func (r *Replica) proposeBlock(view types.View) {
 }
 
 func (r *Replica) Start() {
+	go r.Run()
 	for {
 		// TODO: add timeout handler
 		select {
