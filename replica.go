@@ -89,18 +89,19 @@ func (r *Replica) HandleQC(qc blockchain.QC) {
 }
 
 func (r *Replica) handleTxn(m message.Transaction) {
-	log.Debugf("[%v] received txn %v\n", r.ID(), m)
+	//log.Debugf("[%v] received txn %v\n", r.ID(), m)
 	r.pd.CollectTxn(&m)
 	//	kick-off the protocol
-	if !r.isStarted && r.pm.GetCurView() == 0 && r.IsLeader(r.ID(), 1) {
+	if !r.isStarted && r.IsLeader(r.ID(), 1) {
 		r.isStarted = true
-		r.proposeBlock(0)
+		r.pm.AdvanceView(0)
 	}
 }
 
 /* Processors */
 
 func (r *Replica) processBlock(block *blockchain.Block) {
+	log.Debugf("[%v] is processing block, id: %x", r.ID(), block.ID)
 	// TODO: process TC
 	r.processCertificate(block.QC)
 	curView := r.pm.GetCurView()
@@ -120,27 +121,38 @@ func (r *Replica) processBlock(block *blockchain.Block) {
 		log.Errorf("cannot decide whether to vote the block, %w", err)
 		return
 	}
-	if shouldVote {
-		vote := blockchain.MakeVote(block.View, r.ID(), block.ID)
-		err := r.UpdateStateByView(vote.View)
-		if err != nil {
-			log.Errorf("cannot update state after voting: %w", err)
-		}
-		// TODO: sign the vote
-		go r.Send(r.FindLeaderFor(curView+1), vote)
-		r.processVote(vote)
+	if !shouldVote {
+		log.Debugf("[%v] is not going to vote for block, id: %x", r.ID(), block.ID)
+		return
 	}
+	log.Debugf("[%v] is going to vote for block, id: %x", r.ID(), block.ID)
+	vote := blockchain.MakeVote(block.View, r.ID(), block.ID)
+	err = r.UpdateStateByView(vote.View)
+	if err != nil {
+		log.Errorf("cannot update state after voting: %w", err)
+	}
+	// TODO: sign the vote
+	go r.Send(r.FindLeaderFor(curView+1), vote)
+	r.processVote(vote)
 }
 
 func (r *Replica) processCertificate(qc *blockchain.QC) {
+	if qc.View < r.pm.GetCurView() {
+		return
+	}
 	r.pm.AdvanceView(qc.View)
+	log.Debugf("[%v] has advanced to view %v", r.ID(), r.pm.GetCurView())
 	err := r.UpdateStateByQC(qc)
 	if err != nil {
 		log.Errorf("cannot update state when processing qc: %w", err)
 		return
 	}
-	if !r.IsLeader(r.ID(), r.pm.GetCurView()) {
-		go r.Send(r.FindLeaderFor(r.pm.GetCurView()), qc)
+	// TODO: send the qc to next leader
+	//if !r.IsLeader(r.ID(), r.pm.GetCurView()) {
+	//	go r.Send(r.FindLeaderFor(r.pm.GetCurView()), qc)
+	//}
+	if qc.View < 3 {
+		return
 	}
 	ok, block, err := r.CommitRule(qc)
 	if err != nil {
@@ -150,6 +162,7 @@ func (r *Replica) processCertificate(qc *blockchain.QC) {
 	if !ok {
 		return
 	}
+	log.Debugf("[%v] is going to commit block, id: %x", r.ID(), block.ID)
 	committedBlocks, err := r.bc.CommitBlock(block.ID)
 	if err != nil {
 		log.Errorf("[%v] cannot commit blocks", r.ID())
@@ -161,12 +174,16 @@ func (r *Replica) processCertificate(qc *blockchain.QC) {
 func (r *Replica) processCommittedBlocks(blocks []*blockchain.Block) {
 	for _, block := range blocks {
 		for _, txn := range block.Payload {
-			txn.Reply(message.TransactionReply{})
+			if r.ID() == txn.NodeID {
+				txn.Reply(message.TransactionReply{})
+			}
 			if r.ID() != block.Proposer { // txns are removed when being proposed
 				r.pd.RemoveTxn(txn.ID)
 			}
 		}
+		log.Debugf("[%v] block %x is committed", r.ID(), block.ID)
 	}
+	log.Debugf("[%v] finished committing blocks", r.ID())
 }
 
 func (r *Replica) processVote(vote *blockchain.Vote) {
@@ -179,16 +196,18 @@ func (r *Replica) processVote(vote *blockchain.Vote) {
 
 func (r *Replica) processNewView(newView types.View) {
 	log.Debugf("[%v] is processing new view: %v", r.ID(), newView)
-	if !r.IsLeader(r.ID(), newView+1) {
+	if !r.IsLeader(r.ID(), newView) {
 		return
 	}
 	r.proposeBlock(newView)
 }
 
 func (r *Replica) proposeBlock(view types.View) {
-	block := r.pd.ProduceBlock(view+1, r.bc.GetHighQC())
+	log.Debugf("[%v] is going to propose block for view: %v", r.ID(), view)
+	block := r.pd.ProduceBlock(view, r.bc.GetHighQC(), r.ID())
 	//	TODO: sign the block
 	r.Broadcast(block)
+	r.processBlock(block)
 	for _, txn := range block.Payload {
 		r.pd.RemoveTxn(txn.ID)
 	}

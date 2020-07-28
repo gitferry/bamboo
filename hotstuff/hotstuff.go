@@ -21,6 +21,9 @@ func NewHotStuff(blockchain *blockchain.BlockChain) *HotStuff {
 }
 
 func (hs *HotStuff) VotingRule(block *blockchain.Block) (bool, error) {
+	if block.View <= 2 {
+		return true, nil
+	}
 	parentQC, err := hs.bc.GetParentBlock(block.QC.BlockID)
 	if err != nil {
 		return false, fmt.Errorf("cannot vote for block: %w", err)

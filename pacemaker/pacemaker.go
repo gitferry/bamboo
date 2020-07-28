@@ -1,6 +1,8 @@
 package pacemaker
 
 import (
+	"sync"
+
 	"github.com/gitferry/zeitgeber/identity"
 	"github.com/gitferry/zeitgeber/types"
 )
@@ -10,10 +12,12 @@ type Pacemaker struct {
 	newViewChan       chan types.View
 	timeoutController *TimeoutController
 	timeouts          map[types.View]map[identity.NodeID]struct{}
+	mu                sync.Mutex
 }
 
 func NewPacemaker() *Pacemaker {
 	pm := new(Pacemaker)
+	pm.newViewChan = make(chan types.View)
 	//bcb.Node = n
 	//bcb.Election = election
 	//bcb.newViewChan = make(chan View)
@@ -82,12 +86,14 @@ func NewPacemaker() *Pacemaker {
 //}
 
 func (b *Pacemaker) AdvanceView(view types.View) {
+	b.mu.Lock()
 	if view < b.curView {
 		//log.Warningf("the view %v is lower than current view %v", view, b.curView)
 		return
 	}
 	//b.viewDuration[b.curView] = time.Now().Sub(b.lastViewTime)
 	b.curView = view + 1
+	b.mu.Unlock()
 	//b.lastViewTime = time.Now()
 	//if view == 100 {
 	//	b.printViewTime()
@@ -107,5 +113,7 @@ func (b *Pacemaker) EnteringViewEvent() chan types.View {
 }
 
 func (b *Pacemaker) GetCurView() types.View {
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	return b.curView
 }
