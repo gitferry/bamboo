@@ -44,6 +44,9 @@ func NewQuorum(total int) *Quorum {
 
 // Add adds id to quorum ack records
 func (q *Quorum) Add(vote *Vote) {
+	if q.SuperMajority(vote.BlockID) {
+		return
+	}
 	_, exist := q.votes[vote.BlockID]
 	if !exist {
 		//	first time of receiving the vote for this block

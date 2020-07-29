@@ -2,6 +2,8 @@ package zeitgeber
 
 import (
 	"encoding/gob"
+	"sync"
+	"time"
 
 	"github.com/gitferry/zeitgeber/blockchain"
 	"github.com/gitferry/zeitgeber/config"
@@ -28,6 +30,7 @@ type Replica struct {
 	qcMsg      chan *blockchain.QC
 	timeoutMsg chan *pacemaker.TMO
 	newView    chan types.View
+	mu         sync.Mutex
 }
 
 // NewReplica creates a new replica instance
@@ -65,7 +68,7 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 /* Message Handlers */
 
 func (r *Replica) HandleBlock(block blockchain.Block) {
-	log.Debugf("[%v] received a block from %v, view is %v", r.ID(), block.Proposer, block.View)
+	//log.Debugf("[%v] received a block from %v, view is %v", r.ID(), block.Proposer, block.View)
 	if block.View < r.pm.GetCurView() {
 		return
 	}
@@ -81,7 +84,7 @@ func (r *Replica) HandleVote(vote blockchain.Vote) {
 }
 
 func (r *Replica) HandleQC(qc blockchain.QC) {
-	log.Debugf("[%v] received a qc from, blockID is %x", r.ID(), qc.BlockID)
+	//log.Debugf("[%v] received a qc from, blockID is %x", r.ID(), qc.BlockID)
 	if qc.View < r.pm.GetCurView() {
 		return
 	}
@@ -90,6 +93,8 @@ func (r *Replica) HandleQC(qc blockchain.QC) {
 
 func (r *Replica) handleTxn(m message.Transaction) {
 	//log.Debugf("[%v] received txn %v\n", r.ID(), m)
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	r.pd.CollectTxn(&m)
 	//	kick-off the protocol
 	if !r.isStarted && r.IsLeader(r.ID(), 1) {
@@ -101,7 +106,7 @@ func (r *Replica) handleTxn(m message.Transaction) {
 /* Processors */
 
 func (r *Replica) processBlock(block *blockchain.Block) {
-	log.Debugf("[%v] is processing block, id: %x", r.ID(), block.ID)
+	log.Debugf("[%v] is processing block, view: %v, id: %x", r.ID(), block.View, block.ID)
 	// TODO: process TC
 	r.processCertificate(block.QC)
 	curView := r.pm.GetCurView()
@@ -132,8 +137,13 @@ func (r *Replica) processBlock(block *blockchain.Block) {
 		log.Errorf("cannot update state after voting: %w", err)
 	}
 	// TODO: sign the vote
-	go r.Send(r.FindLeaderFor(curView+1), vote)
-	r.processVote(vote)
+	time.Sleep(20 * time.Millisecond)
+	voteAggregator := r.FindLeaderFor(curView + 1)
+	if voteAggregator == r.ID() {
+		r.processVote(vote)
+	} else {
+		r.Send(r.FindLeaderFor(curView+1), vote)
+	}
 }
 
 func (r *Replica) processCertificate(qc *blockchain.QC) {
@@ -144,7 +154,7 @@ func (r *Replica) processCertificate(qc *blockchain.QC) {
 	log.Debugf("[%v] has advanced to view %v", r.ID(), r.pm.GetCurView())
 	err := r.UpdateStateByQC(qc)
 	if err != nil {
-		log.Errorf("cannot update state when processing qc: %w", err)
+		log.Errorf("[%v] cannot update state when processing qc: %w", r.ID(), err)
 		return
 	}
 	// TODO: send the qc to next leader
@@ -162,7 +172,6 @@ func (r *Replica) processCertificate(qc *blockchain.QC) {
 	if !ok {
 		return
 	}
-	log.Debugf("[%v] is going to commit block, id: %x", r.ID(), block.ID)
 	committedBlocks, err := r.bc.CommitBlock(block.ID)
 	if err != nil {
 		log.Errorf("[%v] cannot commit blocks", r.ID())
@@ -181,13 +190,17 @@ func (r *Replica) processCommittedBlocks(blocks []*blockchain.Block) {
 				r.pd.RemoveTxn(txn.ID)
 			}
 		}
-		log.Debugf("[%v] block %x is committed", r.ID(), block.ID)
+		if len(block.Payload) == 0 {
+			log.Debugf("[%v] this block has zero payload, id: %x", r.ID(), block.ID)
+		}
+		log.Debugf("[%v] the block is committed, id: %x", r.ID(), block.ID)
 	}
-	log.Debugf("[%v] finished committing blocks", r.ID())
 }
 
 func (r *Replica) processVote(vote *blockchain.Vote) {
+	r.mu.Lock()
 	isBuilt, qc := r.bc.AddVote(vote)
+	r.mu.Unlock()
 	if !isBuilt {
 		return
 	}
@@ -204,8 +217,12 @@ func (r *Replica) processNewView(newView types.View) {
 
 func (r *Replica) proposeBlock(view types.View) {
 	log.Debugf("[%v] is going to propose block for view: %v", r.ID(), view)
+	r.mu.Lock()
 	block := r.pd.ProduceBlock(view, r.bc.GetHighQC(), r.ID())
+	r.mu.Unlock()
 	//	TODO: sign the block
+	// simulate processing time
+	time.Sleep(50 * time.Millisecond)
 	r.Broadcast(block)
 	r.processBlock(block)
 	for _, txn := range block.Payload {
