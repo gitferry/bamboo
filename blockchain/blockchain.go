@@ -136,3 +136,12 @@ func (bc *BlockChain) CommitBlock(id crypto.Identifier) ([]*Block, error) {
 	}
 	return committedBlocks, nil
 }
+
+func (bc *BlockChain) GetChildrenBlocks(id crypto.Identifier) []*Block {
+	var blocks []*Block
+	iterator := bc.forrest.GetChildren(id)
+	for I := iterator; I.HasNext(); {
+		blocks = append(blocks, I.NextVertex().GetBlock())
+	}
+	return blocks
+}

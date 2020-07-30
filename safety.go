@@ -10,4 +10,5 @@ type Safety interface {
 	UpdateStateByView(view types.View) error
 	CommitRule(qc *blockchain.QC) (bool, *blockchain.Block, error)
 	VotingRule(block *blockchain.Block) (bool, error)
+	Forkchoice() *blockchain.QC
 }

@@ -7,16 +7,24 @@ import (
 	"github.com/gitferry/zeitgeber/types"
 )
 
+const (
+	FORKING = "forking"
+	HIGHEST = "highest"
+	LONGEST = "longest"
+)
+
 type HotStuff struct {
-	lastVotedView types.View
-	preferredView types.View
-	lockedQC      blockchain.QC
-	bc            *blockchain.BlockChain
+	lastVotedView  types.View
+	preferredView  types.View
+	lockedQC       blockchain.QC
+	forkchoiceType string
+	bc             *blockchain.BlockChain
 }
 
-func NewHotStuff(blockchain *blockchain.BlockChain) *HotStuff {
+func NewHotStuff(blockchain *blockchain.BlockChain, forkchoice string) *HotStuff {
 	hs := new(HotStuff)
 	hs.bc = blockchain
+	hs.forkchoiceType = forkchoice
 	return hs
 }
 
@@ -78,4 +86,54 @@ func (hs *HotStuff) updatePreferredView(qc *blockchain.QC) error {
 	}
 	hs.preferredView = parentBlock.View
 	return nil
+}
+
+func (hs *HotStuff) Forkchoice() *blockchain.QC {
+	switch hs.forkchoiceType {
+	case FORKING:
+		// Byzantine choice
+		return hs.forkingForkchoice()
+	case HIGHEST:
+		return hs.highestForkchoice()
+	case LONGEST:
+		return hs.longestForkchoice()
+	default:
+		return hs.highestForkchoice()
+	}
+}
+
+// forkingForkchoice returns the QC contained in the first honest block after the locked block
+func (hs *HotStuff) forkingForkchoice() *blockchain.QC {
+	id := hs.lockedQC.BlockID
+	childrenBlocks := hs.bc.GetChildrenBlocks(id)
+	var targetQC *blockchain.QC
+	for _, b := range childrenBlocks {
+		if !config.IsByzantine(b.Proposer) {
+			targetQC = b.QC
+		}
+	}
+	if targetQC == nil {
+		grandChildrenBlocks := hs.bc.GetChildrenBlocks(childrenBlocks[0].ID)
+		for _, b := range grandChildrenBlocks {
+			if !config.IsByzantine(b.Proposer) {
+				targetQC = b.QC
+			}
+		}
+	}
+	if targetQC == nil {
+		targetQC = hs.bc.GetHighQC()
+	}
+
+	return targetQC
+}
+
+// highestForkchoice returns the high QC
+func (hs *HotStuff) highestForkchoice() *blockchain.QC {
+	return hs.bc.GetHighQC()
+}
+
+// higestForkchoice returns the highest QC from the longest chain
+func (hs *HotStuff) longestForkchoice() *blockchain.QC {
+	var qc *blockchain.QC
+	return qc
 }

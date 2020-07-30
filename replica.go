@@ -58,9 +58,9 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 	gob.Register(blockchain.Vote{})
 	switch alg {
 	case "hotsutff":
-		r.Safety = hotstuff.NewHotStuff(bc)
+		r.Safety = hotstuff.NewHotStuff(bc, "default")
 	default:
-		r.Safety = hotstuff.NewHotStuff(bc)
+		r.Safety = hotstuff.NewHotStuff(bc, "default")
 	}
 	return r
 }
@@ -218,7 +218,7 @@ func (r *Replica) processNewView(newView types.View) {
 func (r *Replica) proposeBlock(view types.View) {
 	log.Debugf("[%v] is going to propose block for view: %v", r.ID(), view)
 	r.mu.Lock()
-	block := r.pd.ProduceBlock(view, r.bc.GetHighQC(), r.ID())
+	block := r.pd.ProduceBlock(view, r.Safety.Forkchoice(), r.ID())
 	r.mu.Unlock()
 	//	TODO: sign the block
 	// simulate processing time
