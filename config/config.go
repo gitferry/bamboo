@@ -169,3 +169,7 @@ func (c Config) Save() error {
 	encoder := json.NewEncoder(file)
 	return encoder.Encode(c)
 }
+
+func (c Config) IsByzantine(id identity.NodeID) bool {
+	return c.ByzNo >= id.Node()
+}

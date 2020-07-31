@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/gitferry/zeitgeber/blockchain"
+	"github.com/gitferry/zeitgeber/config"
 	"github.com/gitferry/zeitgeber/types"
 )
 
@@ -106,16 +107,16 @@ func (hs *HotStuff) Forkchoice() *blockchain.QC {
 func (hs *HotStuff) forkingForkchoice() *blockchain.QC {
 	id := hs.lockedQC.BlockID
 	childrenBlocks := hs.bc.GetChildrenBlocks(id)
-	var targetQC *blockchain.QC
+	var targetQC *blockchain.QC = nil
 	for _, b := range childrenBlocks {
-		if !config.IsByzantine(b.Proposer) {
+		if !config.Configuration.IsByzantine(b.Proposer) {
 			targetQC = b.QC
 		}
 	}
 	if targetQC == nil {
 		grandChildrenBlocks := hs.bc.GetChildrenBlocks(childrenBlocks[0].ID)
 		for _, b := range grandChildrenBlocks {
-			if !config.IsByzantine(b.Proposer) {
+			if !config.Configuration.IsByzantine(b.Proposer) {
 				targetQC = b.QC
 			}
 		}
