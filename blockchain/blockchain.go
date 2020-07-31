@@ -2,7 +2,9 @@ package blockchain
 
 import (
 	"fmt"
+	"sync"
 
+	"github.com/gitferry/zeitgeber/config"
 	"github.com/gitferry/zeitgeber/crypto"
 	"github.com/gitferry/zeitgeber/log"
 	"github.com/gitferry/zeitgeber/types"
@@ -12,6 +14,11 @@ type BlockChain struct {
 	highQC  *QC
 	forrest *LevelledForest
 	quorum  *Quorum
+	// measurement
+	totalBlocks           int
+	committedBlocks       int
+	honestCommittedBlocks int
+	mu                    sync.Mutex
 }
 
 func NewBlockchain(n int) *BlockChain {
@@ -30,6 +37,9 @@ func (bc *BlockChain) AddBlock(block *Block) {
 	if err != nil {
 		log.Warningf("found stale qc, view: %v", block.QC.View)
 	}
+	bc.mu.Lock()
+	bc.totalBlocks++
+	bc.mu.Unlock()
 }
 
 func (bc *BlockChain) AddVote(vote *Vote) (bool, *QC) {
@@ -128,12 +138,20 @@ func (bc *BlockChain) CommitBlock(id crypto.Identifier) ([]*Block, error) {
 			return nil, fmt.Errorf("cannot find the parent block, id: %x", parentID)
 		}
 		vertex = parentVertex
+		if config.Configuration.IsByzantine(vertex.GetBlock().Proposer) {
+			bc.mu.Lock()
+			bc.honestCommittedBlocks++
+			bc.mu.Unlock()
+		}
 		committedBlocks = append(committedBlocks, vertex.GetBlock())
 	}
 	err := bc.forrest.PruneUpToLevel(vertex.Level())
 	if err != nil {
 		return nil, fmt.Errorf("cannot prune the blockchain to the committed block, id: %w", err)
 	}
+	bc.mu.Lock()
+	bc.committedBlocks += len(committedBlocks)
+	bc.mu.Unlock()
 	return committedBlocks, nil
 }
 
@@ -144,4 +162,34 @@ func (bc *BlockChain) GetChildrenBlocks(id crypto.Identifier) []*Block {
 		blocks = append(blocks, I.NextVertex().GetBlock())
 	}
 	return blocks
+}
+
+func (bc *BlockChain) GetChainGrowth() float64 {
+	bc.mu.Lock()
+	defer bc.mu.Unlock()
+	return float64(bc.committedBlocks) / float64(bc.totalBlocks)
+}
+
+func (bc *BlockChain) GetChainQuality() float64 {
+	bc.mu.Lock()
+	defer bc.mu.Unlock()
+	return float64(bc.honestCommittedBlocks) / float64(bc.committedBlocks)
+}
+
+func (bc *BlockChain) GetTotalBlock() int {
+	bc.mu.Lock()
+	defer bc.mu.Unlock()
+	return bc.totalBlocks
+}
+
+func (bc *BlockChain) GetHonestCommittedBlock() int {
+	bc.mu.Lock()
+	defer bc.mu.Unlock()
+	return bc.honestCommittedBlocks
+}
+
+func (bc *BlockChain) GetCommittedBlock() int {
+	bc.mu.Lock()
+	defer bc.mu.Unlock()
+	return bc.committedBlocks
 }

@@ -195,6 +195,9 @@ func (r *Replica) processCommittedBlocks(blocks []*blockchain.Block) {
 		}
 		log.Debugf("[%v] the block is committed, id: %x", r.ID(), block.ID)
 	}
+	//	print measurement
+	log.Infof("[%v] Committed blocks: %v, total blocks: %v, chain growth: %v", r.ID(), r.bc.GetTotalBlock(), r.bc.GetChainGrowth())
+	log.Infof("[%v] Honest committed blocks: %v, committed blocks: %v, chain quality: %v", r.ID(), r.bc.GetHonestCommittedBlock(), r.bc.GetChainQuality())
 }
 
 func (r *Replica) processVote(vote *blockchain.Vote) {
