@@ -25,6 +25,7 @@ type Replica struct {
 	bc         *blockchain.BlockChain
 	pm         *pacemaker.Pacemaker
 	isStarted  bool
+	isByz      bool
 	blockMsg   chan *blockchain.Block
 	voteMsg    chan *blockchain.Vote
 	qcMsg      chan *blockchain.QC
@@ -49,6 +50,7 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 	r.voteMsg = make(chan *blockchain.Vote, 1)
 	r.qcMsg = make(chan *blockchain.QC, 1)
 	r.timeoutMsg = make(chan *pacemaker.TMO, 1)
+	r.isByz = isByz
 	r.Register(blockchain.QC{}, r.HandleQC)
 	r.Register(blockchain.Block{}, r.HandleBlock)
 	r.Register(blockchain.Vote{}, r.HandleVote)
@@ -57,8 +59,12 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 	gob.Register(blockchain.QC{})
 	gob.Register(blockchain.Vote{})
 	switch alg {
-	case "hotsutff":
-		r.Safety = hotstuff.NewHotStuff(bc, "default")
+	case "hotstuff":
+		forkchoice := "highest"
+		if isByz {
+			forkchoice = "forking"
+		}
+		r.Safety = hotstuff.NewHotStuff(bc, forkchoice)
 	default:
 		r.Safety = hotstuff.NewHotStuff(bc, "default")
 	}
@@ -108,7 +114,12 @@ func (r *Replica) handleTxn(m message.Transaction) {
 func (r *Replica) processBlock(block *blockchain.Block) {
 	log.Debugf("[%v] is processing block, view: %v, id: %x", r.ID(), block.View, block.ID)
 	// TODO: process TC
-	r.processCertificate(block.QC)
+	// to simulate forking attack without a tc, create a tc qc with view set to block.view-1
+	tc := &blockchain.QC{
+		View:    block.View - 1,
+		BlockID: block.QC.BlockID,
+	}
+	r.processCertificate(tc)
 	curView := r.pm.GetCurView()
 	if block.View != curView {
 		log.Warningf("[%v] received a stale proposal", r.ID())
@@ -151,6 +162,10 @@ func (r *Replica) processCertificate(qc *blockchain.QC) {
 		return
 	}
 	r.pm.AdvanceView(qc.View)
+	// to conduct forking attack
+	if r.IsLeader(r.ID(), r.pm.GetCurView()) && r.isByz {
+		return
+	}
 	log.Debugf("[%v] has advanced to view %v", r.ID(), r.pm.GetCurView())
 	err := r.UpdateStateByQC(qc)
 	if err != nil {
@@ -164,11 +179,7 @@ func (r *Replica) processCertificate(qc *blockchain.QC) {
 	if qc.View < 3 {
 		return
 	}
-	ok, block, err := r.CommitRule(qc)
-	if err != nil {
-		log.Errorf("cannot process the qc %w", err)
-		return
-	}
+	ok, block, _ := r.CommitRule(qc)
 	if !ok {
 		return
 	}
@@ -196,8 +207,8 @@ func (r *Replica) processCommittedBlocks(blocks []*blockchain.Block) {
 		log.Debugf("[%v] the block is committed, id: %x", r.ID(), block.ID)
 	}
 	//	print measurement
-	log.Infof("[%v] Committed blocks: %v, total blocks: %v, chain growth: %v", r.ID(), r.bc.GetTotalBlock(), r.bc.GetChainGrowth())
-	log.Infof("[%v] Honest committed blocks: %v, committed blocks: %v, chain quality: %v", r.ID(), r.bc.GetHonestCommittedBlock(), r.bc.GetChainQuality())
+	log.Infof("[%v] Committed blocks: %v, total blocks: %v, chain growth: %v", r.ID(), r.bc.GetCommittedBlocks(), r.bc.GetHighestComitted(), r.bc.GetChainGrowth())
+	log.Infof("[%v] Honest committed blocks: %v, committed blocks: %v, chain quality: %v", r.ID(), r.bc.GetHonestCommittedBlocks(), r.bc.GetCommittedBlocks(), r.bc.GetChainQuality())
 }
 
 func (r *Replica) processVote(vote *blockchain.Vote) {

@@ -5,6 +5,7 @@ import (
 
 	"github.com/gitferry/zeitgeber/blockchain"
 	"github.com/gitferry/zeitgeber/config"
+	"github.com/gitferry/zeitgeber/log"
 	"github.com/gitferry/zeitgeber/types"
 )
 
@@ -17,7 +18,6 @@ const (
 type HotStuff struct {
 	lastVotedView  types.View
 	preferredView  types.View
-	lockedQC       blockchain.QC
 	forkchoiceType string
 	bc             *blockchain.BlockChain
 }
@@ -33,11 +33,11 @@ func (hs *HotStuff) VotingRule(block *blockchain.Block) (bool, error) {
 	if block.View <= 2 {
 		return true, nil
 	}
-	parentQC, err := hs.bc.GetParentBlock(block.QC.BlockID)
+	parentBlock, err := hs.bc.GetParentBlock(block.ID)
 	if err != nil {
 		return false, fmt.Errorf("cannot vote for block: %w", err)
 	}
-	if (block.View <= hs.lastVotedView) || (parentQC.View < hs.preferredView) {
+	if (block.View <= hs.lastVotedView) || (parentBlock.View < hs.preferredView) {
 		return false, nil
 	}
 	return true, nil
@@ -82,10 +82,9 @@ func (hs *HotStuff) updatePreferredView(qc *blockchain.QC) error {
 	if err != nil {
 		return fmt.Errorf("cannot update preferred view: %w", err)
 	}
-	if parentBlock.View < hs.preferredView {
-		return fmt.Errorf("qc's parenview is lower than current preferred view")
+	if parentBlock.View > hs.preferredView {
+		hs.preferredView = parentBlock.View
 	}
-	hs.preferredView = parentBlock.View
 	return nil
 }
 
@@ -105,27 +104,24 @@ func (hs *HotStuff) Forkchoice() *blockchain.QC {
 
 // forkingForkchoice returns the QC contained in the first honest block after the locked block
 func (hs *HotStuff) forkingForkchoice() *blockchain.QC {
-	id := hs.lockedQC.BlockID
-	childrenBlocks := hs.bc.GetChildrenBlocks(id)
-	var targetQC *blockchain.QC = nil
-	for _, b := range childrenBlocks {
-		if !config.Configuration.IsByzantine(b.Proposer) {
-			targetQC = b.QC
-		}
+	if hs.preferredView <= 1 {
+		return hs.bc.GetHighQC()
 	}
-	if targetQC == nil {
-		grandChildrenBlocks := hs.bc.GetChildrenBlocks(childrenBlocks[0].ID)
-		for _, b := range grandChildrenBlocks {
-			if !config.Configuration.IsByzantine(b.Proposer) {
-				targetQC = b.QC
-			}
-		}
-	}
-	if targetQC == nil {
-		targetQC = hs.bc.GetHighQC()
+	preferredBlock := hs.bc.GetBlockByView(hs.preferredView)
+	block := hs.bc.GetChildrenBlocks(preferredBlock.ID)[0]
+	if !config.Configuration.IsByzantine(block.Proposer) {
+		log.Debugf("create a fork, id: %x", block.QC.BlockID)
+		return block.QC
 	}
 
-	return targetQC
+	grandChildrenBlocks := hs.bc.GetChildrenBlocks(block.ID)
+	for _, b := range grandChildrenBlocks {
+		if !config.Configuration.IsByzantine(b.Proposer) {
+			log.Debugf("create a fork, id: %x", b.QC.BlockID)
+			return b.QC
+		}
+	}
+	return hs.bc.GetHighQC()
 }
 
 // highestForkchoice returns the high QC
