@@ -212,18 +212,18 @@ func (r *Replica) processCommittedBlocks(blocks []*blockchain.Block) {
 				r.pd.RemoveTxn(txn.ID)
 			}
 		}
-		if len(block.Payload) == 0 {
-			log.Debugf("[%v] this block has zero payload, id: %x", r.ID(), block.ID)
-		}
-		delay := int(r.pm.GetCurView() - block.View)
-		log.Debugf("[%v] the block is committed, delay: %v, id: %x", r.ID(), delay, block.ID)
+		//if len(block.Payload) == 0 {
+		//	log.Debugf("[%v] this block has zero payload, id: %x", r.ID(), block.ID)
+		//}
+		//delay := int(r.pm.GetCurView() - block.View)
+		//log.Debugf("[%v] the block is committed, delay: %v, id: %x", r.ID(), delay, block.ID)
 		r.totalDelayRounds += int(r.pm.GetCurView() - block.View)
 	}
 	//	print measurement
 	if r.ID().Node() == 2 {
-		//log.Warningf("[%v] Honest committed blocks: %v, total blocks: %v, chain growth: %v", r.ID(), r.bc.GetHonestCommittedBlocks(), r.bc.GetHighestComitted(), r.bc.GetChainGrowth())
-		//log.Warningf("[%v] Honest committed blocks: %v, committed blocks: %v, chain quality: %v", r.ID(), r.bc.GetHonestCommittedBlocks(), r.bc.GetCommittedBlocks(), r.bc.GetChainQuality())
-		log.Warningf("[%v] Ave. delay is %v", r.ID(), float64(r.totalDelayRounds)/float64(r.bc.GetCommittedBlocks()))
+		log.Warningf("[%v] Honest committed blocks: %v, total blocks: %v, chain growth: %v", r.ID(), r.bc.GetHonestCommittedBlocks(), r.bc.GetHighestComitted(), r.bc.GetChainGrowth())
+		log.Warningf("[%v] Honest committed blocks: %v, committed blocks: %v, chain quality: %v", r.ID(), r.bc.GetHonestCommittedBlocks(), r.bc.GetCommittedBlocks(), r.bc.GetChainQuality())
+		//log.Warningf("[%v] Ave. delay is %v", r.ID(), float64(r.totalDelayRounds)/float64(r.bc.GetCommittedBlocks()))
 	}
 }
 
