@@ -137,6 +137,25 @@ func (r *Replica) processBlock(block *blockchain.Block) {
 	r.mu.Lock()
 	r.bc.AddBlock(block)
 	r.mu.Unlock()
+
+	// conduct delay attack
+	// 1. if the next leader is Byz, stop voting
+	// 2. if it is the first leader in future views, advance to that view
+
+	for i := curView; ; i++ {
+		nextLeader := r.FindLeaderFor(i + 1)
+		if !config.Configuration.IsByzantine(nextLeader) {
+			if i == curView {
+				break
+			}
+			if nextLeader == r.ID() {
+				r.pm.AdvanceView(i)
+				return
+			}
+			return
+		}
+	}
+
 	shouldVote, err := r.VotingRule(block)
 	if err != nil {
 		log.Errorf("cannot decide whether to vote the block, %w", err)
@@ -223,7 +242,7 @@ func (r *Replica) processCommittedBlocks(blocks []*blockchain.Block) {
 	if r.ID().Node() == 2 {
 		//log.Warningf("[%v] Honest committed blocks: %v, total blocks: %v, chain growth: %v", r.ID(), r.bc.GetHonestCommittedBlocks(), r.bc.GetHighestComitted(), r.bc.GetChainGrowth())
 		//log.Warningf("[%v] Honest committed blocks: %v, committed blocks: %v, chain quality: %v", r.ID(), r.bc.GetHonestCommittedBlocks(), r.bc.GetCommittedBlocks(), r.bc.GetChainQuality())
-		log.Warningf("[%v] Ave. delay is %v", r.ID(), float64(r.totalDelayRounds)/float64(r.bc.GetCommittedBlocks()))
+		log.Warningf("[%v] Ave. delay is %v, total committed block number: %v", r.ID(), float64(r.totalDelayRounds)/float64(r.bc.GetCommittedBlocks()), r.bc.GetCommittedBlocks())
 	}
 }
 
@@ -266,6 +285,10 @@ func (r *Replica) proposeBlock(view types.View) {
 }
 
 func (r *Replica) Start() {
+	// conduct delay attack
+	if r.isByz {
+		return
+	}
 	go r.Run()
 	for {
 		// TODO: add timeout handler
