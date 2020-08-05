@@ -2,6 +2,7 @@ package zeitgeber
 
 import (
 	"encoding/gob"
+	"math/rand"
 	"sync"
 	"time"
 
@@ -153,7 +154,7 @@ func (r *Replica) processBlock(block *blockchain.Block) {
 		log.Errorf("cannot update state after voting: %w", err)
 	}
 	// TODO: sign the vote
-	time.Sleep(20 * time.Millisecond)
+	time.Sleep(time.Duration(rand.Intn(20)) * time.Millisecond)
 	voteAggregator := r.FindLeaderFor(curView + 1)
 	if voteAggregator == r.ID() {
 		r.processVote(vote)
@@ -257,7 +258,7 @@ func (r *Replica) proposeBlock(view types.View) {
 	//r.mu.Unlock()
 	//	TODO: sign the block
 	// simulate processing time
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(time.Duration(rand.Intn(50)) * time.Millisecond)
 	r.Broadcast(block)
 	r.processBlock(block)
 	for _, txn := range block.Payload {
