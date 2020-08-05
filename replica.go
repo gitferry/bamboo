@@ -26,6 +26,8 @@ type Replica struct {
 	pm         *pacemaker.Pacemaker
 	isStarted  bool
 	isByz      bool
+	bElectNo   int
+	totalView  int
 	blockMsg   chan *blockchain.Block
 	voteMsg    chan *blockchain.Vote
 	qcMsg      chan *blockchain.QC
@@ -99,8 +101,8 @@ func (r *Replica) HandleQC(qc blockchain.QC) {
 
 func (r *Replica) handleTxn(m message.Transaction) {
 	//log.Debugf("[%v] received txn %v\n", r.ID(), m)
-	r.mu.Lock()
-	defer r.mu.Unlock()
+	//r.mu.Lock()
+	//defer r.mu.Unlock()
 	r.pd.CollectTxn(&m)
 	//	kick-off the protocol
 	if !r.isStarted && r.IsLeader(r.ID(), 1) {
@@ -131,7 +133,9 @@ func (r *Replica) processBlock(block *blockchain.Block) {
 			r.ID(), block.View, block.Proposer)
 		return
 	}
+	r.mu.Lock()
 	r.bc.AddBlock(block)
+	r.mu.Unlock()
 	shouldVote, err := r.VotingRule(block)
 	if err != nil {
 		log.Errorf("cannot decide whether to vote the block, %w", err)
@@ -164,6 +168,10 @@ func (r *Replica) processCertificate(qc *blockchain.QC) {
 	r.pm.AdvanceView(qc.View)
 	// to conduct forking attack
 	if r.IsLeader(r.ID(), r.pm.GetCurView()) && r.isByz {
+		err := r.bc.UpdateHighQC(qc)
+		if err != nil {
+			log.Warningf("[%v] cannot update high QC, id: %x", r.ID(), qc.BlockID)
+		}
 		return
 	}
 	log.Debugf("[%v] has advanced to view %v", r.ID(), r.pm.GetCurView())
@@ -183,7 +191,9 @@ func (r *Replica) processCertificate(qc *blockchain.QC) {
 	if !ok {
 		return
 	}
+	r.mu.Lock()
 	committedBlocks, err := r.bc.CommitBlock(block.ID)
+	r.mu.Unlock()
 	if err != nil {
 		log.Errorf("[%v] cannot commit blocks", r.ID())
 		return
@@ -207,8 +217,10 @@ func (r *Replica) processCommittedBlocks(blocks []*blockchain.Block) {
 		log.Debugf("[%v] the block is committed, id: %x", r.ID(), block.ID)
 	}
 	//	print measurement
-	log.Infof("[%v] Committed blocks: %v, total blocks: %v, chain growth: %v", r.ID(), r.bc.GetCommittedBlocks(), r.bc.GetHighestComitted(), r.bc.GetChainGrowth())
-	log.Infof("[%v] Honest committed blocks: %v, committed blocks: %v, chain quality: %v", r.ID(), r.bc.GetHonestCommittedBlocks(), r.bc.GetCommittedBlocks(), r.bc.GetChainQuality())
+	if r.ID().Node() == 2 {
+		log.Warningf("[%v] Honest committed blocks: %v, total blocks: %v, chain growth: %v", r.ID(), r.bc.GetHonestCommittedBlocks(), r.bc.GetHighestComitted(), r.bc.GetChainGrowth())
+		log.Warningf("[%v] Honest committed blocks: %v, committed blocks: %v, chain quality: %v", r.ID(), r.bc.GetHonestCommittedBlocks(), r.bc.GetCommittedBlocks(), r.bc.GetChainQuality())
+	}
 }
 
 func (r *Replica) processVote(vote *blockchain.Vote) {
@@ -226,14 +238,19 @@ func (r *Replica) processNewView(newView types.View) {
 	if !r.IsLeader(r.ID(), newView) {
 		return
 	}
+	r.totalView = int(newView)
+	if r.isByz {
+		r.bElectNo++
+		log.Warningf("[%v] the number of Byzantine election is %v, total election number is %v", r.ID(), r.bElectNo, r.totalView)
+	}
 	r.proposeBlock(newView)
 }
 
 func (r *Replica) proposeBlock(view types.View) {
 	log.Debugf("[%v] is going to propose block for view: %v", r.ID(), view)
-	r.mu.Lock()
+	//r.mu.Lock()
 	block := r.pd.ProduceBlock(view, r.Safety.Forkchoice(), r.ID())
-	r.mu.Unlock()
+	//r.mu.Unlock()
 	//	TODO: sign the block
 	// simulate processing time
 	time.Sleep(50 * time.Millisecond)

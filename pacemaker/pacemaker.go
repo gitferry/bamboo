@@ -89,6 +89,7 @@ func (b *Pacemaker) AdvanceView(view types.View) {
 	b.mu.Lock()
 	if view < b.curView {
 		//log.Warningf("the view %v is lower than current view %v", view, b.curView)
+		b.mu.Unlock()
 		return
 	}
 	//b.viewDuration[b.curView] = time.Now().Sub(b.lastViewTime)

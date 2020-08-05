@@ -107,8 +107,12 @@ func (hs *HotStuff) forkingForkchoice() *blockchain.QC {
 	if hs.preferredView <= 1 {
 		return hs.bc.GetHighQC()
 	}
+	highBlock, _ := hs.bc.GetBlockByID(hs.bc.GetHighQC().BlockID)
+	if config.Configuration.IsByzantine(highBlock.Proposer) {
+		return hs.bc.GetHighQC()
+	}
 	preferredBlock := hs.bc.GetBlockByView(hs.preferredView)
-	block := hs.bc.GetChildrenBlocks(preferredBlock.ID)[0]
+	block := hs.bc.GetChildrenBlocks(preferredBlock.ID)[len(hs.bc.GetChildrenBlocks(preferredBlock.ID))-1]
 	if !config.Configuration.IsByzantine(block.Proposer) {
 		log.Debugf("create a fork, id: %x", block.QC.BlockID)
 		return block.QC

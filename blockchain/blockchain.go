@@ -32,10 +32,12 @@ func NewBlockchain(n int) *BlockChain {
 func (bc *BlockChain) AddBlock(block *Block) {
 	blockContainer := &BlockContainer{block}
 	// TODO: add checks
+	//bc.mu.Lock()
 	bc.forrest.AddVertex(blockContainer)
+	//bc.mu.Unlock()
 	err := bc.UpdateHighQC(block.QC)
 	if err != nil {
-		log.Warningf("found stale qc, view: %v", block.QC.View)
+		log.Debugf("found stale qc, view: %v", block.QC.View)
 	}
 }
 
@@ -96,6 +98,8 @@ func (bc *BlockChain) CalForkingRate() float32 {
 }
 
 func (bc *BlockChain) GetBlockByID(id crypto.Identifier) (*Block, error) {
+	//bc.mu.Lock()
+	//defer bc.mu.Unlock()
 	vertex, exists := bc.forrest.GetVertex(id)
 	if !exists {
 		return nil, fmt.Errorf("the block does not exist, id: %x", id)
@@ -104,6 +108,8 @@ func (bc *BlockChain) GetBlockByID(id crypto.Identifier) (*Block, error) {
 }
 
 func (bc *BlockChain) GetParentBlock(id crypto.Identifier) (*Block, error) {
+	//bc.mu.Lock()
+	//defer bc.mu.Unlock()
 	vertex, exists := bc.forrest.GetVertex(id)
 	if !exists {
 		return nil, fmt.Errorf("the block does not exist, id: %x", id)
@@ -131,44 +137,30 @@ func (bc *BlockChain) CommitBlock(id crypto.Identifier) ([]*Block, error) {
 		return nil, fmt.Errorf("cannot find the block, id: %x", id)
 	}
 	committedView := vertex.GetBlock().View
-	bc.mu.Lock()
 	bc.highestComitted = int(vertex.GetBlock().View)
-	bc.mu.Unlock()
 	var committedBlocks []*Block
-	committedBlocks = append(committedBlocks, vertex.GetBlock())
-	if !config.Configuration.IsByzantine(vertex.GetBlock().Proposer) {
-		bc.mu.Lock()
-		bc.honestCommittedBlocks++
-		bc.mu.Unlock()
-	}
-	for {
-		parentID, _ := vertex.Parent()
-		parentVertex, exists := bc.forrest.GetVertex(parentID)
+	for block := vertex.GetBlock(); uint64(block.View) > bc.forrest.LowestLevel; {
+		committedBlocks = append(committedBlocks, block)
+		bc.committedBlocks++
+		if !config.Configuration.IsByzantine(block.Proposer) {
+			bc.honestCommittedBlocks++
+		}
+		vertex, exists := bc.forrest.GetVertex(block.PrevID)
 		if !exists {
 			break
 		}
-		vertex = parentVertex
-		if uint64(vertex.GetBlock().View) <= bc.forrest.LowestLevel {
-			break
-		}
-		if !config.Configuration.IsByzantine(vertex.GetBlock().Proposer) {
-			bc.mu.Lock()
-			bc.honestCommittedBlocks++
-			bc.mu.Unlock()
-		}
-		committedBlocks = append(committedBlocks, vertex.GetBlock())
+		block = vertex.GetBlock()
 	}
 	err := bc.forrest.PruneUpToLevel(uint64(committedView))
 	if err != nil {
 		return nil, fmt.Errorf("cannot prune the blockchain to the committed block, id: %w", err)
 	}
-	bc.mu.Lock()
-	bc.committedBlocks += len(committedBlocks)
-	bc.mu.Unlock()
 	return committedBlocks, nil
 }
 
 func (bc *BlockChain) GetChildrenBlocks(id crypto.Identifier) []*Block {
+	//bc.mu.Lock()
+	//defer bc.mu.Unlock()
 	var blocks []*Block
 	iterator := bc.forrest.GetChildren(id)
 	for I := iterator; I.HasNext(); {
@@ -180,7 +172,7 @@ func (bc *BlockChain) GetChildrenBlocks(id crypto.Identifier) []*Block {
 func (bc *BlockChain) GetChainGrowth() float64 {
 	bc.mu.Lock()
 	defer bc.mu.Unlock()
-	return float64(bc.committedBlocks) / float64(bc.highestComitted)
+	return float64(bc.honestCommittedBlocks) / float64(bc.highestComitted)
 }
 
 func (bc *BlockChain) GetChainQuality() float64 {
@@ -208,6 +200,8 @@ func (bc *BlockChain) GetCommittedBlocks() int {
 }
 
 func (bc *BlockChain) GetBlockByView(view types.View) *Block {
+	//bc.mu.Lock()
+	//defer bc.mu.Unlock()
 	iterator := bc.forrest.GetVerticesAtLevel(uint64(view))
 	return iterator.next.GetBlock()
 }
