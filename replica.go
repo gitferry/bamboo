@@ -21,19 +21,20 @@ type Replica struct {
 	Node
 	election.Election
 	Safety
-	pd         *mempool.Producer
-	bc         *blockchain.BlockChain
-	pm         *pacemaker.Pacemaker
-	isStarted  bool
-	isByz      bool
-	bElectNo   int
-	totalView  int
-	blockMsg   chan *blockchain.Block
-	voteMsg    chan *blockchain.Vote
-	qcMsg      chan *blockchain.QC
-	timeoutMsg chan *pacemaker.TMO
-	newView    chan types.View
-	mu         sync.Mutex
+	pd               *mempool.Producer
+	bc               *blockchain.BlockChain
+	pm               *pacemaker.Pacemaker
+	isStarted        bool
+	isByz            bool
+	bElectNo         int
+	totalView        int
+	totalDelayRounds int
+	blockMsg         chan *blockchain.Block
+	voteMsg          chan *blockchain.Vote
+	qcMsg            chan *blockchain.QC
+	timeoutMsg       chan *pacemaker.TMO
+	newView          chan types.View
+	mu               sync.Mutex
 }
 
 // NewReplica creates a new replica instance
@@ -214,12 +215,15 @@ func (r *Replica) processCommittedBlocks(blocks []*blockchain.Block) {
 		if len(block.Payload) == 0 {
 			log.Debugf("[%v] this block has zero payload, id: %x", r.ID(), block.ID)
 		}
-		log.Debugf("[%v] the block is committed, id: %x", r.ID(), block.ID)
+		delay := int(r.pm.GetCurView() - block.View)
+		log.Debugf("[%v] the block is committed, delay: %v, id: %x", r.ID(), delay, block.ID)
+		r.totalDelayRounds += int(r.pm.GetCurView() - block.View)
 	}
 	//	print measurement
 	if r.ID().Node() == 2 {
-		log.Warningf("[%v] Honest committed blocks: %v, total blocks: %v, chain growth: %v", r.ID(), r.bc.GetHonestCommittedBlocks(), r.bc.GetHighestComitted(), r.bc.GetChainGrowth())
-		log.Warningf("[%v] Honest committed blocks: %v, committed blocks: %v, chain quality: %v", r.ID(), r.bc.GetHonestCommittedBlocks(), r.bc.GetCommittedBlocks(), r.bc.GetChainQuality())
+		//log.Warningf("[%v] Honest committed blocks: %v, total blocks: %v, chain growth: %v", r.ID(), r.bc.GetHonestCommittedBlocks(), r.bc.GetHighestComitted(), r.bc.GetChainGrowth())
+		//log.Warningf("[%v] Honest committed blocks: %v, committed blocks: %v, chain quality: %v", r.ID(), r.bc.GetHonestCommittedBlocks(), r.bc.GetCommittedBlocks(), r.bc.GetChainQuality())
+		log.Warningf("[%v] Ave. delay is %v", r.ID(), float64(r.totalDelayRounds)/float64(r.bc.GetCommittedBlocks()))
 	}
 }
 
