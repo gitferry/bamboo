@@ -65,7 +65,7 @@ func TestBenchmark(t *testing.T) {
 	b.Sigma = 50
 	b.T = 0
 	b.N = 10000
-	b.LinearizabilityCheck = false
+	//b.LinearizabilityCheck = false
 
 	b.Run()
 }
