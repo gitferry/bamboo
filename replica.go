@@ -187,15 +187,15 @@ func (r *Replica) processCertificate(qc *blockchain.QC) {
 	}
 	r.pm.AdvanceView(qc.View)
 	// to conduct forking attack
-	if r.IsLeader(r.ID(), r.pm.GetCurView()) && r.isByz {
-		err := r.bc.UpdateHighQC(qc)
-		if err != nil {
-			log.Warningf("[%v] cannot update high QC, id: %x", r.ID(), qc.BlockID)
-		}
-		return
+	//if r.IsLeader(r.ID(), r.pm.GetCurView()) && r.isByz {
+	err := r.bc.UpdateHighQC(qc)
+	if err != nil {
+		log.Warningf("[%v] cannot update high QC, id: %x", r.ID(), qc.BlockID)
 	}
+	//return
+	//}
 	log.Debugf("[%v] has advanced to view %v", r.ID(), r.pm.GetCurView())
-	err := r.UpdateStateByQC(qc)
+	err = r.UpdateStateByQC(qc)
 	if err != nil {
 		log.Errorf("[%v] cannot update state when processing qc: %w", r.ID(), err)
 		return

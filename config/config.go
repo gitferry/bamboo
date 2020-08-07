@@ -138,7 +138,7 @@ func (c *Config) Load() {
 	}
 
 	// test
-	for i := 1; i <= 4; i++ {
+	for i := 1; i <= 16; i++ {
 		id := identity.NewNodeID(i)
 		port := strconv.Itoa(3000 + i)
 		addr := "tcp://127.0.0.1:" + port
@@ -149,7 +149,7 @@ func (c *Config) Load() {
 	}
 
 	c.ByzNo = 1
-	c.Threshold = 3
+	c.Threshold = 11
 
 	c.n = len(c.Addrs)
 	//c.npz = make(map[int]int)
