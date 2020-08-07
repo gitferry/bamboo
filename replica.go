@@ -237,11 +237,13 @@ func (r *Replica) processCommittedBlocks(blocks []*blockchain.Block) {
 			log.Debugf("[%v] this block has zero payload, id: %x", r.ID(), block.ID)
 		}
 		delay := int(r.pm.GetCurView() - block.View)
-		log.Debugf("[%v] the block is committed, delay: %v, id: %x", r.ID(), delay, block.ID)
+		if r.ID().Node() == config.Configuration.N() {
+			log.Infof("[%v] the block is committed, view: %v, current view: %v, delay: %v, id: %x", r.ID(), block.View, r.pm.GetCurView(), delay, block.ID)
+		}
 		r.totalDelayRounds += int(r.pm.GetCurView() - block.View)
 	}
 	//	print measurement
-	if r.ID().Node() == 2 {
+	if r.ID().Node() == config.Configuration.N() {
 		//log.Warningf("[%v] Honest committed blocks: %v, total blocks: %v, chain growth: %v", r.ID(), r.bc.GetHonestCommittedBlocks(), r.bc.GetHighestComitted(), r.bc.GetChainGrowth())
 		//log.Warningf("[%v] Honest committed blocks: %v, committed blocks: %v, chain quality: %v", r.ID(), r.bc.GetHonestCommittedBlocks(), r.bc.GetCommittedBlocks(), r.bc.GetChainQuality())
 		log.Warningf("[%v] Ave. delay is %v, total committed block number: %v", r.ID(), float64(r.totalDelayRounds)/float64(r.bc.GetCommittedBlocks()), r.bc.GetCommittedBlocks())
@@ -287,9 +289,9 @@ func (r *Replica) processNewView(newView types.View) {
 }
 
 func (r *Replica) proposeBlock(view types.View) {
-	log.Debugf("[%v] is going to propose block for view: %v", r.ID(), view)
 	//r.mu.Lock()
 	block := r.pd.ProduceBlock(view, r.Safety.Forkchoice(), r.ID())
+	log.Infof("[%v] is going to propose block for view: %v, id: %x, prevID: %x", r.ID(), view, block.ID, block.PrevID)
 	//r.mu.Unlock()
 	//	TODO: sign the block
 	// simulate processing time

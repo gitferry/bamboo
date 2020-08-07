@@ -148,7 +148,7 @@ func (c *Config) Load() {
 		c.HTTPAddrs[id] = addrHttp
 	}
 
-	c.ByzNo = 2
+	c.ByzNo = 4
 	c.Threshold = 11
 
 	c.n = len(c.Addrs)
