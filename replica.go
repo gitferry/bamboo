@@ -239,7 +239,7 @@ func (r *Replica) processCommittedBlocks(blocks []*blockchain.Block) {
 		r.totalDelayRounds += int(r.pm.GetCurView() - block.View)
 	}
 	//	print measurement
-	if r.ID().Node() == 2 {
+	if r.ID().Node() == config.Configuration.N() {
 		//log.Warningf("[%v] Honest committed blocks: %v, total blocks: %v, chain growth: %v", r.ID(), r.bc.GetHonestCommittedBlocks(), r.bc.GetHighestComitted(), r.bc.GetChainGrowth())
 		//log.Warningf("[%v] Honest committed blocks: %v, committed blocks: %v, chain quality: %v", r.ID(), r.bc.GetHonestCommittedBlocks(), r.bc.GetCommittedBlocks(), r.bc.GetChainQuality())
 		log.Warningf("[%v] Ave. delay is %v, total committed block number: %v", r.ID(), float64(r.totalDelayRounds)/float64(r.bc.GetCommittedBlocks()), r.bc.GetCommittedBlocks())
