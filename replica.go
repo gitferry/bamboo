@@ -173,11 +173,12 @@ func (r *Replica) processBlock(block *blockchain.Block) {
 	}
 	// TODO: sign the vote
 	time.Sleep(20 * time.Millisecond)
-	voteAggregator := r.FindLeaderFor(curView + 1)
+	// vote to the current leader
+	voteAggregator := block.Proposer
 	if voteAggregator == r.ID() {
 		r.processVote(vote)
 	} else {
-		r.Send(r.FindLeaderFor(curView+1), vote)
+		r.Send(voteAggregator, vote)
 	}
 }
 
@@ -185,17 +186,18 @@ func (r *Replica) processCertificate(qc *blockchain.QC) {
 	if qc.View < r.pm.GetCurView() {
 		return
 	}
+	//if r.IsLeader(r.ID(), qc.View+1) {
 	r.pm.AdvanceView(qc.View)
-	// to conduct forking attack
-	if r.IsLeader(r.ID(), r.pm.GetCurView()) && r.isByz {
-		err := r.bc.UpdateHighQC(qc)
-		if err != nil {
-			log.Warningf("[%v] cannot update high QC, id: %x", r.ID(), qc.BlockID)
-		}
-		return
+	//}
+	//if r.IsLeader(r.ID(), r.pm.GetCurView()) && r.isByz {
+	err := r.bc.UpdateHighQC(qc)
+	if err != nil {
+		log.Warningf("[%v] cannot update high QC, id: %x", r.ID(), qc.BlockID)
 	}
+	//return
+	//}
 	log.Debugf("[%v] has advanced to view %v", r.ID(), r.pm.GetCurView())
-	err := r.UpdateStateByQC(qc)
+	err = r.UpdateStateByQC(qc)
 	if err != nil {
 		log.Errorf("[%v] cannot update state when processing qc: %w", r.ID(), err)
 		return
@@ -253,7 +255,22 @@ func (r *Replica) processVote(vote *blockchain.Vote) {
 	if !isBuilt {
 		return
 	}
-	r.processCertificate(qc)
+	// find the first future leader that is not Byzantine
+	for i := qc.View; ; i++ {
+		nextLeader := r.FindLeaderFor(i + 1)
+		if !config.Configuration.IsByzantine(nextLeader) {
+			tc := &blockchain.QC{
+				View:    i,
+				BlockID: qc.BlockID,
+			}
+			if nextLeader == r.ID() {
+				r.processCertificate(tc)
+			} else {
+				r.Send(nextLeader, tc)
+			}
+			return
+		}
+	}
 }
 
 func (r *Replica) processNewView(newView types.View) {

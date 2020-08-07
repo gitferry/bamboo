@@ -3,6 +3,7 @@ package election
 import (
 	"crypto/sha1"
 	"encoding/binary"
+	"strconv"
 
 	"github.com/gitferry/zeitgeber/identity"
 	"github.com/gitferry/zeitgeber/types"
@@ -24,16 +25,25 @@ func NewRotation(peerNo int) *rotation {
 }
 
 func (r *rotation) IsLeader(id identity.NodeID, view types.View) bool {
+	if view <= 3 {
+		if id.Node() < r.peerNo {
+			return false
+		}
+		return true
+	}
 	h := sha1.New()
-	h.Write([]byte(string(view)))
+	h.Write([]byte(strconv.Itoa(int(view) + 1)))
 	bs := h.Sum(nil)
 	data := binary.BigEndian.Uint64(bs)
 	return data%uint64(r.peerNo) == uint64(id.Node()-1)
 }
 
 func (r *rotation) FindLeaderFor(view types.View) identity.NodeID {
+	if view <= 3 {
+		return identity.NewNodeID(r.peerNo)
+	}
 	h := sha1.New()
-	h.Write([]byte(string(view)))
+	h.Write([]byte(strconv.Itoa(int(view + 1))))
 	bs := h.Sum(nil)
 	data := binary.BigEndian.Uint64(bs)
 	id := data%uint64(r.peerNo) + 1
