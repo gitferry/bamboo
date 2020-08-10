@@ -75,10 +75,12 @@ func (bc *BlockChain) GenerateQC(view types.View, blockID crypto.Identifier) (bo
 		Signature: nil,
 	}
 
-	err = bc.UpdateHighQC(qc)
-	if err != nil {
-		log.Warningf("generated a stale qc, view: %v", qc.View)
-	}
+	//err = bc.UpdateHighQC(qc)
+	//if err != nil {
+	//	log.Warningf("generated a stale qc, view: %v", qc.View)
+	//}
+
+	bc.quorum.Reset(blockID)
 
 	return true, qc
 }

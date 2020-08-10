@@ -77,3 +77,7 @@ func (q *Quorum) GetSigs(blockID crypto.Identifier) (crypto.AggSig, error) {
 
 	return sigs, nil
 }
+
+func (q *Quorum) Reset(blockID crypto.Identifier) {
+	q.votes[blockID] = make(map[identity.NodeID]*Vote)
+}

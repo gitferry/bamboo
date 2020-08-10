@@ -64,9 +64,6 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 	switch alg {
 	case "hotstuff":
 		forkchoice := "highest"
-		if isByz {
-			forkchoice = "forking"
-		}
 		r.Safety = hotstuff.NewHotStuff(bc, forkchoice)
 	default:
 		r.Safety = hotstuff.NewHotStuff(bc, "default")
@@ -142,19 +139,19 @@ func (r *Replica) processBlock(block *blockchain.Block) {
 	// 1. if the next leader is Byz, stop voting
 	// 2. if it is the first leader in future views, advance to that view
 
-	for i := curView; ; i++ {
-		nextLeader := r.FindLeaderFor(i + 1)
-		if !config.Configuration.IsByzantine(nextLeader) {
-			if i == curView {
-				break
-			}
-			if nextLeader == r.ID() {
-				r.pm.AdvanceView(i)
-				return
-			}
-			return
-		}
-	}
+	//for i := curView; ; i++ {
+	//	nextLeader := r.FindLeaderFor(i + 1)
+	//	if !config.Configuration.IsByzantine(nextLeader) {
+	//		if i == curView {
+	//			break
+	//		}
+	//		if nextLeader == r.ID() {
+	//			r.pm.AdvanceView(i)
+	//			return
+	//		}
+	//		return
+	//	}
+	//}
 
 	shouldVote, err := r.VotingRule(block)
 	if err != nil {
@@ -253,7 +250,34 @@ func (r *Replica) processVote(vote *blockchain.Vote) {
 	if !isBuilt {
 		return
 	}
-	r.processCertificate(qc)
+	if !r.isByz {
+		r.processCertificate(qc)
+		return
+	}
+	// TODO: if the replica is malicious add delay attack
+	// 1. if a three-chain exists, propose a forking block to break the three-chain
+	// 2. if not, build tc with highest QC and send to the first honest leader
+	isThreeChain, _, err := r.Safety.CommitRule(qc)
+	if err != nil {
+		log.Warningf("[%v] cannot check commit rule", r.ID())
+		return
+	}
+	if isThreeChain {
+		parentBlock, _ := r.bc.GetParentBlock(qc.BlockID)
+		qc.BlockID = parentBlock.ID
+		log.Debugf("[%v] is going to create a fork on %x", r.ID(), qc.BlockID)
+		r.processCertificate(qc)
+		return
+	}
+	for i := r.pm.GetCurView() + 1; ; i++ {
+		nextLeader := r.FindLeaderFor(i + 1)
+		if !config.Configuration.IsByzantine(nextLeader) {
+			qc.View = i
+			log.Debugf("[%v] is going to send a stale qc to %v, view: %v, id: %x", r.ID(), nextLeader, qc.View, qc.BlockID)
+			r.Send(nextLeader, qc)
+			return
+		}
+	}
 }
 
 func (r *Replica) processNewView(newView types.View) {
@@ -286,9 +310,6 @@ func (r *Replica) proposeBlock(view types.View) {
 
 func (r *Replica) Start() {
 	// conduct delay attack
-	if r.isByz {
-		return
-	}
 	go r.Run()
 	for {
 		// TODO: add timeout handler
