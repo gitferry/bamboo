@@ -220,6 +220,9 @@ func (r *Replica) processCertificate(qc *blockchain.QC) {
 
 func (r *Replica) processCommittedBlocks(blocks []*blockchain.Block) {
 	for _, block := range blocks {
+		if config.Configuration.IsByzantine(block.Proposer) {
+			continue
+		}
 		for _, txn := range block.Payload {
 			if r.ID() == txn.NodeID {
 				txn.Reply(message.TransactionReply{})
@@ -232,7 +235,9 @@ func (r *Replica) processCommittedBlocks(blocks []*blockchain.Block) {
 			log.Debugf("[%v] this block has zero payload, id: %x", r.ID(), block.ID)
 		}
 		delay := int(r.pm.GetCurView() - block.View)
-		log.Debugf("[%v] the block is committed, delay: %v, id: %x", r.ID(), delay, block.ID)
+		if r.ID().Node() == config.Configuration.N() {
+			log.Infof("committed block, view: %v, delay: %v", block.View, delay)
+		}
 		r.totalDelayRounds += int(r.pm.GetCurView() - block.View)
 	}
 	//	print measurement
@@ -288,7 +293,7 @@ func (r *Replica) processNewView(newView types.View) {
 	r.totalView = int(newView)
 	if r.isByz {
 		r.bElectNo++
-		log.Warningf("[%v] the number of Byzantine election is %v, total election number is %v", r.ID(), r.bElectNo, r.totalView)
+		//log.Warningf("[%v] the number of Byzantine election is %v, total election number is %v", r.ID(), r.bElectNo, r.totalView)
 	}
 	r.proposeBlock(newView)
 }
