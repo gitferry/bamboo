@@ -267,22 +267,44 @@ func (r *Replica) processVote(vote *blockchain.Vote) {
 		log.Warningf("[%v] cannot check commit rule", r.ID())
 		return
 	}
-	if isThreeChain {
-		parentBlock, _ := r.bc.GetParentBlock(qc.BlockID)
-		qc.BlockID = parentBlock.ID
-		log.Debugf("[%v] is going to create a fork on %x", r.ID(), qc.BlockID)
-		r.processCertificate(qc)
-		return
-	}
 	for i := r.pm.GetCurView() + 1; ; i++ {
 		nextLeader := r.FindLeaderFor(i + 1)
 		if !config.Configuration.IsByzantine(nextLeader) {
 			qc.View = i
+			if isThreeChain {
+				qc.BlockID = r.bc.GetHighQC().BlockID
+			}
 			log.Debugf("[%v] is going to send a stale qc to %v, view: %v, id: %x", r.ID(), nextLeader, qc.View, qc.BlockID)
 			r.Send(nextLeader, qc)
 			return
 		}
 	}
+	//if isThreeChain {
+	//	//parentBlock, _ := r.bc.GetParentBlock(qc.BlockID)
+	//	//qc.BlockID = parentBlock.ID
+	//	//log.Debugf("[%v] is going to create a fork on %x", r.ID(), qc.BlockID)
+	//	//r.processCertificate(qc)
+	//	//return
+	//	for i := r.pm.GetCurView() + 1; ; i++ {
+	//		nextLeader := r.FindLeaderFor(i + 1)
+	//		if !config.Configuration.IsByzantine(nextLeader) {
+	//			qc.View = i
+	//			qc.BlockID = r.bc.GetHighQC().BlockID
+	//			log.Debugf("[%v] is going to send a stale qc to %v, view: %v, id: %x", r.ID(), nextLeader, qc.View, qc.BlockID)
+	//			r.Send(nextLeader, qc)
+	//			return
+	//		}
+	//	}
+	//}
+	//for i := r.pm.GetCurView() + 1; ; i++ {
+	//	nextLeader := r.FindLeaderFor(i + 1)
+	//	if !config.Configuration.IsByzantine(nextLeader) {
+	//		qc.View = i
+	//		log.Debugf("[%v] is going to send a stale qc to %v, view: %v, id: %x", r.ID(), nextLeader, qc.View, qc.BlockID)
+	//		r.Send(nextLeader, qc)
+	//		return
+	//	}
+	//}
 }
 
 func (r *Replica) processNewView(newView types.View) {

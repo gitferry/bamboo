@@ -25,7 +25,7 @@ func TestRotation_LeaderList(t *testing.T) {
 	byzNo := 5
 	var leaderList []int
 
-	for i := 1; i <= 10000; i++ {
+	for i := 1; i <= 1000; i++ {
 		leaderID := elect.FindLeaderFor(types.View(i))
 		// if byz, add 0
 		if leaderID.Node() <= byzNo {
