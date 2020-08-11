@@ -225,6 +225,9 @@ func (r *Replica) processCertificate(qc *blockchain.QC) {
 
 func (r *Replica) processCommittedBlocks(blocks []*blockchain.Block) {
 	for _, block := range blocks {
+		if config.Configuration.IsByzantine(block.Proposer) {
+			continue
+		}
 		for _, txn := range block.Payload {
 			if r.ID() == txn.NodeID {
 				txn.Reply(message.TransactionReply{})
