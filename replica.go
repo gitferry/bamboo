@@ -124,10 +124,13 @@ func (r *Replica) processBlock(block *blockchain.Block) {
 		View:    block.View - 1,
 		BlockID: block.QC.BlockID,
 	}
+	if r.ID().Node() == config.Configuration.N() {
+		log.Infof("[%v] block view: %v, ts: %v", r.ID(), block.View, block.Ts)
+	}
+	r.pm.UpdateTimeStamp(block.Ts)
 	r.processCertificate(tc)
 	curView := r.pm.GetCurView()
 	// TODO: update timeStamp
-	r.pm.UpdateTimeStamp(block.Ts)
 	if block.View != curView {
 		log.Warningf("[%v] received a stale proposal", r.ID())
 		return
@@ -299,6 +302,7 @@ func (r *Replica) processVote(vote *blockchain.Vote) {
 
 func (r *Replica) processNewView(newView pacemaker.NewView) {
 	log.Debugf("[%v] is processing new view: %v", r.ID(), newView)
+	normalDelay := time.Duration(rand.ExpFloat64()*100) * time.Millisecond
 	if !r.IsLeader(r.ID(), newView.View) {
 		return
 	}
@@ -310,19 +314,24 @@ func (r *Replica) processNewView(newView pacemaker.NewView) {
 	if r.isByz {
 		r.bElectNo++
 		// if the proposer is byz, add time (n+1) * delta
-		r.pm.AddTime(time.Duration((newView.Timeouts + 1) * config.Configuration.Delta))
+		r.pm.AddTime(time.Duration((newView.Timeouts+1)*config.Configuration.Delta)*time.Second + normalDelay)
 		log.Warningf("[%v] the number of Byzantine election is %v, total election number is %v", r.ID(), r.bElectNo, r.totalView)
 	} else {
 		// the proposer of the highQC's block is byz
+		r.mu.Lock()
 		lastBlock, err := r.bc.GetBlockByID(r.bc.GetHighQC().BlockID)
+		r.mu.Unlock()
 		if err != nil {
 			log.Warningf("[%v] cannot get block, id: %x", r.ID(), r.bc.GetHighQC().BlockID)
 		}
 		if config.Configuration.IsByzantine(lastBlock.Proposer) {
-			r.pm.AddTime(time.Duration((newView.Timeouts + 1) * config.Configuration.Delta))
+			r.pm.AddTime(time.Duration((newView.Timeouts+1)*config.Configuration.Delta) * time.Second)
 		} else {
-			transDelay := int(rand.ExpFloat64() * 100)
-			r.pm.AddTime(time.Duration(transDelay) * time.Millisecond)
+			if newView.Timeouts == 0 {
+				r.pm.AddTime(time.Duration(newView.Timeouts*config.Configuration.Delta)*time.Second + normalDelay)
+			} else {
+				r.pm.AddTime(time.Duration((newView.Timeouts+1)*config.Configuration.Delta)*time.Second + normalDelay)
+			}
 		}
 	}
 

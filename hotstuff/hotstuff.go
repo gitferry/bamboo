@@ -126,13 +126,13 @@ func (hs *HotStuff) forkingForkchoice() *blockchain.QC {
 		return block.QC
 	}
 
-	grandChildrenBlocks := hs.bc.GetChildrenBlocks(block.ID)
-	for _, b := range grandChildrenBlocks {
-		if !config.Configuration.IsByzantine(b.Proposer) {
-			log.Debugf("create a fork, id: %x", b.QC.BlockID)
-			return b.QC
-		}
-	}
+	//grandChildrenBlocks := hs.bc.GetChildrenBlocks(block.ID)
+	//for _, b := range grandChildrenBlocks {
+	//	if !config.Configuration.IsByzantine(b.Proposer) {
+	//		log.Debugf("create a fork, id: %x", b.QC.BlockID)
+	//		return b.QC
+	//	}
+	//}
 	return hs.bc.GetHighQC()
 }
 

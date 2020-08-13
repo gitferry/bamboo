@@ -20,7 +20,7 @@
   "multiversion": false,
   "timeout": 100,
   "bsize": 1024,
-  "delta": 60,
+  "delta": 1,
   "benchmark": {
     "T": 60,
     "N": 0,

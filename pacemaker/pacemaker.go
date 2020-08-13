@@ -118,7 +118,7 @@ func (b *Pacemaker) AdvanceView(view types.View) {
 		b.mu.Unlock()
 		return
 	}
-	timeouts := view - b.curView - 1
+	timeouts := view - b.curView
 	if timeouts < 0 {
 		timeouts = 0
 	}
