@@ -1,6 +1,8 @@
 package blockchain
 
 import (
+	"time"
+
 	"github.com/gitferry/zeitgeber/crypto"
 	"github.com/gitferry/zeitgeber/identity"
 	"github.com/gitferry/zeitgeber/message"
@@ -15,6 +17,7 @@ type Block struct {
 	PrevID   crypto.Identifier
 	Sig      crypto.Signature
 	ID       crypto.Identifier
+	Ts       time.Duration
 }
 
 type rawBlock struct {
@@ -28,13 +31,14 @@ type rawBlock struct {
 }
 
 // MakeBlock creates an unsigned block
-func MakeBlock(view types.View, qc *QC, payload []*message.Transaction, proposer identity.NodeID) *Block {
+func MakeBlock(view types.View, qc *QC, payload []*message.Transaction, proposer identity.NodeID, ts time.Duration) *Block {
 	b := new(Block)
 	b.View = view
 	b.Proposer = proposer
 	b.QC = qc
 	b.Payload = payload
 	b.PrevID = qc.BlockID
+	b.Ts = ts
 	b.makeID()
 	return b
 }

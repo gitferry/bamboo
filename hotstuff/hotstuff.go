@@ -2,6 +2,7 @@ package hotstuff
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/gitferry/zeitgeber/blockchain"
 	"github.com/gitferry/zeitgeber/config"
@@ -20,6 +21,7 @@ type HotStuff struct {
 	preferredView  types.View
 	forkchoiceType string
 	bc             *blockchain.BlockChain
+	mu             sync.Mutex
 }
 
 func NewHotStuff(blockchain *blockchain.BlockChain, forkchoice string) *HotStuff {
@@ -30,6 +32,8 @@ func NewHotStuff(blockchain *blockchain.BlockChain, forkchoice string) *HotStuff
 }
 
 func (hs *HotStuff) VotingRule(block *blockchain.Block) (bool, error) {
+	hs.mu.Lock()
+	defer hs.mu.Unlock()
 	if block.View <= 2 {
 		return true, nil
 	}
@@ -44,6 +48,8 @@ func (hs *HotStuff) VotingRule(block *blockchain.Block) (bool, error) {
 }
 
 func (hs *HotStuff) CommitRule(qc *blockchain.QC) (bool, *blockchain.Block, error) {
+	hs.mu.Lock()
+	defer hs.mu.Unlock()
 	grandParentBlock, err := hs.bc.GetGrandParentBlock(qc.BlockID)
 	if err != nil {
 		return false, nil, fmt.Errorf("cannot commit any block: %w", err)
@@ -78,6 +84,8 @@ func (hs *HotStuff) updateLastVotedView(targetView types.View) error {
 }
 
 func (hs *HotStuff) updatePreferredView(qc *blockchain.QC) error {
+	hs.mu.Lock()
+	defer hs.mu.Unlock()
 	parentBlock, err := hs.bc.GetParentBlock(qc.BlockID)
 	if err != nil {
 		return fmt.Errorf("cannot update preferred view: %w", err)

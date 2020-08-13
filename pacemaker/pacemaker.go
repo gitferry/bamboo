@@ -2,22 +2,30 @@ package pacemaker
 
 import (
 	"sync"
+	"time"
 
 	"github.com/gitferry/zeitgeber/identity"
 	"github.com/gitferry/zeitgeber/types"
 )
 
+type NewView struct {
+	types.View
+	Timeouts int
+}
+
 type Pacemaker struct {
 	curView           types.View
-	newViewChan       chan types.View
+	newViewChan       chan NewView
 	timeoutController *TimeoutController
 	timeouts          map[types.View]map[identity.NodeID]struct{}
+	timeStamp         time.Duration
 	mu                sync.Mutex
 }
 
 func NewPacemaker() *Pacemaker {
 	pm := new(Pacemaker)
-	pm.newViewChan = make(chan types.View)
+	pm.newViewChan = make(chan NewView)
+	pm.timeStamp = 0
 	//bcb.Node = n
 	//bcb.Election = election
 	//bcb.newViewChan = make(chan View)
@@ -85,12 +93,34 @@ func NewPacemaker() *Pacemaker {
 //	b.HandleTmo(tmoMsg)
 //}
 
+func (b *Pacemaker) UpdateTimeStamp(ts time.Duration) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.timeStamp = ts
+}
+
+func (b *Pacemaker) GetTimeStamp() time.Duration {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.timeStamp
+}
+
+func (b *Pacemaker) AddTime(t time.Duration) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.timeStamp += t
+}
+
 func (b *Pacemaker) AdvanceView(view types.View) {
 	b.mu.Lock()
 	if view < b.curView {
 		//log.Warningf("the view %v is lower than current view %v", view, b.curView)
 		b.mu.Unlock()
 		return
+	}
+	timeouts := view - b.curView - 1
+	if timeouts < 0 {
+		timeouts = 0
 	}
 	//b.viewDuration[b.curView] = time.Now().Sub(b.lastViewTime)
 	b.curView = view + 1
@@ -99,7 +129,11 @@ func (b *Pacemaker) AdvanceView(view types.View) {
 	//if view == 100 {
 	//	b.printViewTime()
 	//}
-	b.newViewChan <- view + 1 // reset timer for the next view
+	newView := NewView{
+		View:     view + 1,
+		Timeouts: int(timeouts),
+	}
+	b.newViewChan <- newView // reset timer for the next view
 }
 
 //func (b *Pacemaker) printViewTime() {
@@ -109,7 +143,7 @@ func (b *Pacemaker) AdvanceView(view types.View) {
 //	}
 //}
 
-func (b *Pacemaker) EnteringViewEvent() chan types.View {
+func (b *Pacemaker) EnteringViewEvent() chan NewView {
 	return b.newViewChan
 }
 

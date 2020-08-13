@@ -2,6 +2,7 @@ package zeitgeber
 
 import (
 	"encoding/gob"
+	"math/rand"
 	"sync"
 	"time"
 
@@ -21,20 +22,21 @@ type Replica struct {
 	Node
 	election.Election
 	Safety
-	pd               *mempool.Producer
-	bc               *blockchain.BlockChain
-	pm               *pacemaker.Pacemaker
-	isStarted        bool
-	isByz            bool
-	bElectNo         int
-	totalView        int
-	totalDelayRounds int
-	blockMsg         chan *blockchain.Block
-	voteMsg          chan *blockchain.Vote
-	qcMsg            chan *blockchain.QC
-	timeoutMsg       chan *pacemaker.TMO
-	newView          chan types.View
-	mu               sync.Mutex
+	pd        *mempool.Producer
+	bc        *blockchain.BlockChain
+	pm        *pacemaker.Pacemaker
+	isStarted bool
+	isByz     bool
+	bElectNo  int
+	totalView int
+	//totalDelayRounds int
+	totalDelay time.Duration
+	blockMsg   chan *blockchain.Block
+	voteMsg    chan *blockchain.Vote
+	qcMsg      chan *blockchain.QC
+	timeoutMsg chan *pacemaker.TMO
+	newView    chan types.View
+	mu         sync.Mutex
 }
 
 // NewReplica creates a new replica instance
@@ -124,6 +126,8 @@ func (r *Replica) processBlock(block *blockchain.Block) {
 	}
 	r.processCertificate(tc)
 	curView := r.pm.GetCurView()
+	// TODO: update timeStamp
+	r.pm.UpdateTimeStamp(block.Ts)
 	if block.View != curView {
 		log.Warningf("[%v] received a stale proposal", r.ID())
 		return
@@ -142,19 +146,19 @@ func (r *Replica) processBlock(block *blockchain.Block) {
 	// 1. if the next leader is Byz, stop voting
 	// 2. if it is the first leader in future views, advance to that view
 
-	for i := curView; ; i++ {
-		nextLeader := r.FindLeaderFor(i + 1)
-		if !config.Configuration.IsByzantine(nextLeader) {
-			if i == curView {
-				break
-			}
-			if nextLeader == r.ID() {
-				r.pm.AdvanceView(i)
-				return
-			}
-			return
-		}
-	}
+	//for i := curView; ; i++ {
+	//	nextLeader := r.FindLeaderFor(i + 1)
+	//	if !config.Configuration.IsByzantine(nextLeader) {
+	//		if i == curView {
+	//			break
+	//		}
+	//		if nextLeader == r.ID() {
+	//			r.pm.AdvanceView(i)
+	//			return
+	//		}
+	//		return
+	//	}
+	//}
 
 	shouldVote, err := r.VotingRule(block)
 	if err != nil {
@@ -179,6 +183,27 @@ func (r *Replica) processBlock(block *blockchain.Block) {
 		r.processVote(vote)
 	} else {
 		r.Send(voteAggregator, vote)
+	}
+}
+
+func (r *Replica) preprocessQC(qc *blockchain.QC) {
+	isThreeChain, _, err := r.Safety.CommitRule(qc)
+	if err != nil {
+		log.Warningf("[%v] cannot check commit rule", r.ID())
+		return
+	}
+	if isThreeChain {
+		r.pm.AdvanceView(qc.View)
+		return
+	}
+	for i := qc.View; ; i++ {
+		nextLeader := r.FindLeaderFor(i + 1)
+		if !config.Configuration.IsByzantine(nextLeader) {
+			qc.View = i
+			log.Debugf("[%v] is going to send a stale qc to %v, view: %v, id: %x", r.ID(), nextLeader, qc.View, qc.BlockID)
+			r.Send(nextLeader, qc)
+			return
+		}
 	}
 }
 
@@ -236,20 +261,19 @@ func (r *Replica) processCommittedBlocks(blocks []*blockchain.Block) {
 				r.pd.RemoveTxn(txn.ID)
 			}
 		}
-		if len(block.Payload) == 0 {
-			log.Debugf("[%v] this block has zero payload, id: %x", r.ID(), block.ID)
-		}
-		delay := int(r.pm.GetCurView() - block.View)
+		//delay := int(r.pm.GetCurView() - block.View)
+		delay := r.pm.GetTimeStamp() - block.Ts
 		if r.ID().Node() == config.Configuration.N() {
 			log.Infof("[%v] the block is committed, view: %v, current view: %v, delay: %v, id: %x", r.ID(), block.View, r.pm.GetCurView(), delay, block.ID)
 		}
-		r.totalDelayRounds += int(r.pm.GetCurView() - block.View)
+		//r.totalDelayRounds += int(r.pm.GetCurView() - block.View)
+		r.totalDelay += delay
 	}
 	//	print measurement
 	if r.ID().Node() == config.Configuration.N() {
 		//log.Warningf("[%v] Honest committed blocks: %v, total blocks: %v, chain growth: %v", r.ID(), r.bc.GetHonestCommittedBlocks(), r.bc.GetHighestComitted(), r.bc.GetChainGrowth())
 		//log.Warningf("[%v] Honest committed blocks: %v, committed blocks: %v, chain quality: %v", r.ID(), r.bc.GetHonestCommittedBlocks(), r.bc.GetCommittedBlocks(), r.bc.GetChainQuality())
-		log.Warningf("[%v] Ave. delay is %v, total committed block number: %v", r.ID(), float64(r.totalDelayRounds)/float64(r.bc.GetCommittedBlocks()), r.bc.GetCommittedBlocks())
+		log.Warningf("[%v] Ave. delay is %v, total committed block number: %v", r.ID(), r.totalDelay.Seconds()/float64(r.bc.GetHonestCommittedBlocks()), r.bc.GetHonestCommittedBlocks())
 	}
 }
 
@@ -260,40 +284,54 @@ func (r *Replica) processVote(vote *blockchain.Vote) {
 	if !isBuilt {
 		return
 	}
-	// find the first future leader that is not Byzantine
-	for i := qc.View; ; i++ {
-		nextLeader := r.FindLeaderFor(i + 1)
-		if !config.Configuration.IsByzantine(nextLeader) {
-			tc := &blockchain.QC{
-				View:    i,
-				BlockID: qc.BlockID,
-			}
-			if nextLeader == r.ID() {
-				r.processCertificate(tc)
-			} else {
-				r.Send(nextLeader, tc)
-			}
-			return
+	// send the QC to the next leader
+	nextLeader := r.FindLeaderFor(qc.View + 1)
+	if nextLeader == r.ID() {
+		if config.Configuration.IsByzantine(nextLeader) {
+			r.preprocessQC(qc)
+		} else {
+			r.processCertificate(qc)
 		}
+	} else {
+		r.Send(nextLeader, qc)
 	}
 }
 
-func (r *Replica) processNewView(newView types.View) {
+func (r *Replica) processNewView(newView pacemaker.NewView) {
 	log.Debugf("[%v] is processing new view: %v", r.ID(), newView)
-	if !r.IsLeader(r.ID(), newView) {
+	if !r.IsLeader(r.ID(), newView.View) {
 		return
 	}
-	r.totalView = int(newView)
+	r.totalView = int(newView.View)
+	if newView.View == 1 {
+		r.proposeBlock(newView.View)
+		return
+	}
 	if r.isByz {
 		r.bElectNo++
+		// if the proposer is byz, add time (n+1) * delta
+		r.pm.AddTime(time.Duration((newView.Timeouts + 1) * config.Configuration.Delta))
 		log.Warningf("[%v] the number of Byzantine election is %v, total election number is %v", r.ID(), r.bElectNo, r.totalView)
+	} else {
+		// the proposer of the highQC's block is byz
+		lastBlock, err := r.bc.GetBlockByID(r.bc.GetHighQC().BlockID)
+		if err != nil {
+			log.Warningf("[%v] cannot get block, id: %x", r.ID(), r.bc.GetHighQC().BlockID)
+		}
+		if config.Configuration.IsByzantine(lastBlock.Proposer) {
+			r.pm.AddTime(time.Duration((newView.Timeouts + 1) * config.Configuration.Delta))
+		} else {
+			transDelay := int(rand.ExpFloat64() * 100)
+			r.pm.AddTime(time.Duration(transDelay) * time.Millisecond)
+		}
 	}
-	r.proposeBlock(newView)
+
+	r.proposeBlock(newView.View)
 }
 
 func (r *Replica) proposeBlock(view types.View) {
 	//r.mu.Lock()
-	block := r.pd.ProduceBlock(view, r.Safety.Forkchoice(), r.ID())
+	block := r.pd.ProduceBlock(view, r.Safety.Forkchoice(), r.ID(), r.pm.GetTimeStamp())
 	log.Infof("[%v] is going to propose block for view: %v, id: %x, prevID: %x", r.ID(), view, block.ID, block.PrevID)
 	//r.mu.Unlock()
 	//	TODO: sign the block
@@ -307,10 +345,6 @@ func (r *Replica) proposeBlock(view types.View) {
 }
 
 func (r *Replica) Start() {
-	// conduct delay attack
-	if r.isByz {
-		return
-	}
 	go r.Run()
 	for {
 		// TODO: add timeout handler
@@ -322,7 +356,11 @@ func (r *Replica) Start() {
 		case newVote := <-r.voteMsg:
 			go r.processVote(newVote)
 		case newQC := <-r.qcMsg:
-			go r.processCertificate(newQC)
+			if r.isByz {
+				go r.preprocessQC(newQC)
+			} else {
+				go r.processCertificate(newQC)
+			}
 		}
 	}
 }

@@ -47,10 +47,14 @@ func (bc *BlockChain) AddVote(vote *Vote) (bool, *QC) {
 }
 
 func (bc *BlockChain) GetHighQC() *QC {
+	bc.mu.Lock()
+	defer bc.mu.Unlock()
 	return bc.highQC
 }
 
 func (bc *BlockChain) UpdateHighQC(qc *QC) error {
+	bc.mu.Lock()
+	defer bc.mu.Unlock()
 	if qc.View < bc.highQC.View {
 		return fmt.Errorf("cannot update high QC")
 	}
@@ -75,10 +79,10 @@ func (bc *BlockChain) GenerateQC(view types.View, blockID crypto.Identifier) (bo
 		Signature: nil,
 	}
 
-	err = bc.UpdateHighQC(qc)
-	if err != nil {
-		log.Warningf("generated a stale qc, view: %v", qc.View)
-	}
+	//err = bc.UpdateHighQC(qc)
+	//if err != nil {
+	//	log.Warningf("generated a stale qc, view: %v", qc.View)
+	//}
 
 	return true, qc
 }

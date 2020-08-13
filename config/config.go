@@ -30,6 +30,7 @@ type Config struct {
 	ByzNo          int     `json:"byzNo"`
 	BSize          int     `json:"bsize"`
 	Benchmark      Bconfig `json:"benchmark"` // benchmark configuration
+	Delta          int     `json:"delta"`     // timeout, seconds
 
 	// for future implementation
 	// Batching bool `json:"batching"`
@@ -148,7 +149,7 @@ func (c *Config) Load() {
 		c.HTTPAddrs[id] = addrHttp
 	}
 
-	c.ByzNo = 4
+	c.ByzNo = 1
 	c.Threshold = 11
 
 	c.n = len(c.Addrs)
