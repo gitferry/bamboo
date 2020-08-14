@@ -5,8 +5,6 @@ import (
 	"sync"
 
 	"github.com/gitferry/zeitgeber/blockchain"
-	"github.com/gitferry/zeitgeber/config"
-	"github.com/gitferry/zeitgeber/log"
 	"github.com/gitferry/zeitgeber/types"
 )
 
@@ -115,16 +113,18 @@ func (hs *HotStuff) forkingForkchoice() *blockchain.QC {
 	if hs.preferredView <= 1 {
 		return hs.bc.GetHighQC()
 	}
-	highBlock, _ := hs.bc.GetBlockByID(hs.bc.GetHighQC().BlockID)
-	if config.Configuration.IsByzantine(highBlock.Proposer) {
-		return hs.bc.GetHighQC()
-	}
-	preferredBlock := hs.bc.GetBlockByView(hs.preferredView)
-	block := hs.bc.GetChildrenBlocks(preferredBlock.ID)[len(hs.bc.GetChildrenBlocks(preferredBlock.ID))-1]
-	if !config.Configuration.IsByzantine(block.Proposer) {
-		log.Debugf("create a fork, id: %x", block.QC.BlockID)
-		return block.QC
-	}
+	//highBlock, _ := hs.bc.GetBlockByID(hs.bc.GetHighQC().BlockID)
+	//if config.Configuration.IsByzantine(highBlock.Proposer) {
+	//	return hs.bc.GetHighQC()
+	//}
+	//log.Debugf("create a fork on %x", highBlock.QC.BlockID)
+	return hs.bc.GetHighQC()
+	//preferredBlock := hs.bc.GetBlockByView(hs.preferredView)
+	//block := hs.bc.GetChildrenBlocks(preferredBlock.ID)[len(hs.bc.GetChildrenBlocks(preferredBlock.ID))-1]
+	//if !config.Configuration.IsByzantine(block.Proposer) {
+	//	log.Debugf("create a fork, id: %x", block.QC.BlockID)
+	//	return block.QC
+	//}
 
 	//grandChildrenBlocks := hs.bc.GetChildrenBlocks(block.ID)
 	//for _, b := range grandChildrenBlocks {
@@ -133,7 +133,7 @@ func (hs *HotStuff) forkingForkchoice() *blockchain.QC {
 	//		return b.QC
 	//	}
 	//}
-	return hs.bc.GetHighQC()
+	//return hs.bc.GetHighQC()
 }
 
 // highestForkchoice returns the high QC

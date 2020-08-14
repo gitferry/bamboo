@@ -2,7 +2,6 @@ package zeitgeber
 
 import (
 	"encoding/gob"
-	"math/rand"
 	"sync"
 	"time"
 
@@ -22,15 +21,15 @@ type Replica struct {
 	Node
 	election.Election
 	Safety
-	pd        *mempool.Producer
-	bc        *blockchain.BlockChain
-	pm        *pacemaker.Pacemaker
-	isStarted bool
-	isByz     bool
-	bElectNo  int
-	totalView int
-	//totalDelayRounds int
-	totalDelay time.Duration
+	pd               *mempool.Producer
+	bc               *blockchain.BlockChain
+	pm               *pacemaker.Pacemaker
+	isStarted        bool
+	isByz            bool
+	bElectNo         int
+	totalView        int
+	totalDelayRounds int
+	//totalDelay time.Duration
 	blockMsg   chan *blockchain.Block
 	voteMsg    chan *blockchain.Vote
 	qcMsg      chan *blockchain.QC
@@ -264,19 +263,19 @@ func (r *Replica) processCommittedBlocks(blocks []*blockchain.Block) {
 				r.pd.RemoveTxn(txn.ID)
 			}
 		}
-		//delay := int(r.pm.GetCurView() - block.View)
-		delay := r.pm.GetTimeStamp() - block.Ts
+		delay := int(r.pm.GetCurView() - block.View)
+		//delay := r.pm.GetTimeStamp() - block.Ts
 		if r.ID().Node() == config.Configuration.N() {
 			log.Infof("[%v] the block is committed, view: %v, current view: %v, delay: %v, id: %x", r.ID(), block.View, r.pm.GetCurView(), delay, block.ID)
 		}
-		//r.totalDelayRounds += int(r.pm.GetCurView() - block.View)
-		r.totalDelay += delay
+		r.totalDelayRounds += int(r.pm.GetCurView() - block.View)
+		//r.totalDelay += delay
 	}
 	//	print measurement
 	if r.ID().Node() == config.Configuration.N() {
 		//log.Warningf("[%v] Honest committed blocks: %v, total blocks: %v, chain growth: %v", r.ID(), r.bc.GetHonestCommittedBlocks(), r.bc.GetHighestComitted(), r.bc.GetChainGrowth())
 		//log.Warningf("[%v] Honest committed blocks: %v, committed blocks: %v, chain quality: %v", r.ID(), r.bc.GetHonestCommittedBlocks(), r.bc.GetCommittedBlocks(), r.bc.GetChainQuality())
-		log.Warningf("[%v] Ave. delay is %v, total committed block number: %v", r.ID(), r.totalDelay.Seconds()/float64(r.bc.GetHonestCommittedBlocks()), r.bc.GetHonestCommittedBlocks())
+		log.Warningf("[%v] Ave. delay is %v, total committed block number: %v", r.ID(), float64(r.totalDelayRounds)/float64(r.bc.GetHonestCommittedBlocks()), r.bc.GetHonestCommittedBlocks())
 	}
 }
 
@@ -302,37 +301,16 @@ func (r *Replica) processVote(vote *blockchain.Vote) {
 
 func (r *Replica) processNewView(newView pacemaker.NewView) {
 	log.Debugf("[%v] is processing new view: %v", r.ID(), newView)
-	normalDelay := time.Duration(rand.ExpFloat64()*100) * time.Millisecond
+	//normalDelay := time.Duration(rand.ExpFloat64()*100) * time.Millisecond
 	if !r.IsLeader(r.ID(), newView.View) {
 		return
 	}
 	r.totalView = int(newView.View)
-	if newView.View == 1 {
-		r.proposeBlock(newView.View)
-		return
-	}
 	if r.isByz {
 		r.bElectNo++
 		// if the proposer is byz, add time (n+1) * delta
-		r.pm.AddTime(time.Duration((newView.Timeouts+1)*config.Configuration.Delta)*time.Second + normalDelay)
+		//r.pm.AddTime(time.Duration((newView.Timeouts+1)*config.Configuration.Delta)*time.Second + normalDelay)
 		log.Warningf("[%v] the number of Byzantine election is %v, total election number is %v", r.ID(), r.bElectNo, r.totalView)
-	} else {
-		// the proposer of the highQC's block is byz
-		r.mu.Lock()
-		lastBlock, err := r.bc.GetBlockByID(r.bc.GetHighQC().BlockID)
-		r.mu.Unlock()
-		if err != nil {
-			log.Warningf("[%v] cannot get block, id: %x", r.ID(), r.bc.GetHighQC().BlockID)
-		}
-		if config.Configuration.IsByzantine(lastBlock.Proposer) {
-			r.pm.AddTime(time.Duration((newView.Timeouts+1)*config.Configuration.Delta) * time.Second)
-		} else {
-			if newView.Timeouts == 0 {
-				r.pm.AddTime(time.Duration(newView.Timeouts*config.Configuration.Delta)*time.Second + normalDelay)
-			} else {
-				r.pm.AddTime(time.Duration((newView.Timeouts+1)*config.Configuration.Delta)*time.Second + normalDelay)
-			}
-		}
 	}
 
 	r.proposeBlock(newView.View)
