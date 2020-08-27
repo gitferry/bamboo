@@ -267,7 +267,7 @@ func (r *Replica) processCommittedBlocks(blocks []*blockchain.Block) {
 		//delay := int(r.pm.GetCurView() - block.View)
 		delay := r.pm.GetTimeStamp() - block.Ts
 		if r.ID().Node() == config.Configuration.N() {
-			log.Infof("[%v] the block is committed, view: %v, current view: %v, delay: %v, id: %x", r.ID(), block.View, r.pm.GetCurView(), delay, block.ID)
+			log.Infof("[%v] the block is committed, view: %v, current view: %v, delay: %v seconds, id: %x", r.ID(), block.View, r.pm.GetCurView(), delay, block.ID)
 		}
 		//r.totalDelayRounds += int(r.pm.GetCurView() - block.View)
 		r.totalDelay += delay
