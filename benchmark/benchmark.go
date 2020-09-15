@@ -86,6 +86,7 @@ func (b *Benchmark) Run() {
 		}
 		b.wait.Wait()
 	}
+
 	t := time.Now().Sub(b.startTime)
 
 	b.db.Stop()

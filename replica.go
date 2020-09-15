@@ -103,10 +103,8 @@ func (r *Replica) HandleQC(qc blockchain.QC) {
 }
 
 func (r *Replica) handleTxn(m message.Transaction) {
-	//log.Debugf("[%v] received txn %v\n", r.ID(), m)
-	//r.mu.Lock()
-	//defer r.mu.Unlock()
 	r.pd.CollectTxn(&m)
+	//r.Broadcast(m)
 	//	kick-off the protocol
 	if !r.isStarted && r.IsLeader(r.ID(), 1) {
 		r.isStarted = true
@@ -119,18 +117,17 @@ func (r *Replica) handleTxn(m message.Transaction) {
 func (r *Replica) processBlock(block *blockchain.Block) {
 	log.Debugf("[%v] is processing block, view: %v, id: %x", r.ID(), block.View, block.ID)
 	// TODO: process TC
-	// to simulate forking attack without a tc, create a tc qc with view set to block.view-1
+	// to simulate forking attack without a tc, create a qc with view set to block.view-1
 	tc := &blockchain.QC{
 		View:    block.View - 1,
 		BlockID: block.QC.BlockID,
 	}
 	if r.ID().Node() == config.Configuration.N() {
-		log.Infof("[%v] block view: %v, ts: %v", r.ID(), block.View, block.Ts)
+		log.Infof("[%v] block view: %v", r.ID(), block.View)
 	}
 	r.pm.UpdateTimeStamp(block.Ts)
 	r.processCertificate(tc)
 	curView := r.pm.GetCurView()
-	// TODO: update timeStamp
 	if block.View != curView {
 		log.Warningf("[%v] received a stale proposal", r.ID())
 		return
@@ -144,24 +141,6 @@ func (r *Replica) processBlock(block *blockchain.Block) {
 	r.mu.Lock()
 	r.bc.AddBlock(block)
 	r.mu.Unlock()
-
-	// conduct delay attack
-	// 1. if the next leader is Byz, stop voting
-	// 2. if it is the first leader in future views, advance to that view
-
-	//for i := curView; ; i++ {
-	//	nextLeader := r.FindLeaderFor(i + 1)
-	//	if !config.Configuration.IsByzantine(nextLeader) {
-	//		if i == curView {
-	//			break
-	//		}
-	//		if nextLeader == r.ID() {
-	//			r.pm.AdvanceView(i)
-	//			return
-	//		}
-	//		return
-	//	}
-	//}
 
 	shouldVote, err := r.VotingRule(block)
 	if err != nil {
@@ -288,6 +267,7 @@ func (r *Replica) processVote(vote *blockchain.Vote) {
 		return
 	}
 	// send the QC to the next leader
+	log.Debugf("[%v] a qc is built, block id: %x", qc.BlockID)
 	nextLeader := r.FindLeaderFor(qc.View + 1)
 	if nextLeader == r.ID() {
 		if config.Configuration.IsByzantine(nextLeader) {
