@@ -19,10 +19,10 @@ func NewProducer() *Producer {
 
 func (pd *Producer) ProduceBlock(view types.View, qc *blockchain.QC, proposer identity.NodeID, ts time.Duration) *blockchain.Block {
 	payload := pd.mempool.GetPayload()
-	for len(payload) == 0 {
-		payload = pd.mempool.GetPayload()
-		time.Sleep(10 * time.Millisecond)
-	}
+	//for len(payload) == 0 {
+	//	payload = pd.mempool.GetPayload()
+	//	time.Sleep(10 * time.Millisecond)
+	//}
 	block := blockchain.MakeBlock(view, qc, payload, proposer, ts)
 	return block
 }
