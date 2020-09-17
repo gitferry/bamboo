@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gitferry/zeitgeber/log"
 	"github.com/gitferry/zeitgeber/message"
 )
 
@@ -75,58 +76,85 @@ func (b *Backdata) All() []*message.Transaction {
 	return entities
 }
 
+// Some returns a certain amount of entities from the pool.
+func (b *Backdata) Some(size int) []*message.Transaction {
+	if len(b.txns) < size {
+		return b.All()
+	}
+	entities := make([]*message.Transaction, 0, size)
+	for _, item := range b.txns {
+		if len(entities) == size {
+			break
+		}
+		entities = append(entities, item.txn)
+	}
+	return entities
+}
+
 // Backend provides synchronized access to a backend
 type Backend struct {
 	*Backdata
-	sync.RWMutex
+	mu   *sync.RWMutex
+	cond *sync.Cond
 }
 
 // NewBackend creates a new memory pool backend.
 func NewBackend() *Backend {
+	mu := &sync.RWMutex{}
 	b := &Backend{
 		Backdata: NewBackdata(),
+		mu:       mu,
+		cond:     sync.NewCond(mu),
 	}
 	return b
 }
 
 // Has checks if we already contain the item with the given hash.
 func (b *Backend) Has(id string) bool {
-	b.RLock()
-	defer b.RUnlock()
+	b.mu.RLock()
+	defer b.mu.RUnlock()
 	return b.Backdata.Has(id)
 }
 
 // Add adds the given item to the pool.
 func (b *Backend) Add(txn *message.Transaction) {
-	b.Lock()
-	defer b.Unlock()
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	b.Backdata.Add(txn)
+	log.Debugf("a new transactions is added into the mempool, the mempool size is %v", b.Backdata.Size())
+	b.cond.Broadcast()
 }
 
 // Rem will remove the item with the given hash.
-func (b *Backend) Rem(id string) bool {
-	b.Lock()
-	defer b.Unlock()
-	return b.Backdata.Rem(id)
+func (b *Backend) RemTxns(txns []*message.Transaction) bool {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	ok := true
+	for _, item := range txns {
+		if !b.Backdata.Rem(item.ID) {
+			ok = false
+		}
+	}
+	return ok
 }
 
 // ByID returns the given item from the pool.
 func (b *Backend) ByID(id string) (*message.Transaction, error) {
-	b.RLock()
-	defer b.RUnlock()
+	b.mu.RLock()
+	defer b.mu.RUnlock()
 	return b.Backdata.ByID(id)
 }
 
 func (b *Backend) GetTimestamp(id string) time.Time {
-	b.RLock()
-	defer b.RUnlock()
+	b.mu.RLock()
+	defer b.mu.RUnlock()
 	return b.Backdata.txns[id].receivedTime
 }
 
 // Run fetches the given item from the pool and runs given function on it, returning the entity after
 func (b *Backend) Run(f func(backdata *Backdata) error) error {
-	b.RLock()
-	defer b.RUnlock()
+	b.mu.RLock()
+	defer b.mu.RUnlock()
 
 	err := f(b.Backdata)
 	if err != nil {
@@ -137,14 +165,25 @@ func (b *Backend) Run(f func(backdata *Backdata) error) error {
 
 // Size will return the size of the backend.
 func (b *Backend) Size() uint {
-	b.RLock()
-	defer b.RUnlock()
+	b.mu.RLock()
+	defer b.mu.RUnlock()
 	return b.Backdata.Size()
 }
 
 // All returns all transactions from the pool.
 func (b *Backend) All() []*message.Transaction {
-	b.RLock()
-	defer b.RUnlock()
+	b.mu.RLock()
+	defer b.mu.RUnlock()
 	return b.Backdata.All()
+}
+
+// Some returns a certain amount of transactions from the pool.
+func (b *Backend) Some(size int) []*message.Transaction {
+	b.mu.Lock()
+	for b.Backdata.Size() <= uint(size) {
+		log.Debugf("the mempool size is %v", b.Backdata.Size())
+		b.cond.Wait()
+	}
+	b.mu.Unlock()
+	return b.Backdata.Some(size)
 }

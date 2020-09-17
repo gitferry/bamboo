@@ -101,6 +101,7 @@ func (r *Replica) HandleQC(qc blockchain.QC) {
 }
 
 func (r *Replica) handleTxn(m message.Transaction) {
+	log.Debugf("[%v] received a transaction", r.ID())
 	r.pd.CollectTxn(&m)
 	//r.Broadcast(m)
 	//	kick-off the protocol
@@ -237,10 +238,11 @@ func (r *Replica) processCommittedBlocks(blocks []*blockchain.Block) {
 			if r.ID() == txn.NodeID {
 				txn.Reply(message.TransactionReply{})
 			}
-			if r.ID() != block.Proposer { // txns are removed when being proposed
-				r.pd.RemoveTxn(txn.ID)
-			}
+			//if r.ID() != block.Proposer { // txns are removed when being proposed
+			//	r.pd.RemoveTxn(txn.ID)
+			//}
 		}
+		r.pd.RemoveTxns(block.Payload)
 		//delay := int(r.pm.GetCurView() - block.View)
 		delay := r.pm.GetTimeStamp() - block.Ts
 		if r.ID().Node() == config.Configuration.N() {
@@ -306,9 +308,9 @@ func (r *Replica) proposeBlock(view types.View) {
 	time.Sleep(50 * time.Millisecond)
 	r.Broadcast(block)
 	r.processBlock(block)
-	for _, txn := range block.Payload {
-		r.pd.RemoveTxn(txn.ID)
-	}
+	//for _, txn := range block.Payload {
+	//	r.pd.RemoveTxn(txn.ID)
+	//}
 }
 
 func (r *Replica) Start() {
