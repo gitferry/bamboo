@@ -56,7 +56,8 @@ func NewBenchmark(db DB) *Benchmark {
 // Run starts the main logic of benchmarking
 func (b *Benchmark) Run() {
 	b.latency = make([]time.Duration, 0)
-	keys := make(chan int, b.Concurrency)
+	keys := make(chan int, 10000)
+	//keys := make(chan int, b.Concurrency)
 	latencies := make(chan time.Duration, 1000)
 	defer close(latencies)
 	go b.collect(latencies)
