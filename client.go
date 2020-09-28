@@ -1,4 +1,4 @@
-package zeitgeber
+package bamboo
 
 import (
 	"bytes"
@@ -13,10 +13,10 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/gitferry/zeitgeber/config"
-	"github.com/gitferry/zeitgeber/db"
-	"github.com/gitferry/zeitgeber/identity"
-	"github.com/gitferry/zeitgeber/log"
+	"github.com/gitferry/bamboo/config"
+	"github.com/gitferry/bamboo/db"
+	"github.com/gitferry/bamboo/identity"
+	"github.com/gitferry/bamboo/log"
 )
 
 // Client interface provides get and put for key value store

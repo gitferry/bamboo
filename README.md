@@ -1,4 +1,4 @@
-# zeitgeber
+# bamboo
 A framework that provides an apple-to-apple comparison for state-of-the-art chained BFT SMR.
 HotStuff introduced chained framework into BFT SMR and classified into two categories, two-chain protocols (PBFT, Tendermint, Casper), three-chain protocols
 (HotStuff, LibraBFT), according to their commit rule.

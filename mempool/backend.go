@@ -5,8 +5,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gitferry/zeitgeber/log"
-	"github.com/gitferry/zeitgeber/message"
+	"github.com/gitferry/bamboo/log"
+	"github.com/gitferry/bamboo/message"
 )
 
 type TxnRecord struct {

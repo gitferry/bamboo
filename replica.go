@@ -1,20 +1,20 @@
-package zeitgeber
+package bamboo
 
 import (
 	"encoding/gob"
 	"sync"
 	"time"
 
-	"github.com/gitferry/zeitgeber/blockchain"
-	"github.com/gitferry/zeitgeber/config"
-	"github.com/gitferry/zeitgeber/election"
-	"github.com/gitferry/zeitgeber/hotstuff"
-	"github.com/gitferry/zeitgeber/identity"
-	"github.com/gitferry/zeitgeber/log"
-	"github.com/gitferry/zeitgeber/mempool"
-	"github.com/gitferry/zeitgeber/message"
-	"github.com/gitferry/zeitgeber/pacemaker"
-	"github.com/gitferry/zeitgeber/types"
+	"github.com/gitferry/bamboo/blockchain"
+	"github.com/gitferry/bamboo/config"
+	"github.com/gitferry/bamboo/election"
+	"github.com/gitferry/bamboo/hotstuff"
+	"github.com/gitferry/bamboo/identity"
+	"github.com/gitferry/bamboo/log"
+	"github.com/gitferry/bamboo/mempool"
+	"github.com/gitferry/bamboo/message"
+	"github.com/gitferry/bamboo/pacemaker"
+	"github.com/gitferry/bamboo/types"
 )
 
 type Replica struct {

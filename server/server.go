@@ -4,10 +4,10 @@ import (
 	"flag"
 	"sync"
 
-	"github.com/gitferry/zeitgeber"
-	"github.com/gitferry/zeitgeber/config"
-	"github.com/gitferry/zeitgeber/identity"
-	"github.com/gitferry/zeitgeber/log"
+	"github.com/gitferry/bamboo"
+	"github.com/gitferry/bamboo/config"
+	"github.com/gitferry/bamboo/identity"
+	"github.com/gitferry/bamboo/log"
 )
 
 var algorithm = flag.String("algorithm", "hotstuff", "BFT consensus algorithm")
@@ -21,12 +21,12 @@ func replica(id identity.NodeID, isByz bool) {
 		log.Infof("node %v is Byzantine", id)
 	}
 
-	r := zeitgeber.NewReplica(id, *algorithm, isByz)
+	r := bamboo.NewReplica(id, *algorithm, isByz)
 	r.Start()
 }
 
 func main() {
-	zeitgeber.Init()
+	bamboo.Init()
 
 	if *simulation {
 		var wg sync.WaitGroup

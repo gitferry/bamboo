@@ -1,14 +1,14 @@
-package zeitgeber
+package bamboo
 
 import (
 	"math/rand"
 	"sync"
 	"time"
 
-	"github.com/gitferry/zeitgeber/identity"
-	"github.com/gitferry/zeitgeber/log"
-	"github.com/gitferry/zeitgeber/transport"
-	"github.com/gitferry/zeitgeber/utils"
+	"github.com/gitferry/bamboo/identity"
+	"github.com/gitferry/bamboo/log"
+	"github.com/gitferry/bamboo/transport"
+	"github.com/gitferry/bamboo/utils"
 )
 
 // Socket integrates all networking interface and fault injections

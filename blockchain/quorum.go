@@ -3,9 +3,9 @@ package blockchain
 import (
 	"fmt"
 
-	"github.com/gitferry/zeitgeber/crypto"
-	"github.com/gitferry/zeitgeber/identity"
-	"github.com/gitferry/zeitgeber/types"
+	"github.com/gitferry/bamboo/crypto"
+	"github.com/gitferry/bamboo/identity"
+	"github.com/gitferry/bamboo/types"
 )
 
 type Vote struct {

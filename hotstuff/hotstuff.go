@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/gitferry/zeitgeber/blockchain"
-	"github.com/gitferry/zeitgeber/types"
+	"github.com/gitferry/bamboo/blockchain"
+	"github.com/gitferry/bamboo/types"
 )
 
 const (

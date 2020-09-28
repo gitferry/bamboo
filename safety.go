@@ -1,8 +1,8 @@
-package zeitgeber
+package bamboo
 
 import (
-	"github.com/gitferry/zeitgeber/blockchain"
-	"github.com/gitferry/zeitgeber/types"
+	"github.com/gitferry/bamboo/blockchain"
+	"github.com/gitferry/bamboo/types"
 )
 
 type Safety interface {

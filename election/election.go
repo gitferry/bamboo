@@ -5,8 +5,8 @@ import (
 	"encoding/binary"
 	"strconv"
 
-	"github.com/gitferry/zeitgeber/identity"
-	"github.com/gitferry/zeitgeber/types"
+	"github.com/gitferry/bamboo/identity"
+	"github.com/gitferry/bamboo/types"
 )
 
 type Election interface {

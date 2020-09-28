@@ -1,7 +1,7 @@
 package encoding
 
 import (
-	"github.com/gitferry/zeitgeber/types/encoding/json"
+	"github.com/gitferry/bamboo/types/encoding/json"
 )
 
 // Encoder encodes and decodes values to and from bytes.

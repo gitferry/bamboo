@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gitferry/zeitgeber/config"
-	"github.com/gitferry/zeitgeber/log"
+	"github.com/gitferry/bamboo/config"
+	"github.com/gitferry/bamboo/log"
 )
 
 // DB is general interface implemented by client to call client library

@@ -10,7 +10,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/gitferry/zeitgeber/log"
+	"github.com/gitferry/bamboo/log"
 )
 
 var Scheme = flag.String("transport", "tcp", "transport scheme (tcp, udp, chan), default tcp")

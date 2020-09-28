@@ -3,7 +3,7 @@ package mempool
 import (
 	"time"
 
-	"github.com/gitferry/zeitgeber/message"
+	"github.com/gitferry/bamboo/message"
 )
 
 type MemPool struct {

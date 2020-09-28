@@ -3,7 +3,7 @@ package blockchain
 import (
 	"testing"
 
-	"github.com/gitferry/zeitgeber/utils"
+	"github.com/gitferry/bamboo/utils"
 	"github.com/stretchr/testify/require"
 )
 

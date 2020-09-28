@@ -1,4 +1,4 @@
-package zeitgeber
+package bamboo
 
 import (
 	"encoding/json"
@@ -9,11 +9,11 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/gitferry/zeitgeber/config"
-	"github.com/gitferry/zeitgeber/db"
-	"github.com/gitferry/zeitgeber/identity"
-	"github.com/gitferry/zeitgeber/log"
-	"github.com/gitferry/zeitgeber/message"
+	"github.com/gitferry/bamboo/config"
+	"github.com/gitferry/bamboo/db"
+	"github.com/gitferry/bamboo/identity"
+	"github.com/gitferry/bamboo/log"
+	"github.com/gitferry/bamboo/message"
 )
 
 // http request header names

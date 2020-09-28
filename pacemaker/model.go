@@ -1,8 +1,8 @@
 package pacemaker
 
 import (
-	"github.com/gitferry/zeitgeber/identity"
-	"github.com/gitferry/zeitgeber/types"
+	"github.com/gitferry/bamboo/identity"
+	"github.com/gitferry/bamboo/types"
 )
 
 type TMO struct {

@@ -4,16 +4,16 @@ import (
 	"encoding/binary"
 	"flag"
 
-	"github.com/gitferry/zeitgeber"
-	"github.com/gitferry/zeitgeber/benchmark"
-	"github.com/gitferry/zeitgeber/db"
+	"github.com/gitferry/bamboo"
+	"github.com/gitferry/bamboo/benchmark"
+	"github.com/gitferry/bamboo/db"
 )
 
 var load = flag.Bool("load", false, "Load K keys into DB")
 
-// Database implements Zeitgeber.DB interface for benchmarking
+// Database implements bamboo.DB interface for benchmarking
 type Database struct {
-	zeitgeber.Client
+	bamboo.Client
 }
 
 func (d *Database) Init() error {
@@ -33,10 +33,10 @@ func (d *Database) Write(k, v int) error {
 }
 
 func main() {
-	zeitgeber.Init()
+	bamboo.Init()
 
 	d := new(Database)
-	d.Client = zeitgeber.NewHTTPClient()
+	d.Client = bamboo.NewHTTPClient()
 	b := benchmark.NewBenchmark(d)
 	b.Run()
 }

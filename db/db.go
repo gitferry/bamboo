@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/gitferry/zeitgeber/config"
-	"github.com/gitferry/zeitgeber/identity"
+	"github.com/gitferry/bamboo/config"
+	"github.com/gitferry/bamboo/identity"
 )
 
 // Key type of the key-value database

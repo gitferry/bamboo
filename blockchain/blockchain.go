@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/gitferry/zeitgeber/config"
-	"github.com/gitferry/zeitgeber/crypto"
-	"github.com/gitferry/zeitgeber/log"
-	"github.com/gitferry/zeitgeber/types"
+	"github.com/gitferry/bamboo/config"
+	"github.com/gitferry/bamboo/crypto"
+	"github.com/gitferry/bamboo/log"
+	"github.com/gitferry/bamboo/types"
 )
 
 type BlockChain struct {

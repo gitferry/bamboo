@@ -1,14 +1,14 @@
-package zeitgeber
+package bamboo
 
 import (
 	"net/http"
 	"reflect"
 	"sync"
 
-	"github.com/gitferry/zeitgeber/config"
-	"github.com/gitferry/zeitgeber/identity"
-	"github.com/gitferry/zeitgeber/log"
-	"github.com/gitferry/zeitgeber/message"
+	"github.com/gitferry/bamboo/config"
+	"github.com/gitferry/bamboo/identity"
+	"github.com/gitferry/bamboo/log"
+	"github.com/gitferry/bamboo/message"
 )
 
 // Node is the primary access point for every replica

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/gitferry/zeitgeber/types"
+	"github.com/gitferry/bamboo/types"
 	"github.com/stretchr/testify/require"
 )
 

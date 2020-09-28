@@ -3,11 +3,11 @@ package mempool
 import (
 	"time"
 
-	"github.com/gitferry/zeitgeber/blockchain"
-	"github.com/gitferry/zeitgeber/config"
-	"github.com/gitferry/zeitgeber/identity"
-	"github.com/gitferry/zeitgeber/message"
-	"github.com/gitferry/zeitgeber/types"
+	"github.com/gitferry/bamboo/blockchain"
+	"github.com/gitferry/bamboo/config"
+	"github.com/gitferry/bamboo/identity"
+	"github.com/gitferry/bamboo/message"
+	"github.com/gitferry/bamboo/types"
 )
 
 type Producer struct {

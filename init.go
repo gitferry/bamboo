@@ -1,11 +1,11 @@
-package zeitgeber
+package bamboo
 
 import (
 	"flag"
 	"net/http"
 
-	"github.com/gitferry/zeitgeber/config"
-	"github.com/gitferry/zeitgeber/log"
+	"github.com/gitferry/bamboo/config"
+	"github.com/gitferry/bamboo/log"
 )
 
 func Init() {

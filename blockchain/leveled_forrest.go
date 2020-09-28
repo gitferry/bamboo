@@ -3,7 +3,7 @@ package blockchain
 import (
 	"fmt"
 
-	"github.com/gitferry/zeitgeber/crypto"
+	"github.com/gitferry/bamboo/crypto"
 )
 
 // LevelledForest contains multiple trees (which is a potentially disconnected planar graph).

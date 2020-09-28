@@ -1,4 +1,4 @@
-module github.com/gitferry/zeitgeber
+module github.com/gitferry/bamboo
 
 go 1.14
 

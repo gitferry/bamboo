@@ -7,12 +7,12 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/gitferry/zeitgeber/identity"
-	"github.com/gitferry/zeitgeber/log"
-	"github.com/gitferry/zeitgeber/transport"
+	"github.com/gitferry/bamboo/identity"
+	"github.com/gitferry/bamboo/log"
+	"github.com/gitferry/bamboo/transport"
 )
 
-var configFile = flag.String("config", "config.json", "Configuration file for zeitgeber replica. Defaults to config.json.")
+var configFile = flag.String("config", "config.json", "Configuration file for bamboo replica. Defaults to config.json.")
 
 // Config contains every system configuration
 type Config struct {

@@ -3,7 +3,7 @@ package identity
 import (
 	"strconv"
 
-	"github.com/gitferry/zeitgeber/log"
+	"github.com/gitferry/bamboo/log"
 )
 
 // NodeID represents a generic identifier in format of Zone.Node

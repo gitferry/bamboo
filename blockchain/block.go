@@ -3,10 +3,10 @@ package blockchain
 import (
 	"time"
 
-	"github.com/gitferry/zeitgeber/crypto"
-	"github.com/gitferry/zeitgeber/identity"
-	"github.com/gitferry/zeitgeber/message"
-	"github.com/gitferry/zeitgeber/types"
+	"github.com/gitferry/bamboo/crypto"
+	"github.com/gitferry/bamboo/identity"
+	"github.com/gitferry/bamboo/message"
+	"github.com/gitferry/bamboo/types"
 )
 
 type Block struct {

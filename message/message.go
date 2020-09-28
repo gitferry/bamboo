@@ -4,9 +4,9 @@ import (
 	"encoding/gob"
 	"fmt"
 
-	"github.com/gitferry/zeitgeber/config"
-	"github.com/gitferry/zeitgeber/db"
-	"github.com/gitferry/zeitgeber/identity"
+	"github.com/gitferry/bamboo/config"
+	"github.com/gitferry/bamboo/db"
+	"github.com/gitferry/bamboo/identity"
 )
 
 func init() {

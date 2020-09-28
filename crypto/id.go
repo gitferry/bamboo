@@ -1,6 +1,6 @@
 package crypto
 
-import "github.com/gitferry/zeitgeber/types/encoding"
+import "github.com/gitferry/bamboo/types/encoding"
 
 type Identifier [32]byte
 
