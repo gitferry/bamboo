@@ -179,11 +179,27 @@ func (b *Backend) All() []*message.Transaction {
 
 // Some returns a certain amount of transactions from the pool.
 func (b *Backend) Some(size int) []*message.Transaction {
+	ready := make(chan bool)
+	go b.checkPayload(size, ready)
+	for {
+		select {
+		case <-time.After(1000 * time.Millisecond):
+			log.Debugf("timeout")
+			return b.Backdata.All()
+		case <-ready:
+			log.Debugf("txs are enough, payload is ready")
+			return b.Backdata.Some(size)
+		}
+	}
+	// return b.Backdata.Some(size)
+}
+
+func (b *Backend) checkPayload(size int, ready chan bool) {
 	b.mu.Lock()
 	for b.Backdata.Size() <= uint(size) {
 		log.Debugf("the mempool size is %v", b.Backdata.Size())
 		b.cond.Wait()
 	}
 	b.mu.Unlock()
-	return b.Backdata.Some(size)
+	ready <- true
 }
