@@ -121,7 +121,6 @@ func (b *Backend) Add(txn *message.Transaction) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	b.Backdata.Add(txn)
-	log.Debugf("a new transactions is added into the mempool, the mempool size is %v", b.Backdata.Size())
 	b.cond.Broadcast()
 }
 
@@ -181,9 +180,11 @@ func (b *Backend) All() []*message.Transaction {
 func (b *Backend) Some(size int) []*message.Transaction {
 	ready := make(chan bool)
 	go b.checkPayload(size, ready)
+	b.mu.RLock()
+	defer b.mu.RUnlock()
 	for {
 		select {
-		case <-time.After(1000 * time.Millisecond):
+		case <-time.After(100 * time.Millisecond):
 			log.Debugf("timeout")
 			return b.Backdata.All()
 		case <-ready:
@@ -197,7 +198,6 @@ func (b *Backend) Some(size int) []*message.Transaction {
 func (b *Backend) checkPayload(size int, ready chan bool) {
 	b.mu.Lock()
 	for b.Backdata.Size() <= uint(size) {
-		log.Debugf("the mempool size is %v", b.Backdata.Size())
 		b.cond.Wait()
 	}
 	b.mu.Unlock()

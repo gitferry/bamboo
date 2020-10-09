@@ -101,7 +101,6 @@ func (r *Replica) HandleQC(qc blockchain.QC) {
 }
 
 func (r *Replica) handleTxn(m message.Transaction) {
-	log.Debugf("[%v] received a transaction", r.ID())
 	r.pd.CollectTxn(&m)
 	//r.Broadcast(m)
 	//	kick-off the protocol
@@ -157,7 +156,7 @@ func (r *Replica) processBlock(block *blockchain.Block) {
 		log.Errorf("cannot update state after voting: %w", err)
 	}
 	// TODO: sign the vote
-	time.Sleep(20 * time.Millisecond)
+	time.Sleep(10 * time.Millisecond)
 	// vote to the current leader
 	voteAggregator := block.Proposer
 	if voteAggregator == r.ID() {
@@ -305,7 +304,7 @@ func (r *Replica) proposeBlock(view types.View) {
 	//r.mu.Unlock()
 	//	TODO: sign the block
 	// simulate processing time
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(20 * time.Millisecond)
 	r.Broadcast(block)
 	r.processBlock(block)
 	//for _, txn := range block.Payload {

@@ -19,7 +19,7 @@
   "buffer_size": 1024,
   "multiversion": false,
   "timeout": 100,
-  "bsize": 30,
+  "bsize":60,
   "delta": 1,
   "benchmark": {
     "T": 30,
@@ -27,7 +27,7 @@
     "K": 1000,
     "W": 0.5,
     "Throttle": 500,
-    "Concurrency": 10000,
+    "Concurrency": 1000,
     "Distribution": "uniform",
     "LinearizabilityCheck": false,
     "Conflicts": 0,
