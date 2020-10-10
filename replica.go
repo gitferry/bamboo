@@ -5,6 +5,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gitferry/bamboo/tchs"
+
 	"github.com/gitferry/bamboo/blockchain"
 	"github.com/gitferry/bamboo/config"
 	"github.com/gitferry/bamboo/election"
@@ -68,6 +70,12 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 			forkchoice = "forking"
 		}
 		r.Safety = hotstuff.NewHotStuff(bc, forkchoice)
+	case "tchs":
+		forkchoice := "highest"
+		if isByz {
+			forkchoice = "forking"
+		}
+		r.Safety = tchs.Newtchs(bc, forkchoice)
 	default:
 		r.Safety = hotstuff.NewHotStuff(bc, "default")
 	}

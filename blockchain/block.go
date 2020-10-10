@@ -31,14 +31,13 @@ type rawBlock struct {
 }
 
 // MakeBlock creates an unsigned block
-func MakeBlock(view types.View, qc *QC, payload []*message.Transaction, proposer identity.NodeID, ts time.Duration) *Block {
+func MakeBlock(view types.View, qc *QC, payload []*message.Transaction, proposer identity.NodeID) *Block {
 	b := new(Block)
 	b.View = view
 	b.Proposer = proposer
 	b.QC = qc
 	b.Payload = payload
 	b.PrevID = qc.BlockID
-	b.Ts = ts
 	b.makeID()
 	return b
 }
