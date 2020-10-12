@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"flag"
 	"os"
-	"strconv"
 	"time"
 
 	"github.com/gitferry/bamboo/identity"
@@ -139,15 +138,15 @@ func (c *Config) Load() {
 	}
 
 	// test
-	for i := 1; i <= 4; i++ {
-		id := identity.NewNodeID(i)
-		port := strconv.Itoa(3000 + i)
-		addr := "tcp://127.0.0.1:" + port
-		portHttp := strconv.Itoa(9000 + i)
-		addrHttp := "http://127.0.0.1:" + portHttp
-		c.Addrs[id] = addr
-		c.HTTPAddrs[id] = addrHttp
-	}
+	// for i := 1; i <= 4; i++ {
+	// 	id := identity.NewNodeID(i)
+	// 	port := strconv.Itoa(3000 + i)
+	// 	addr := "tcp://127.0.0.1:" + port
+	// 	portHttp := strconv.Itoa(9000 + i)
+	// 	addrHttp := "http://127.0.0.1:" + portHttp
+	// 	c.Addrs[id] = addr
+	// 	c.HTTPAddrs[id] = addrHttp
+	// }
 
 	c.ByzNo = 0
 	c.Threshold = 3

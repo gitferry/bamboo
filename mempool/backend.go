@@ -178,28 +178,34 @@ func (b *Backend) All() []*message.Transaction {
 
 // Some returns a certain amount of transactions from the pool.
 func (b *Backend) Some(size int) []*message.Transaction {
-	ready := make(chan bool)
-	go b.checkPayload(size, ready)
-	b.mu.RLock()
-	defer b.mu.RUnlock()
-	for {
-		select {
-		case <-time.After(100 * time.Millisecond):
-			log.Debugf("timeout")
-			return b.Backdata.All()
-		case <-ready:
+	// ready := make(chan bool)
+	// go b.checkPayload(size, ready)
+	for i := 0; i < 10; i++ {
+		if b.Size() > uint(size) {
+			b.mu.RLock()
+			defer b.mu.RUnlock()
 			log.Debugf("txs are enough, payload is ready")
 			return b.Backdata.Some(size)
 		}
+		time.Sleep(10 * time.Millisecond)
+		// select {
+		// case <-time.After(100 * time.Millisecond):
+		// 	return b.All()
+		// case <-ready:
+		// 	b.mu.RLock()
+		// 	defer b.mu.RUnlock()
+		// 	return b.Backdata.Some(size)
 	}
-	// return b.Backdata.Some(size)
+	// }
+	log.Debugf("not enough transactions, timeout")
+	return b.All()
 }
 
-func (b *Backend) checkPayload(size int, ready chan bool) {
-	b.mu.Lock()
-	for b.Backdata.Size() <= uint(size) {
-		b.cond.Wait()
-	}
-	b.mu.Unlock()
-	ready <- true
-}
+// func (b *Backend) checkPayload(size int, ready chan bool) {
+// 	b.cond.L.Lock()
+// 	for b.Size() <= uint(size) {
+// 		b.cond.Wait()
+// 	}
+// 	b.cond.L.Unlock()
+// 	ready <- true
+// }

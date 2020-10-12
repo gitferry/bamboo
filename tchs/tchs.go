@@ -63,7 +63,7 @@ func (hs *Tchs) UpdateStateByView(view types.View) error {
 }
 
 func (hs *Tchs) UpdateStateByQC(qc *blockchain.QC) error {
-	if qc.View <= 2 {
+	if qc.View <= 1 {
 		return nil
 	}
 	return hs.updatePreferredView(qc)
