@@ -34,7 +34,8 @@ type Replica struct {
 	blockMsg   chan *blockchain.Block
 	voteMsg    chan *blockchain.Vote
 	qcMsg      chan *blockchain.QC
-	timeoutMsg chan *pacemaker.TMO
+	timeouts   chan *pacemaker.TMO
+	tcs        chan *pacemaker.TC
 	newView    chan types.View
 	mu         sync.Mutex
 }
@@ -54,11 +55,12 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 	r.blockMsg = make(chan *blockchain.Block, 1)
 	r.voteMsg = make(chan *blockchain.Vote, 1)
 	r.qcMsg = make(chan *blockchain.QC, 1)
-	r.timeoutMsg = make(chan *pacemaker.TMO, 1)
+	r.timeouts = make(chan *pacemaker.TMO, 1)
 	r.isByz = isByz
 	r.Register(blockchain.QC{}, r.HandleQC)
 	r.Register(blockchain.Block{}, r.HandleBlock)
 	r.Register(blockchain.Vote{}, r.HandleVote)
+	r.Register(pacemaker.TMO{}, r.HandleTmo)
 	r.Register(message.Transaction{}, r.handleTxn)
 	gob.Register(blockchain.Block{})
 	gob.Register(blockchain.QC{})
@@ -100,6 +102,21 @@ func (r *Replica) HandleVote(vote blockchain.Vote) {
 	r.voteMsg <- &vote
 }
 
+func (r *Replica) HandleTmo(tmo pacemaker.TMO) {
+	log.Debugf("[%v] received a timeout from %v for view %v", r.ID(), tmo.NodeID, tmo.View)
+	if tmo.View < r.pm.GetCurView() {
+		return
+	}
+	r.timeouts <- &tmo
+}
+
+func (r *Replica) HandleTC(tc pacemaker.TC) {
+	if tc.View < r.pm.GetCurView() {
+		return
+	}
+	r.tcs <- &tc
+}
+
 func (r *Replica) HandleQC(qc blockchain.QC) {
 	//log.Debugf("[%v] received a qc from, blockID is %x", r.ID(), qc.BlockID)
 	if qc.View < r.pm.GetCurView() {
@@ -131,7 +148,6 @@ func (r *Replica) processBlock(block *blockchain.Block) {
 	if r.ID().Node() == config.Configuration.N() {
 		log.Infof("[%v] block view: %v", r.ID(), block.View)
 	}
-	r.pm.UpdateTimeStamp(block.Ts)
 	r.processCertificate(tc)
 	curView := r.pm.GetCurView()
 	if block.View != curView {
@@ -251,12 +267,10 @@ func (r *Replica) processCommittedBlocks(blocks []*blockchain.Block) {
 		}
 		r.pd.RemoveTxns(block.Payload)
 		//delay := int(r.pm.GetCurView() - block.View)
-		delay := r.pm.GetTimeStamp() - block.Ts
 		if r.ID().Node() == config.Configuration.N() {
-			log.Infof("[%v] the block is committed, No. of transactions: %v, view: %v, current view: %v, delay: %v seconds, id: %x", r.ID(), len(block.Payload), block.View, r.pm.GetCurView(), delay, block.ID)
+			log.Infof("[%v] the block is committed, No. of transactions: %v, view: %v, current view: %v, id: %x", r.ID(), len(block.Payload), block.View, r.pm.GetCurView(), block.ID)
 		}
 		//r.totalDelayRounds += int(r.pm.GetCurView() - block.View)
-		r.totalDelay += delay
 	}
 	//	print measurement
 	//if r.ID().Node() == config.Configuration.N() {
@@ -287,14 +301,31 @@ func (r *Replica) processVote(vote *blockchain.Vote) {
 	}
 }
 
-func (r *Replica) processNewView(newView pacemaker.NewView) {
-	log.Debugf("[%v] is processing new view: %v", r.ID(), newView)
-	if !r.IsLeader(r.ID(), newView.View) {
+func (r *Replica) processTmo(tmo *pacemaker.TMO) {
+	r.bc.UpdateHighQC(tmo.HighQC)
+	isBuilt, tc := r.pm.ProcessRemoteTmo(tmo)
+	if !isBuilt {
 		return
 	}
-	r.totalView = int(newView.View)
-	if newView.View == 1 {
-		r.proposeBlock(newView.View)
+	nextLeader := r.FindLeaderFor(tc.View + 1)
+	r.Send(nextLeader, tc)
+}
+
+func (r *Replica) processTC(tc *pacemaker.TC) {
+	if tc.View <= r.pm.GetCurView() {
+		return
+	}
+	r.pm.AdvanceView(tc.View)
+}
+
+func (r *Replica) processNewView(newView types.View) {
+	log.Debugf("[%v] is processing new view: %v", r.ID(), newView)
+	if !r.IsLeader(r.ID(), newView) {
+		return
+	}
+	r.totalView = int(newView)
+	if newView == 1 {
+		r.proposeBlock(newView)
 		return
 	}
 	if r.isByz {
@@ -302,24 +333,18 @@ func (r *Replica) processNewView(newView pacemaker.NewView) {
 		log.Warningf("[%v] the number of Byzantine election is %v, total election number is %v", r.ID(), r.bElectNo, r.totalView)
 	}
 
-	r.proposeBlock(newView.View)
+	r.proposeBlock(newView)
 }
 
 func (r *Replica) proposeBlock(view types.View) {
-	//r.mu.Lock()
-	block := r.pd.ProduceBlock(view, r.Safety.Forkchoice(), r.ID(), r.pm.GetTimeStamp())
+	block := r.pd.ProduceBlock(view, r.Safety.Forkchoice(), r.ID())
 	log.Infof("[%v] is going to propose block for view: %v, id: %x, prevID: %x", r.ID(), view, block.ID, block.PrevID)
-	//r.mu.Unlock()
-	//	TODO: sign the block
-	// simulate processing time
 	time.Sleep(20 * time.Millisecond)
 	r.Broadcast(block)
 	r.processBlock(block)
-	//for _, txn := range block.Payload {
-	//	r.pd.RemoveTxn(txn.ID)
-	//}
 }
 
+// Start starts event loop
 func (r *Replica) Start() {
 	go r.Run()
 	for {
@@ -331,6 +356,10 @@ func (r *Replica) Start() {
 			go r.processBlock(newBlock)
 		case newVote := <-r.voteMsg:
 			go r.processVote(newVote)
+		case newTimeout := <-r.timeouts:
+			go r.processTmo(newTimeout)
+		case newTC := <-r.tcs:
+			go r.processTC(newTC)
 		case newQC := <-r.qcMsg:
 			if r.isByz {
 				go r.preprocessQC(newQC)

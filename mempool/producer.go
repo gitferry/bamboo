@@ -1,8 +1,6 @@
 package mempool
 
 import (
-	"time"
-
 	"github.com/gitferry/bamboo/blockchain"
 	"github.com/gitferry/bamboo/config"
 	"github.com/gitferry/bamboo/identity"
@@ -18,7 +16,7 @@ func NewProducer() *Producer {
 	return &Producer{mempool: NewMemPool()}
 }
 
-func (pd *Producer) ProduceBlock(view types.View, qc *blockchain.QC, proposer identity.NodeID, ts time.Duration) *blockchain.Block {
+func (pd *Producer) ProduceBlock(view types.View, qc *blockchain.QC, proposer identity.NodeID) *blockchain.Block {
 	payload := pd.mempool.Some(config.Configuration.BSize)
 	block := blockchain.MakeBlock(view, qc, payload, proposer)
 	pd.mempool.Backend.RemTxns(payload)

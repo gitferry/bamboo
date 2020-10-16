@@ -52,14 +52,12 @@ func (bc *BlockChain) GetHighQC() *QC {
 	return bc.highQC
 }
 
-func (bc *BlockChain) UpdateHighQC(qc *QC) error {
+func (bc *BlockChain) UpdateHighQC(qc *QC) {
 	bc.mu.Lock()
 	defer bc.mu.Unlock()
-	if qc.View < bc.highQC.View {
-		return fmt.Errorf("cannot update high QC")
+	if qc.View > bc.highQC.View {
+		bc.highQC = qc
 	}
-	bc.highQC = qc
-	return nil
 }
 
 func (bc *BlockChain) GenerateQC(view types.View, blockID crypto.Identifier) (bool, *QC) {
