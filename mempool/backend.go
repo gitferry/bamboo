@@ -188,13 +188,6 @@ func (b *Backend) Some(size int) []*message.Transaction {
 			return b.Backdata.Some(size)
 		}
 		time.Sleep(10 * time.Millisecond)
-		// select {
-		// case <-time.After(100 * time.Millisecond):
-		// 	return b.All()
-		// case <-ready:
-		// 	b.mu.RLock()
-		// 	defer b.mu.RUnlock()
-		// 	return b.Backdata.Some(size)
 	}
 	// }
 	log.Debugf("not enough transactions, timeout")

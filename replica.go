@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gitferry/bamboo/tchs"
+	"go.uber.org/atomic"
 
 	"github.com/gitferry/bamboo/blockchain"
 	"github.com/gitferry/bamboo/config"
@@ -16,6 +16,7 @@ import (
 	"github.com/gitferry/bamboo/mempool"
 	"github.com/gitferry/bamboo/message"
 	"github.com/gitferry/bamboo/pacemaker"
+	"github.com/gitferry/bamboo/tchs"
 	"github.com/gitferry/bamboo/types"
 )
 
@@ -23,21 +24,22 @@ type Replica struct {
 	Node
 	election.Election
 	Safety
-	pd         *mempool.Producer
-	bc         *blockchain.BlockChain
-	pm         *pacemaker.Pacemaker
-	isStarted  bool
-	isByz      bool
-	bElectNo   int
-	totalView  int
-	totalDelay time.Duration
-	blockMsg   chan *blockchain.Block
-	voteMsg    chan *blockchain.Vote
-	qcMsg      chan *blockchain.QC
-	timeouts   chan *pacemaker.TMO
-	tcs        chan *pacemaker.TC
-	newView    chan types.View
-	mu         sync.Mutex
+	pd        *mempool.Producer
+	bc        *blockchain.BlockChain
+	pm        *pacemaker.Pacemaker
+	start     chan bool
+	isStarted atomic.Bool
+	isByz     bool
+	bElectNo  int
+	totalView int
+	timer     *time.Timer
+	blockMsg  chan *blockchain.Block
+	voteMsg   chan *blockchain.Vote
+	qcMsg     chan *blockchain.QC
+	timeouts  chan *pacemaker.TMO
+	tcs       chan *pacemaker.TC
+	newView   chan types.View
+	mu        sync.Mutex
 }
 
 // NewReplica creates a new replica instance
@@ -51,11 +53,12 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 	bc := blockchain.NewBlockchain(config.GetConfig().N())
 	r.bc = bc
 	r.pd = mempool.NewProducer()
-	r.pm = pacemaker.NewPacemaker()
+	r.pm = pacemaker.NewPacemaker(config.GetConfig().N())
 	r.blockMsg = make(chan *blockchain.Block, 1)
 	r.voteMsg = make(chan *blockchain.Vote, 1)
 	r.qcMsg = make(chan *blockchain.QC, 1)
 	r.timeouts = make(chan *pacemaker.TMO, 1)
+	r.start = make(chan bool)
 	r.isByz = isByz
 	r.Register(blockchain.QC{}, r.HandleQC)
 	r.Register(blockchain.Block{}, r.HandleBlock)
@@ -127,10 +130,16 @@ func (r *Replica) HandleQC(qc blockchain.QC) {
 
 func (r *Replica) handleTxn(m message.Transaction) {
 	r.pd.CollectTxn(&m)
-	//r.Broadcast(m)
+	if !r.isStarted.Load() {
+		log.Debugf("[%v] is boosting", r.ID())
+		r.isStarted.Store(true)
+		r.start <- true
+		time.Sleep(500 * time.Millisecond)
+	}
+
 	//	kick-off the protocol
-	if !r.isStarted && r.IsLeader(r.ID(), 1) {
-		r.isStarted = true
+	if r.pm.GetCurView() == 0 && r.IsLeader(r.ID(), 1) {
+		log.Debugf("[%v] is going to kick off the protocol", r.ID())
 		r.pm.AdvanceView(0)
 	}
 }
@@ -215,22 +224,10 @@ func (r *Replica) processCertificate(qc *blockchain.QC) {
 	if qc.View < r.pm.GetCurView() {
 		return
 	}
-	//if r.IsLeader(r.ID(), qc.View+1) {
 	r.pm.AdvanceView(qc.View)
-	//}
-	//if r.IsLeader(r.ID(), r.pm.GetCurView()) && r.isByz {
-	err := r.bc.UpdateHighQC(qc)
-	if err != nil {
-		log.Warningf("[%v] cannot update high QC, id: %x", r.ID(), qc.BlockID)
-	}
-	//return
-	//}
+	r.bc.UpdateHighQC(qc)
 	log.Debugf("[%v] has advanced to view %v", r.ID(), r.pm.GetCurView())
-	err = r.UpdateStateByQC(qc)
-	if err != nil {
-		log.Errorf("[%v] cannot update state when processing qc: %w", r.ID(), err)
-		return
-	}
+	r.UpdateStateByQC(qc)
 	// TODO: send the qc to next leader
 	//if !r.IsLeader(r.ID(), r.pm.GetCurView()) {
 	//	go r.Send(r.FindLeaderFor(r.pm.GetCurView()), qc)
@@ -301,7 +298,7 @@ func (r *Replica) processVote(vote *blockchain.Vote) {
 	}
 }
 
-func (r *Replica) processTmo(tmo *pacemaker.TMO) {
+func (r *Replica) processTmoMsg(tmo *pacemaker.TMO) {
 	r.bc.UpdateHighQC(tmo.HighQC)
 	isBuilt, tc := r.pm.ProcessRemoteTmo(tmo)
 	if !isBuilt {
@@ -336,10 +333,19 @@ func (r *Replica) processNewView(newView types.View) {
 	r.proposeBlock(newView)
 }
 
+func (r *Replica) processLocalTmo(view types.View) {
+	log.Debugf("[%v] timeout for view %v", r.ID(), view)
+}
+
 func (r *Replica) proposeBlock(view types.View) {
+	log.Infof("[%v] is trying to propose a block", r.ID())
 	block := r.pd.ProduceBlock(view, r.Safety.Forkchoice(), r.ID())
+	if len(block.Payload) == 0 {
+		log.Debugf("[%v] is stalled because no txns left in the mempool", r.ID())
+		return
+	}
 	log.Infof("[%v] is going to propose block for view: %v, id: %x, prevID: %x", r.ID(), view, block.ID, block.PrevID)
-	time.Sleep(20 * time.Millisecond)
+	time.Sleep(10 * time.Millisecond)
 	r.Broadcast(block)
 	r.processBlock(block)
 }
@@ -347,24 +353,31 @@ func (r *Replica) proposeBlock(view types.View) {
 // Start starts event loop
 func (r *Replica) Start() {
 	go r.Run()
-	for {
-		// TODO: add timeout handler
-		select {
-		case newView := <-r.pm.EnteringViewEvent():
-			go r.processNewView(newView)
-		case newBlock := <-r.blockMsg:
-			go r.processBlock(newBlock)
-		case newVote := <-r.voteMsg:
-			go r.processVote(newVote)
-		case newTimeout := <-r.timeouts:
-			go r.processTmo(newTimeout)
-		case newTC := <-r.tcs:
-			go r.processTC(newTC)
-		case newQC := <-r.qcMsg:
-			if r.isByz {
-				go r.preprocessQC(newQC)
-			} else {
-				go r.processCertificate(newQC)
+	<-r.start
+	for r.isStarted.Load() {
+		r.timer = time.NewTimer(r.pm.GetTimerForView())
+		log.Debugf("[%v] timer is reset", r.ID())
+		for {
+			select {
+			case newView := <-r.pm.EnteringViewEvent():
+				go r.processNewView(newView)
+				break
+			case newBlock := <-r.blockMsg:
+				go r.processBlock(newBlock)
+			case newVote := <-r.voteMsg:
+				go r.processVote(newVote)
+			case newTimeout := <-r.timeouts:
+				go r.processTmoMsg(newTimeout)
+			case <-r.timer.C:
+				go r.processLocalTmo(r.pm.GetCurView())
+			case newTC := <-r.tcs:
+				go r.processTC(newTC)
+			case newQC := <-r.qcMsg:
+				if r.isByz {
+					go r.preprocessQC(newQC)
+				} else {
+					go r.processCertificate(newQC)
+				}
 			}
 		}
 	}

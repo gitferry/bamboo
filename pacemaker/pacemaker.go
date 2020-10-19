@@ -57,6 +57,6 @@ func (b *Pacemaker) GetCurView() types.View {
 	return b.curView
 }
 
-func (b *Pacemaker) GetTimerForView(view types.View) time.Duration {
-	return 10 * time.Millisecond
+func (b *Pacemaker) GetTimerForView() time.Duration {
+	return 1000 * time.Millisecond
 }

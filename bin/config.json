@@ -6,10 +6,10 @@
     "4": "tcp://127.0.0.1:3738"
   },
   "http_address": {
-    "1": "http://10.1.43.230:8070",
-    "2": "http://10.1.43.230:8071",
-    "3": "http://10.1.43.230:8072",
-    "4": "http://10.1.43.230:8073"
+    "1": "http://127.0.0.1:8070",
+    "2": "http://127.0.0.1:8071",
+    "3": "http://127.0.0.1:8072",
+    "4": "http://127.0.0.1:8073"
   },
   "policy": "majority",
   "threshold": 3,
@@ -22,12 +22,12 @@
   "bsize":100,
   "delta": 1,
   "benchmark": {
-    "T": 20,
+    "T": 10,
     "N": 0,
     "K": 1000,
     "W": 0.5,
     "Throttle": 500,
-    "Concurrency": 10000,
+    "Concurrency": 2000,
     "Distribution": "uniform",
     "LinearizabilityCheck": false,
     "Conflicts": 0,

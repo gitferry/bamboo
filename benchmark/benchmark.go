@@ -73,6 +73,7 @@ func (b *Benchmark) Run() {
 		for {
 			select {
 			case <-timer.C:
+				log.Infof("Benchmark stops")
 				break loop
 			default:
 				b.wait.Add(1)
