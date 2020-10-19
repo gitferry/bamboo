@@ -1,18 +1,18 @@
 package pacemaker
 
 import (
-	"github.com/gitferry/bamboo/config"
-
 	"github.com/gitferry/bamboo/identity"
 	"github.com/gitferry/bamboo/types"
 )
 
 type TimeoutController struct {
+	n        int                                     // the size of the network
 	timeouts map[types.View]map[identity.NodeID]*TMO // keeps track of timeout msgs
 }
 
-func NewTimeoutController() *TimeoutController {
+func NewTimeoutController(n int) *TimeoutController {
 	tcl := new(TimeoutController)
+	tcl.n = n
 	tcl.timeouts = make(map[types.View]map[identity.NodeID]*TMO)
 	return tcl
 }
@@ -35,7 +35,7 @@ func (tcl *TimeoutController) AddTmo(tmo *TMO) (bool, *TC) {
 }
 
 func (tcl *TimeoutController) superMajority(view types.View) bool {
-	return tcl.total(view) > len(config.Configuration.Addrs)*2/3
+	return tcl.total(view) > tcl.n*2/3
 }
 
 func (tcl *TimeoutController) total(view types.View) int {

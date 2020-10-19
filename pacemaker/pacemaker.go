@@ -15,10 +15,10 @@ type Pacemaker struct {
 	mu                sync.Mutex
 }
 
-func NewPacemaker() *Pacemaker {
+func NewPacemaker(n int) *Pacemaker {
 	pm := new(Pacemaker)
 	pm.newViewChan = make(chan types.View)
-	pm.timeoutController = NewTimeoutController()
+	pm.timeoutController = NewTimeoutController(n)
 	return pm
 }
 

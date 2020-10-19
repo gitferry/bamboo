@@ -35,10 +35,7 @@ func (bc *BlockChain) AddBlock(block *Block) {
 	//bc.mu.Lock()
 	bc.forrest.AddVertex(blockContainer)
 	//bc.mu.Unlock()
-	err := bc.UpdateHighQC(block.QC)
-	if err != nil {
-		log.Debugf("found stale qc, view: %v", block.QC.View)
-	}
+	bc.UpdateHighQC(block.QC)
 }
 
 func (bc *BlockChain) AddVote(vote *Vote) (bool, *QC) {
