@@ -11,6 +11,7 @@ import (
 type Pacemaker struct {
 	curView           types.View
 	newViewChan       chan types.View
+	highTC            *TC
 	timeoutController *TimeoutController
 	mu                sync.Mutex
 }
@@ -55,6 +56,21 @@ func (b *Pacemaker) GetCurView() types.View {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	return b.curView
+}
+
+func (b *Pacemaker) UpdateTC(tc *TC) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	if tc.View > b.highTC.View {
+		b.highTC = tc
+	}
+}
+
+func (b *Pacemaker) GetHighTC() *TC {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.highTC
 }
 
 func (b *Pacemaker) GetTimerForView() time.Duration {

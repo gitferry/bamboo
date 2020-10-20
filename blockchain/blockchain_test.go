@@ -14,8 +14,7 @@ func TestUpdateHighQC1(t *testing.T) {
 		View:    1,
 		BlockID: utils.IdentifierFixture(),
 	}
-	err := bc.UpdateHighQC(qc1)
-	require.NoError(t, err)
+	bc.UpdateHighQC(qc1)
 	highQC := bc.GetHighQC()
 	require.Equal(t, qc1, highQC)
 }
@@ -27,12 +26,12 @@ func TestUpdateHighQC2(t *testing.T) {
 		View:    1,
 		BlockID: utils.IdentifierFixture(),
 	}
-	_ = bc.UpdateHighQC(qc1)
+	bc.UpdateHighQC(qc1)
 	qc2 := &QC{
 		View:    2,
 		BlockID: utils.IdentifierFixture(),
 	}
-	_ = bc.UpdateHighQC(qc2)
+	bc.UpdateHighQC(qc2)
 	highQC := bc.GetHighQC()
 	require.Equal(t, qc2, highQC)
 }
@@ -44,12 +43,12 @@ func TestUpdateHighQC3(t *testing.T) {
 		View:    2,
 		BlockID: utils.IdentifierFixture(),
 	}
-	_ = bc.UpdateHighQC(qc1)
+	bc.UpdateHighQC(qc1)
 	qc2 := &QC{
 		View:    1,
 		BlockID: utils.IdentifierFixture(),
 	}
-	_ = bc.UpdateHighQC(qc2)
+	bc.UpdateHighQC(qc2)
 	highQC := bc.GetHighQC()
 	require.Equal(t, qc1, highQC)
 }

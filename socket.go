@@ -148,7 +148,7 @@ func (s *socket) Broadcast(m interface{}) {
 		if id == s.id {
 			continue
 		}
-		s.Send(id, m)
+		go s.Send(id, m)
 	}
 }
 

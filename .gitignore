@@ -4,6 +4,8 @@
 *.dll
 *.so
 *.dylib
+client
+server
 
 # Test binary, built with `go test -c`
 *.test
@@ -11,6 +13,9 @@
 *.xml
 server*
 client*
+latency
+*.csv
+
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out

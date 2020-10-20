@@ -68,6 +68,8 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 	gob.Register(blockchain.Block{})
 	gob.Register(blockchain.QC{})
 	gob.Register(blockchain.Vote{})
+	gob.Register(pacemaker.TC{})
+	gob.Register(pacemaker.TMO{})
 	switch alg {
 	case "hotstuff":
 		forkchoice := "highest"
@@ -134,6 +136,7 @@ func (r *Replica) handleTxn(m message.Transaction) {
 		log.Debugf("[%v] is boosting", r.ID())
 		r.isStarted.Store(true)
 		r.start <- true
+		// wait for others to get started
 		time.Sleep(500 * time.Millisecond)
 	}
 
@@ -148,16 +151,10 @@ func (r *Replica) handleTxn(m message.Transaction) {
 
 func (r *Replica) processBlock(block *blockchain.Block) {
 	log.Debugf("[%v] is processing block, view: %v, id: %x", r.ID(), block.View, block.ID)
-	// TODO: process TC
-	// to simulate forking attack without a tc, create a qc with view set to block.view-1
-	tc := &blockchain.QC{
-		View:    block.View - 1,
-		BlockID: block.QC.BlockID,
-	}
 	if r.ID().Node() == config.Configuration.N() {
 		log.Infof("[%v] block view: %v", r.ID(), block.View)
 	}
-	r.processCertificate(tc)
+	r.processCertificate(block.QC)
 	curView := r.pm.GetCurView()
 	if block.View != curView {
 		log.Warningf("[%v] received a stale proposal", r.ID())
@@ -258,16 +255,12 @@ func (r *Replica) processCommittedBlocks(blocks []*blockchain.Block) {
 			if r.ID() == txn.NodeID {
 				txn.Reply(message.TransactionReply{})
 			}
-			//if r.ID() != block.Proposer { // txns are removed when being proposed
-			//	r.pd.RemoveTxn(txn.ID)
-			//}
 		}
 		r.pd.RemoveTxns(block.Payload)
 		//delay := int(r.pm.GetCurView() - block.View)
 		if r.ID().Node() == config.Configuration.N() {
 			log.Infof("[%v] the block is committed, No. of transactions: %v, view: %v, current view: %v, id: %x", r.ID(), len(block.Payload), block.View, r.pm.GetCurView(), block.ID)
 		}
-		//r.totalDelayRounds += int(r.pm.GetCurView() - block.View)
 	}
 	//	print measurement
 	//if r.ID().Node() == config.Configuration.N() {
@@ -305,13 +298,18 @@ func (r *Replica) processTmoMsg(tmo *pacemaker.TMO) {
 		return
 	}
 	nextLeader := r.FindLeaderFor(tc.View + 1)
-	r.Send(nextLeader, tc)
+	if nextLeader != r.ID() {
+		r.Send(nextLeader, tc)
+	} else {
+		r.processTC(tc)
+	}
 }
 
 func (r *Replica) processTC(tc *pacemaker.TC) {
 	if tc.View <= r.pm.GetCurView() {
 		return
 	}
+	r.pm.UpdateTC(tc)
 	r.pm.AdvanceView(tc.View)
 }
 
@@ -325,28 +323,36 @@ func (r *Replica) processNewView(newView types.View) {
 		r.proposeBlock(newView)
 		return
 	}
-	if r.isByz {
-		r.bElectNo++
-		log.Warningf("[%v] the number of Byzantine election is %v, total election number is %v", r.ID(), r.bElectNo, r.totalView)
-	}
 
 	r.proposeBlock(newView)
 }
 
 func (r *Replica) processLocalTmo(view types.View) {
 	log.Debugf("[%v] timeout for view %v", r.ID(), view)
+	//	TODO: send tmo msg
+	tmo := &pacemaker.TMO{
+		View:   view,
+		NodeID: r.ID(),
+		HighQC: r.bc.GetHighQC(),
+	}
+	go r.Broadcast(tmo)
+	r.processTmoMsg(tmo)
 }
 
 func (r *Replica) proposeBlock(view types.View) {
 	log.Infof("[%v] is trying to propose a block", r.ID())
 	block := r.pd.ProduceBlock(view, r.Safety.Forkchoice(), r.ID())
+	tc := r.pm.GetHighTC()
+	if tc != nil && tc.View > block.QC.View {
+		block.QC.View = tc.View
+	}
 	if len(block.Payload) == 0 {
 		log.Debugf("[%v] is stalled because no txns left in the mempool", r.ID())
 		return
 	}
 	log.Infof("[%v] is going to propose block for view: %v, id: %x, prevID: %x", r.ID(), view, block.ID, block.PrevID)
 	time.Sleep(10 * time.Millisecond)
-	r.Broadcast(block)
+	go r.Broadcast(block)
 	r.processBlock(block)
 }
 
