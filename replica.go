@@ -187,7 +187,7 @@ func (r *Replica) processBlock(block *blockchain.Block) {
 		log.Errorf("cannot update state after voting: %w", err)
 	}
 	// TODO: sign the vote
-	//time.Sleep(10 * time.Millisecond)
+	time.Sleep(5 * time.Millisecond)
 	// vote to the current leader
 	voteAggregator := block.Proposer
 	if voteAggregator == r.ID() {
@@ -358,7 +358,7 @@ func (r *Replica) proposeBlock(view types.View) {
 	//	return
 	//}
 	log.Infof("[%v] is going to propose block for view: %v, id: %x, prevID: %x", r.ID(), view, block.ID, block.PrevID)
-	//time.Sleep(10 * time.Millisecond)
+	time.Sleep(10 * time.Millisecond)
 	r.Broadcast(block)
 	r.processBlock(block)
 	log.Debugf("[%v] broadcast is done for sending the block", r.ID())
