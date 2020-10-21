@@ -52,6 +52,12 @@ func NewHTTPClient() *HTTPClient {
 		HTTP:   config.Configuration.HTTPAddrs,
 		Client: &http.Client{},
 	}
+	bzn := config.GetConfig().ByzNo
+	for i := 1; i <= bzn; i++ {
+		id := identity.NewNodeID(i)
+		delete(c.Addrs, id)
+		delete(c.HTTP, id)
+	}
 	return c
 }
 

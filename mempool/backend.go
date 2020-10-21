@@ -5,7 +5,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gitferry/bamboo/log"
 	"github.com/gitferry/bamboo/message"
 )
 
@@ -178,27 +177,13 @@ func (b *Backend) All() []*message.Transaction {
 
 // Some returns a certain amount of transactions from the pool.
 func (b *Backend) Some(size int) []*message.Transaction {
-	// ready := make(chan bool)
-	// go b.checkPayload(size, ready)
 	for i := 0; i < 10; i++ {
 		if b.Size() > uint(size) {
 			b.mu.RLock()
 			defer b.mu.RUnlock()
-			log.Debugf("txs are enough, payload is ready")
 			return b.Backdata.Some(size)
 		}
-		time.Sleep(10 * time.Millisecond)
+		time.Sleep(5 * time.Millisecond)
 	}
-	// }
-	log.Debugf("not enough transactions, timeout")
 	return b.All()
 }
-
-// func (b *Backend) checkPayload(size int, ready chan bool) {
-// 	b.cond.L.Lock()
-// 	for b.Size() <= uint(size) {
-// 		b.cond.Wait()
-// 	}
-// 	b.cond.L.Unlock()
-// 	ready <- true
-// }

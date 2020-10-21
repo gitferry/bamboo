@@ -21,19 +21,10 @@ func TestRotation_IsLeader(t *testing.T) {
 }
 
 func TestRotation_LeaderList(t *testing.T) {
-	elect := NewRotation(16)
-	byzNo := 5
-	var leaderList []int
+	elect := NewRotation(4)
 
 	for i := 1; i <= 10000; i++ {
 		leaderID := elect.FindLeaderFor(types.View(i))
-		// if byz, add 0
-		if leaderID.Node() <= byzNo {
-			leaderList = append(leaderList, 0)
-		} else {
-			leaderList = append(leaderList, 1)
-		}
+		fmt.Printf("view: %v, node id: %v\n", i, leaderID.Node())
 	}
-
-	fmt.Println(leaderList)
 }

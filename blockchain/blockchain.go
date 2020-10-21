@@ -6,7 +6,6 @@ import (
 
 	"github.com/gitferry/bamboo/config"
 	"github.com/gitferry/bamboo/crypto"
-	"github.com/gitferry/bamboo/log"
 	"github.com/gitferry/bamboo/types"
 )
 
@@ -32,15 +31,14 @@ func NewBlockchain(n int) *BlockChain {
 func (bc *BlockChain) AddBlock(block *Block) {
 	blockContainer := &BlockContainer{block}
 	// TODO: add checks
-	//bc.mu.Lock()
 	bc.forrest.AddVertex(blockContainer)
-	//bc.mu.Unlock()
-	bc.UpdateHighQC(block.QC)
+	if block.QC.View > bc.highQC.View {
+		bc.highQC = block.QC
+	}
 }
 
 func (bc *BlockChain) AddVote(vote *Vote) (bool, *QC) {
-	bc.quorum.Add(vote)
-	return bc.GenerateQC(vote.View, vote.BlockID)
+	return bc.quorum.Add(vote)
 }
 
 func (bc *BlockChain) GetHighQC() *QC {
@@ -55,31 +53,6 @@ func (bc *BlockChain) UpdateHighQC(qc *QC) {
 	if qc.View > bc.highQC.View {
 		bc.highQC = qc
 	}
-}
-
-func (bc *BlockChain) GenerateQC(view types.View, blockID crypto.Identifier) (bool, *QC) {
-	if !bc.quorum.SuperMajority(blockID) {
-		return false, nil
-	}
-	sigs, err := bc.quorum.GetSigs(blockID)
-	if err != nil {
-		log.Warningf("cannot get signatures, %w", err)
-		return false, nil
-	}
-	qc := &QC{
-		View:    view,
-		BlockID: blockID,
-		AggSig:  sigs,
-		// TODO: add real sig
-		Signature: nil,
-	}
-
-	//err = bc.UpdateHighQC(qc)
-	//if err != nil {
-	//	log.Warningf("generated a stale qc, view: %v", qc.View)
-	//}
-
-	return true, qc
 }
 
 func (bc *BlockChain) CalForkingRate() float32 {

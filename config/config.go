@@ -148,9 +148,6 @@ func (c *Config) Load() {
 	// 	c.HTTPAddrs[id] = addrHttp
 	// }
 
-	c.ByzNo = 0
-	c.Threshold = 3
-
 	c.n = len(c.Addrs)
 	//c.npz = make(map[int]int)
 	//for id := range c.Addrs {

@@ -11,10 +11,10 @@ server
 *.test
 *.log
 *.xml
-server*
-client*
-latency
-*.csv
+bin/server*
+bin/client*
+bin/latency
+bin/*.csv
 
 
 # Output of the go coverage tool, specifically when used with LiteIDE

@@ -54,16 +54,17 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 	r.bc = bc
 	r.pd = mempool.NewProducer()
 	r.pm = pacemaker.NewPacemaker(config.GetConfig().N())
-	r.blockMsg = make(chan *blockchain.Block, 1)
-	r.voteMsg = make(chan *blockchain.Vote, 1)
-	r.qcMsg = make(chan *blockchain.QC, 1)
-	r.timeouts = make(chan *pacemaker.TMO, 1)
+	r.blockMsg = make(chan *blockchain.Block, 10)
+	r.voteMsg = make(chan *blockchain.Vote, 10)
+	r.qcMsg = make(chan *blockchain.QC, 10)
+	r.timeouts = make(chan *pacemaker.TMO, 10)
 	r.start = make(chan bool)
 	r.isByz = isByz
 	r.Register(blockchain.QC{}, r.HandleQC)
 	r.Register(blockchain.Block{}, r.HandleBlock)
 	r.Register(blockchain.Vote{}, r.HandleVote)
 	r.Register(pacemaker.TMO{}, r.HandleTmo)
+	r.Register(pacemaker.TC{}, r.HandleTC)
 	r.Register(message.Transaction{}, r.handleTxn)
 	gob.Register(blockchain.Block{})
 	gob.Register(blockchain.QC{})
@@ -92,7 +93,7 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 /* Message Handlers */
 
 func (r *Replica) HandleBlock(block blockchain.Block) {
-	//log.Debugf("[%v] received a block from %v, view is %v", r.ID(), block.Proposer, block.View)
+	log.Debugf("[%v] received a block from %v, view is %v", r.ID(), block.Proposer, block.View)
 	if block.View < r.pm.GetCurView() {
 		return
 	}
@@ -186,7 +187,7 @@ func (r *Replica) processBlock(block *blockchain.Block) {
 		log.Errorf("cannot update state after voting: %w", err)
 	}
 	// TODO: sign the vote
-	time.Sleep(10 * time.Millisecond)
+	//time.Sleep(10 * time.Millisecond)
 	// vote to the current leader
 	voteAggregator := block.Proposer
 	if voteAggregator == r.ID() {
@@ -194,6 +195,7 @@ func (r *Replica) processBlock(block *blockchain.Block) {
 	} else {
 		r.Send(voteAggregator, vote)
 	}
+	log.Debugf("[%v] voted for %v", r.ID(), voteAggregator)
 }
 
 func (r *Replica) preprocessQC(qc *blockchain.QC) {
@@ -292,21 +294,23 @@ func (r *Replica) processVote(vote *blockchain.Vote) {
 }
 
 func (r *Replica) processTmoMsg(tmo *pacemaker.TMO) {
+	log.Debugf("[%v] is processing tmo from %v", r.ID(), tmo.NodeID)
 	r.bc.UpdateHighQC(tmo.HighQC)
 	isBuilt, tc := r.pm.ProcessRemoteTmo(tmo)
 	if !isBuilt {
+		log.Debugf("[%v] not enough tc for %v", r.ID(), tmo.View)
 		return
 	}
-	nextLeader := r.FindLeaderFor(tc.View + 1)
-	if nextLeader != r.ID() {
-		r.Send(nextLeader, tc)
-	} else {
-		r.processTC(tc)
-	}
+	log.Debugf("[%v] a tc is built for view %v", r.ID(), tc.View)
+	r.processTC(tc)
+	//nextLeader := r.FindLeaderFor(tc.View + 1)
+	//if nextLeader != r.ID() {
+	//	r.Send(nextLeader, tc)
+	//}
 }
 
 func (r *Replica) processTC(tc *pacemaker.TC) {
-	if tc.View <= r.pm.GetCurView() {
+	if tc.View < r.pm.GetCurView() {
 		return
 	}
 	r.pm.UpdateTC(tc)
@@ -327,16 +331,19 @@ func (r *Replica) processNewView(newView types.View) {
 	r.proposeBlock(newView)
 }
 
-func (r *Replica) processLocalTmo(view types.View) {
-	log.Debugf("[%v] timeout for view %v", r.ID(), view)
+func (r *Replica) processLocalTmo() {
+	log.Debugf("[%v] timeout", r.ID())
+	view := r.pm.GetCurView()
+	log.Debugf("[%v] timeout for view %v", r.ID(), view+1)
 	//	TODO: send tmo msg
 	tmo := &pacemaker.TMO{
-		View:   view,
+		View:   view + 1,
 		NodeID: r.ID(),
 		HighQC: r.bc.GetHighQC(),
 	}
-	go r.Broadcast(tmo)
+	r.Broadcast(tmo)
 	r.processTmoMsg(tmo)
+	log.Debugf("[%v] broadcast is done for sending tmo", r.ID())
 }
 
 func (r *Replica) proposeBlock(view types.View) {
@@ -346,28 +353,34 @@ func (r *Replica) proposeBlock(view types.View) {
 	if tc != nil && tc.View > block.QC.View {
 		block.QC.View = tc.View
 	}
-	if len(block.Payload) == 0 {
-		log.Debugf("[%v] is stalled because no txns left in the mempool", r.ID())
-		return
-	}
+	//if len(block.Payload) == 0 {
+	//	log.Debugf("[%v] is stalled because no txns left in the mempool", r.ID())
+	//	return
+	//}
 	log.Infof("[%v] is going to propose block for view: %v, id: %x, prevID: %x", r.ID(), view, block.ID, block.PrevID)
-	time.Sleep(10 * time.Millisecond)
-	go r.Broadcast(block)
+	//time.Sleep(10 * time.Millisecond)
+	r.Broadcast(block)
 	r.processBlock(block)
+	log.Debugf("[%v] broadcast is done for sending the block", r.ID())
 }
 
 // Start starts event loop
 func (r *Replica) Start() {
+	// fail-stop case
+	if r.isByz {
+		return
+	}
 	go r.Run()
 	<-r.start
 	for r.isStarted.Load() {
 		r.timer = time.NewTimer(r.pm.GetTimerForView())
 		log.Debugf("[%v] timer is reset", r.ID())
+	L:
 		for {
 			select {
 			case newView := <-r.pm.EnteringViewEvent():
 				go r.processNewView(newView)
-				break
+				break L
 			case newBlock := <-r.blockMsg:
 				go r.processBlock(newBlock)
 			case newVote := <-r.voteMsg:
@@ -375,7 +388,8 @@ func (r *Replica) Start() {
 			case newTimeout := <-r.timeouts:
 				go r.processTmoMsg(newTimeout)
 			case <-r.timer.C:
-				go r.processLocalTmo(r.pm.GetCurView())
+				go r.processLocalTmo()
+				break L
 			case newTC := <-r.tcs:
 				go r.processTC(newTC)
 			case newQC := <-r.qcMsg:

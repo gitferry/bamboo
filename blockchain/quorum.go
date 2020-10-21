@@ -43,9 +43,9 @@ func NewQuorum(total int) *Quorum {
 }
 
 // Add adds id to quorum ack records
-func (q *Quorum) Add(vote *Vote) {
-	if q.SuperMajority(vote.BlockID) {
-		return
+func (q *Quorum) Add(vote *Vote) (bool, *QC) {
+	if q.superMajority(vote.BlockID) {
+		return false, nil
 	}
 	_, exist := q.votes[vote.BlockID]
 	if !exist {
@@ -53,15 +53,23 @@ func (q *Quorum) Add(vote *Vote) {
 		q.votes[vote.BlockID] = make(map[identity.NodeID]*Vote)
 	}
 	q.votes[vote.BlockID][vote.Voter] = vote
+	if q.superMajority(vote.BlockID) {
+		qc := &QC{
+			View:    vote.View,
+			BlockID: vote.BlockID,
+		}
+		return true, qc
+	}
+	return false, nil
 }
 
 // Super majority quorum satisfied
-func (q *Quorum) SuperMajority(blockID crypto.Identifier) bool {
-	return q.Size(blockID) > q.total*2/3
+func (q *Quorum) superMajority(blockID crypto.Identifier) bool {
+	return q.size(blockID) > q.total*2/3
 }
 
 // Size returns ack size for the block
-func (q *Quorum) Size(blockID crypto.Identifier) int {
+func (q *Quorum) size(blockID crypto.Identifier) int {
 	return len(q.votes[blockID])
 }
 

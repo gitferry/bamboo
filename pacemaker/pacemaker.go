@@ -1,6 +1,7 @@
 package pacemaker
 
 import (
+	"github.com/gitferry/bamboo/config"
 	"sync"
 	"time"
 
@@ -25,8 +26,8 @@ func NewPacemaker(n int) *Pacemaker {
 
 func (p *Pacemaker) ProcessRemoteTmo(tmo *TMO) (bool, *TC) {
 	p.mu.Lock()
-	p.mu.Unlock()
-	if tmo.View < p.GetCurView() {
+	defer p.mu.Unlock()
+	if tmo.View < p.curView {
 		log.Warningf("stale timeout msg")
 		return false, nil
 	}
@@ -35,8 +36,8 @@ func (p *Pacemaker) ProcessRemoteTmo(tmo *TMO) (bool, *TC) {
 
 func (b *Pacemaker) AdvanceView(view types.View) {
 	b.mu.Lock()
+	defer b.mu.Unlock()
 	if view < b.curView {
-		b.mu.Unlock()
 		return
 	}
 	timeouts := view - b.curView
@@ -44,7 +45,6 @@ func (b *Pacemaker) AdvanceView(view types.View) {
 		timeouts = 0
 	}
 	b.curView = view + 1
-	b.mu.Unlock()
 	b.newViewChan <- view + 1 // reset timer for the next view
 }
 
@@ -62,7 +62,7 @@ func (b *Pacemaker) UpdateTC(tc *TC) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
-	if tc.View > b.highTC.View {
+	if b.highTC == nil || tc.View > b.highTC.View {
 		b.highTC = tc
 	}
 }
@@ -74,5 +74,11 @@ func (b *Pacemaker) GetHighTC() *TC {
 }
 
 func (b *Pacemaker) GetTimerForView() time.Duration {
-	return 1000 * time.Millisecond
+	b.mu.Lock()
+	if b.curView == 0 {
+		b.mu.Unlock()
+		return 2000 * time.Millisecond
+	}
+	b.mu.Unlock()
+	return time.Duration(config.GetConfig().Timeout) * time.Millisecond
 }

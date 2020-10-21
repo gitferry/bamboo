@@ -37,8 +37,7 @@ func main() {
 			if id.Node() <= config.GetConfig().ByzNo {
 				isByz = true
 			}
-			n := id
-			go replica(n, isByz)
+			go replica(id, isByz)
 		}
 		wg.Wait()
 	} else {
