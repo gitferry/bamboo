@@ -33,7 +33,7 @@ type AdminClient interface {
 	Partition(int, ...identity.NodeID)
 }
 
-// HTTPClient inplements Client interface with REST API
+// HTTPClient implements Client interface with REST API
 type HTTPClient struct {
 	Addrs map[identity.NodeID]string
 	HTTP  map[identity.NodeID]string
@@ -302,18 +302,3 @@ func (c *HTTPClient) Drop(from, to identity.NodeID, t int) {
 	}
 	r.Body.Close()
 }
-
-//// Partition cuts the network between nodes for t seconds
-//func (c *HTTPClient) Partition(t int, nodes ...identity.NodeID) {
-//	s := lib.NewSet()
-//	for _, id := range nodes {
-//		s.Add(id)
-//	}
-//	for from := range c.Addrs {
-//		if !s.Has(from) {
-//			for _, to := range nodes {
-//				c.Drop(from, to, t)
-//			}
-//		}
-//	}
-//}

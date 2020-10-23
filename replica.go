@@ -138,7 +138,7 @@ func (r *Replica) handleTxn(m message.Transaction) {
 		r.isStarted.Store(true)
 		r.start <- true
 		// wait for others to get started
-		time.Sleep(500 * time.Millisecond)
+		time.Sleep(200 * time.Millisecond)
 	}
 
 	//	kick-off the protocol
@@ -172,10 +172,11 @@ func (r *Replica) processBlock(block *blockchain.Block) {
 	r.mu.Unlock()
 
 	shouldVote, err := r.VotingRule(block)
-	if err != nil {
-		log.Errorf("cannot decide whether to vote the block, %w", err)
-		return
-	}
+	// TODO: add block buffer
+	//if err != nil {
+	//	log.Errorf("cannot decide whether to vote the block, %w", err)
+	//	return
+	//}
 	if !shouldVote {
 		log.Debugf("[%v] is not going to vote for block, id: %x", r.ID(), block.ID)
 		return
@@ -332,7 +333,6 @@ func (r *Replica) processNewView(newView types.View) {
 }
 
 func (r *Replica) processLocalTmo() {
-	log.Debugf("[%v] timeout", r.ID())
 	view := r.pm.GetCurView()
 	log.Debugf("[%v] timeout for view %v", r.ID(), view+1)
 	//	TODO: send tmo msg
@@ -389,7 +389,6 @@ func (r *Replica) Start() {
 				go r.processTmoMsg(newTimeout)
 			case <-r.timer.C:
 				go r.processLocalTmo()
-				break L
 			case newTC := <-r.tcs:
 				go r.processTC(newTC)
 			case newQC := <-r.qcMsg:

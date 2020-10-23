@@ -2,6 +2,9 @@ package main
 
 import (
 	"flag"
+	"os"
+	"runtime"
+	"runtime/pprof"
 	"sync"
 
 	"github.com/gitferry/bamboo"
@@ -14,6 +17,8 @@ var algorithm = flag.String("algorithm", "hotstuff", "BFT consensus algorithm")
 var id = flag.String("id", "", "NodeID of the node")
 var simulation = flag.Bool("sim", false, "simulation mode")
 var isByz = flag.Bool("isByz", false, "this is a Byzantine node")
+var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to `file`")
+var memprofile = flag.String("memprofile", "", "write memory profile to `file`")
 
 func replica(id identity.NodeID, isByz bool) {
 	log.Infof("node %v starting...", id)
@@ -27,6 +32,17 @@ func replica(id identity.NodeID, isByz bool) {
 
 func main() {
 	bamboo.Init()
+	if *cpuprofile != "" {
+		f, err := os.Create(*cpuprofile)
+		if err != nil {
+			log.Fatal("could not create CPU profile: ", err)
+		}
+		defer f.Close() // error handling omitted for example
+		if err := pprof.StartCPUProfile(f); err != nil {
+			log.Fatal("could not start CPU profile: ", err)
+		}
+		defer pprof.StopCPUProfile()
+	}
 
 	if *simulation {
 		var wg sync.WaitGroup
@@ -42,5 +58,17 @@ func main() {
 		wg.Wait()
 	} else {
 		replica(identity.NodeID(*id), *isByz)
+	}
+
+	if *memprofile != "" {
+		f, err := os.Create(*memprofile)
+		if err != nil {
+			log.Fatal("could not create memory profile: ", err)
+		}
+		defer f.Close() // error handling omitted for example
+		runtime.GC()    // get up-to-date statistics
+		if err := pprof.WriteHeapProfile(f); err != nil {
+			log.Fatal("could not write memory profile: ", err)
+		}
 	}
 }
