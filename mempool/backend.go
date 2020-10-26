@@ -183,7 +183,7 @@ func (b *Backend) Some(size int) []*message.Transaction {
 			defer b.mu.RUnlock()
 			return b.Backdata.Some(size)
 		}
-		time.Sleep(1 * time.Millisecond)
+		time.Sleep(5 * time.Millisecond)
 	}
 	return b.All()
 }

@@ -1,7 +1,11 @@
 package mempool
 
 import (
+	"time"
+
 	"github.com/gitferry/bamboo/blockchain"
+	"github.com/gitferry/bamboo/config"
+	"github.com/gitferry/bamboo/crypto"
 	"github.com/gitferry/bamboo/identity"
 	"github.com/gitferry/bamboo/message"
 	"github.com/gitferry/bamboo/types"
@@ -15,17 +19,16 @@ func NewProducer() *Producer {
 	return &Producer{mempool: NewMemPool()}
 }
 
-func (pd *Producer) ProduceBlock(view types.View, qc *blockchain.QC, proposer identity.NodeID) *blockchain.Block {
+func (pd *Producer) ProduceBlock(view types.View, qc *blockchain.QC, proposer identity.NodeID, priv *crypto.PrivateKey) *blockchain.Block {
 	var payload []*message.Transaction
-	//for i := 0; i < 2; i++ {
-	//payload = pd.mempool.Some(config.Configuration.BSize)
-	//	if len(payload) > 0 {
-	//		break
-	//	}
-	//	time.Sleep(10 * time.Millisecond)
-	//}
-	payload = pd.mempool.All()
-	block := blockchain.MakeBlock(view, qc, payload, proposer)
+	for i := 0; i < 2; i++ {
+		payload = pd.mempool.Some(config.Configuration.BSize)
+		if len(payload) > 0 {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	block := blockchain.MakeBlock(view, qc, payload, proposer, priv)
 	pd.mempool.Backend.RemTxns(payload)
 	return block
 }
