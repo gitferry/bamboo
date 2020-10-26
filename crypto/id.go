@@ -17,3 +17,11 @@ func HashToID(hash []byte) Identifier {
 	copy(id[:], hash)
 	return id
 }
+
+func IDToByte(id Identifier) []byte {
+	var bytes []byte
+	for i, _ := range id {
+		bytes[i] = id[i]
+	}
+	return bytes
+}
