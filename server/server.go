@@ -32,6 +32,11 @@ func replica(id identity.NodeID, isByz bool) {
 
 func main() {
 	bamboo.Init()
+	// The private and public keys are generated here. Check config.go.
+	errConfig := config.SetKeys()
+	if errConfig != nil {
+		log.Fatal("Could not generate keys:", errConfig)
+	}
 	if *cpuprofile != "" {
 		f, err := os.Create(*cpuprofile)
 		if err != nil {
