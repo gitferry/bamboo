@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/gitferry/bamboo/crypto"
 	"github.com/gitferry/bamboo/identity"
 	"github.com/gitferry/bamboo/log"
 	"github.com/gitferry/bamboo/transport"
@@ -31,6 +32,9 @@ type Config struct {
 	Benchmark      Bconfig `json:"benchmark"` // benchmark configuration
 	Delta          int     `json:"delta"`     // timeout, seconds
 
+	hasher string
+	signer string
+
 	// for future implementation
 	// Batching bool `json:"batching"`
 	// Consistency string `json:"consistency"`
@@ -40,6 +44,9 @@ type Config struct {
 	//z   int         // total number of zones
 	//npz map[int]int // nodes per zone
 }
+
+var keys []crypto.PrivateKey
+var pubKeys []crypto.PublicKey
 
 // Bconfig holds all benchmark configuration
 type Bconfig struct {
@@ -92,8 +99,28 @@ func MakeDefaultConfig() Config {
 		BufferSize:     1024,
 		ChanBufferSize: 1024,
 		MultiVersion:   false,
+		hasher:         "sha3_256",
+		signer:         "ECDSA_P256",
 		//Benchmark:      DefaultBConfig(),
 	}
+}
+
+func SetKeys() error {
+	keys = make([]crypto.PrivateKey, Configuration.N())
+	pubKeys = make([]crypto.PublicKey, Configuration.N())
+	var err error
+	for i := 0; i < Configuration.N(); i++ {
+		keys[i], err = crypto.GenerateKey(Configuration.signer)
+		if err != nil {
+			return err
+		}
+		pubKeys[i] = keys[i].PublicKey()
+	}
+	return nil
+}
+
+func (c Config) GetKeys(id int) (*crypto.PrivateKey, []crypto.PublicKey) {
+	return &keys[id], pubKeys
 }
 
 // IDs returns all node ids
@@ -109,6 +136,17 @@ func (c Config) IDs() []identity.NodeID {
 func (c Config) N() int {
 	return c.n
 }
+
+// GetHash returns the hashing scheme of the configuration
+func (c Config) GetHashScheme() string {
+	return c.hasher
+}
+
+func (c Config) GetSignatureScheme() string {
+	return c.signer
+}
+
+// GetSignatureScheme returns the signing scheme of the configuration
 
 // Z returns total number of zones
 //func (c Config) Z() int {
