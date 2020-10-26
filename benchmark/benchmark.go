@@ -67,6 +67,7 @@ func (b *Benchmark) Run() {
 
 	b.db.Init()
 	b.startTime = time.Now()
+	j := 0
 	if b.T > 0 {
 		timer := time.NewTimer(time.Second * time.Duration(b.T))
 	loop:
@@ -77,7 +78,10 @@ func (b *Benchmark) Run() {
 				break loop
 			default:
 				b.wait.Add(1)
+				//log.Debugf("is generating key No.%v", j)
 				keys <- b.next()
+				j++
+				//log.Debugf("generated key No.%v", j-1)
 			}
 		}
 	} else {
@@ -136,9 +140,9 @@ func (b *Benchmark) next() int {
 		log.Fatalf("unknown distribution %s", b.Distribution)
 	}
 
-	// if b.Throttle > 0 {
-	// 	b.rate.Wait()
-	// }
+	if b.Throttle > 0 {
+		b.rate.Wait()
+	}
 
 	return key
 }

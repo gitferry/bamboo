@@ -48,11 +48,11 @@ func (hs *HotStuff) VotingRule(block *blockchain.Block) (bool, error) {
 func (hs *HotStuff) CommitRule(qc *blockchain.QC) (bool, *blockchain.Block, error) {
 	hs.mu.Lock()
 	defer hs.mu.Unlock()
-	grandParentBlock, err := hs.bc.GetGrandParentBlock(qc.BlockID)
+	parentBlock, err := hs.bc.GetParentBlock(qc.BlockID)
 	if err != nil {
 		return false, nil, fmt.Errorf("cannot commit any block: %w", err)
 	}
-	parentBlock, err := hs.bc.GetParentBlock(qc.BlockID)
+	grandParentBlock, err := hs.bc.GetParentBlock(parentBlock.ID)
 	if err != nil {
 		return false, nil, fmt.Errorf("cannot commit any block: %w", err)
 	}
@@ -74,6 +74,8 @@ func (hs *HotStuff) UpdateStateByQC(qc *blockchain.QC) error {
 }
 
 func (hs *HotStuff) updateLastVotedView(targetView types.View) error {
+	hs.mu.Lock()
+	defer hs.mu.Unlock()
 	if targetView < hs.lastVotedView {
 		return fmt.Errorf("target view is lower than the last voted view")
 	}

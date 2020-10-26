@@ -3,10 +3,9 @@ package election
 import (
 	"crypto/sha1"
 	"encoding/binary"
-	"strconv"
-
 	"github.com/gitferry/bamboo/identity"
 	"github.com/gitferry/bamboo/types"
+	"strconv"
 )
 
 type Election interface {

@@ -2,8 +2,6 @@ package blockchain
 
 import (
 	"fmt"
-	"sync"
-
 	"github.com/gitferry/bamboo/config"
 	"github.com/gitferry/bamboo/crypto"
 	"github.com/gitferry/bamboo/types"
@@ -17,7 +15,6 @@ type BlockChain struct {
 	highestComitted       int
 	committedBlocks       int
 	honestCommittedBlocks int
-	mu                    sync.Mutex
 }
 
 func NewBlockchain(n int) *BlockChain {
@@ -42,14 +39,10 @@ func (bc *BlockChain) AddVote(vote *Vote) (bool, *QC) {
 }
 
 func (bc *BlockChain) GetHighQC() *QC {
-	bc.mu.Lock()
-	defer bc.mu.Unlock()
 	return bc.highQC
 }
 
 func (bc *BlockChain) UpdateHighQC(qc *QC) {
-	bc.mu.Lock()
-	defer bc.mu.Unlock()
 	if qc.View > bc.highQC.View {
 		bc.highQC = qc
 	}
@@ -70,8 +63,6 @@ func (bc *BlockChain) CalForkingRate() float32 {
 }
 
 func (bc *BlockChain) GetBlockByID(id crypto.Identifier) (*Block, error) {
-	//bc.mu.Lock()
-	//defer bc.mu.Unlock()
 	vertex, exists := bc.forrest.GetVertex(id)
 	if !exists {
 		return nil, fmt.Errorf("the block does not exist, id: %x", id)
@@ -80,8 +71,6 @@ func (bc *BlockChain) GetBlockByID(id crypto.Identifier) (*Block, error) {
 }
 
 func (bc *BlockChain) GetParentBlock(id crypto.Identifier) (*Block, error) {
-	//bc.mu.Lock()
-	//defer bc.mu.Unlock()
 	vertex, exists := bc.forrest.GetVertex(id)
 	if !exists {
 		return nil, fmt.Errorf("the block does not exist, id: %x", id)
@@ -131,8 +120,6 @@ func (bc *BlockChain) CommitBlock(id crypto.Identifier) ([]*Block, error) {
 }
 
 func (bc *BlockChain) GetChildrenBlocks(id crypto.Identifier) []*Block {
-	//bc.mu.Lock()
-	//defer bc.mu.Unlock()
 	var blocks []*Block
 	iterator := bc.forrest.GetChildren(id)
 	for I := iterator; I.HasNext(); {
@@ -142,38 +129,26 @@ func (bc *BlockChain) GetChildrenBlocks(id crypto.Identifier) []*Block {
 }
 
 func (bc *BlockChain) GetChainGrowth() float64 {
-	bc.mu.Lock()
-	defer bc.mu.Unlock()
 	return float64(bc.honestCommittedBlocks) / float64(bc.highestComitted)
 }
 
 func (bc *BlockChain) GetChainQuality() float64 {
-	bc.mu.Lock()
-	defer bc.mu.Unlock()
 	return float64(bc.honestCommittedBlocks) / float64(bc.committedBlocks)
 }
 
 func (bc *BlockChain) GetHighestComitted() int {
-	bc.mu.Lock()
-	defer bc.mu.Unlock()
 	return bc.highestComitted
 }
 
 func (bc *BlockChain) GetHonestCommittedBlocks() int {
-	bc.mu.Lock()
-	defer bc.mu.Unlock()
 	return bc.honestCommittedBlocks
 }
 
 func (bc *BlockChain) GetCommittedBlocks() int {
-	bc.mu.Lock()
-	defer bc.mu.Unlock()
 	return bc.committedBlocks
 }
 
 func (bc *BlockChain) GetBlockByView(view types.View) *Block {
-	//bc.mu.Lock()
-	//defer bc.mu.Unlock()
 	iterator := bc.forrest.GetVerticesAtLevel(uint64(view))
 	return iterator.next.GetBlock()
 }
