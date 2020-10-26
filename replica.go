@@ -2,12 +2,14 @@ package bamboo
 
 import (
 	"encoding/gob"
+	"sync"
 	"time"
 
 	"go.uber.org/atomic"
 
 	"github.com/gitferry/bamboo/blockchain"
 	"github.com/gitferry/bamboo/config"
+	"github.com/gitferry/bamboo/crypto"
 	"github.com/gitferry/bamboo/election"
 	"github.com/gitferry/bamboo/hotstuff"
 	"github.com/gitferry/bamboo/identity"
@@ -31,8 +33,20 @@ type Replica struct {
 	isByz     bool
 	bElectNo  int
 	totalView int
-	timer     *time.Timer
-	eventChan chan interface{}
+
+	hasher     crypto.Hasher
+	signer     string
+	privateKey *crypto.PrivateKey
+	publicKeys []crypto.PublicKey
+
+	timer    *time.Timer
+	blockMsg chan *blockchain.Block
+	voteMsg  chan *blockchain.Vote
+	qcMsg    chan *blockchain.QC
+	timeouts chan *pacemaker.TMO
+	tcs      chan *pacemaker.TC
+	newView  chan types.View
+	mu       sync.Mutex
 }
 
 // NewReplica creates a new replica instance
@@ -47,7 +61,13 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 	r.bc = bc
 	r.pd = mempool.NewProducer()
 	r.pm = pacemaker.NewPacemaker(config.GetConfig().N())
-	r.eventChan = make(chan interface{}, 1)
+	r.hasher, _ = crypto.NewHasher(config.GetConfig().GetHashScheme())
+	r.signer = config.GetConfig().GetSignatureScheme()
+	r.privateKey, r.publicKeys = config.GetConfig().GetKeys(id.Node())
+	r.blockMsg = make(chan *blockchain.Block, 10)
+	r.voteMsg = make(chan *blockchain.Vote, 10)
+	r.qcMsg = make(chan *blockchain.QC, 10)
+	r.timeouts = make(chan *pacemaker.TMO, 10)
 	r.start = make(chan bool)
 	r.isByz = isByz
 	r.Register(blockchain.QC{}, r.HandleQC)
@@ -84,41 +104,41 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 
 func (r *Replica) HandleBlock(block blockchain.Block) {
 	log.Debugf("[%v] received a block from %v, view is %v", r.ID(), block.Proposer, block.View)
-	//if block.View < r.pm.GetCurView() {
-	//	return
-	//}
-	r.eventChan <- block
+	if block.View < r.pm.GetCurView() {
+		return
+	}
+	r.blockMsg <- &block
 }
 
 func (r *Replica) HandleVote(vote blockchain.Vote) {
 	log.Debugf("[%v] received a vote from %v, blockID is %x", r.ID(), vote.Voter, vote.BlockID)
-	//if vote.View < r.pm.GetCurView() {
-	//	return
-	//}
-	r.eventChan <- vote
+	if vote.View < r.pm.GetCurView() {
+		return
+	}
+	r.voteMsg <- &vote
 }
 
 func (r *Replica) HandleTmo(tmo pacemaker.TMO) {
 	log.Debugf("[%v] received a timeout from %v for view %v", r.ID(), tmo.NodeID, tmo.View)
-	//if tmo.View < r.pm.GetCurView() {
-	//	return
-	//}
-	r.eventChan <- tmo
+	if tmo.View < r.pm.GetCurView() {
+		return
+	}
+	r.timeouts <- &tmo
 }
 
 func (r *Replica) HandleTC(tc pacemaker.TC) {
-	//if tc.View < r.pm.GetCurView() {
-	//	return
-	//}
-	r.eventChan <- tc
+	if tc.View < r.pm.GetCurView() {
+		return
+	}
+	r.tcs <- &tc
 }
 
 func (r *Replica) HandleQC(qc blockchain.QC) {
-	log.Debugf("[%v] received a qc, blockID is %x", r.ID(), qc.BlockID)
-	//if qc.View < r.pm.GetCurView() {
-	//	return
-	//}
-	r.eventChan <- qc
+	//log.Debugf("[%v] received a qc from, blockID is %x", r.ID(), qc.BlockID)
+	if qc.View < r.pm.GetCurView() {
+		return
+	}
+	r.qcMsg <- &qc
 }
 
 func (r *Replica) handleTxn(m message.Transaction) {
@@ -131,7 +151,7 @@ func (r *Replica) handleTxn(m message.Transaction) {
 		time.Sleep(200 * time.Millisecond)
 	}
 
-	//	the last node is to kick-off the protocol
+	//	kick-off the protocol
 	if r.pm.GetCurView() == 0 && r.IsLeader(r.ID(), 1) {
 		log.Debugf("[%v] is going to kick off the protocol", r.ID())
 		r.pm.AdvanceView(0)
@@ -142,38 +162,47 @@ func (r *Replica) handleTxn(m message.Transaction) {
 
 func (r *Replica) processBlock(block *blockchain.Block) {
 	log.Debugf("[%v] is processing block, view: %v, id: %x", r.ID(), block.View, block.ID)
+	if r.ID().Node() == config.Configuration.N() {
+		log.Infof("[%v] block view: %v", r.ID(), block.View)
+	}
+	blockIsVerified, _ := r.publicKeys[block.Proposer.Node()].Verify(block.Sig, nil)
+	if blockIsVerified == false {
+		log.Warningf("[%v] received a block with an invalid signature", r.ID())
+	}
 	r.processCertificate(block.QC)
-	// TODO: should uncomment the following checks
-	//curView := r.pm.GetCurView()
-	//if block.View != curView {
-	//	log.Warningf("[%v] received a stale proposal from %v", r.ID(), block.Proposer)
-	//	return
-	//}
+	curView := r.pm.GetCurView()
+	if block.View != curView {
+		log.Warningf("[%v] received a stale proposal", r.ID())
+		return
+	}
 	if !r.Election.IsLeader(block.Proposer, block.View) {
 		log.Warningf(
 			"[%v] received a proposal (%v) from an invalid leader (%v)",
 			r.ID(), block.View, block.Proposer)
 		return
 	}
+	r.mu.Lock()
 	r.bc.AddBlock(block)
+	r.mu.Unlock()
 
-	//shouldVote, err := r.VotingRule(block)
+	shouldVote, err := r.VotingRule(block)
 	// TODO: add block buffer
 	//if err != nil {
 	//	log.Errorf("cannot decide whether to vote the block, %w", err)
 	//	return
 	//}
-	//if !shouldVote {
-	//	log.Debugf("[%v] is not going to vote for block, id: %x", r.ID(), block.ID)
-	//	return
-	//}
+	if !shouldVote {
+		log.Debugf("[%v] is not going to vote for block, id: %x", r.ID(), block.ID)
+		return
+	}
 	log.Debugf("[%v] is going to vote for block, id: %x", r.ID(), block.ID)
-	vote := blockchain.MakeVote(block.View, r.ID(), block.ID)
-	//err = r.UpdateStateByView(vote.View)
-	//if err != nil {
-	//	log.Warningf("cannot update state after voting: %w", err)
-	//}
-	// TODO: sign the vote
+	vote := blockchain.MakeVote(block.View, r.ID(), block.ID, r.privateKey)
+	err = r.UpdateStateByView(vote.View)
+	if err != nil {
+		log.Errorf("cannot update state after voting: %w", err)
+	}
+	// TODO: sign the vote -----> I've signed it in blockchain.MakeVote
+	time.Sleep(5 * time.Millisecond)
 	// vote to the current leader
 	voteAggregator := block.Proposer
 	if voteAggregator == r.ID() {
@@ -181,7 +210,7 @@ func (r *Replica) processBlock(block *blockchain.Block) {
 	} else {
 		r.Send(voteAggregator, vote)
 	}
-	//log.Debugf("[%v] voted for %v", r.ID(), voteAggregator)
+	log.Debugf("[%v] voted for %v", r.ID(), voteAggregator)
 }
 
 func (r *Replica) preprocessQC(qc *blockchain.QC) {
@@ -191,7 +220,7 @@ func (r *Replica) preprocessQC(qc *blockchain.QC) {
 		return
 	}
 	if isThreeChain {
-		go r.pm.AdvanceView(qc.View)
+		r.pm.AdvanceView(qc.View)
 		return
 	}
 	for i := qc.View; ; i++ {
@@ -205,15 +234,24 @@ func (r *Replica) preprocessQC(qc *blockchain.QC) {
 	}
 }
 
+// TODO: This must be filled
+func (r *Replica) verifyQuorumSignature(qc *blockchain.QC) (bool, error) {
+	return true, nil
+}
+
 func (r *Replica) processCertificate(qc *blockchain.QC) {
 	if qc.View < r.pm.GetCurView() {
 		return
 	}
-	go r.pm.AdvanceView(qc.View)
+	quorumIsVerified, _ := r.verifyQuorumSignature(qc)
+	if quorumIsVerified == false {
+		log.Warningf("[%v] received a quorum with unvalid signatures", r.ID())
+		return
+	}
+	r.pm.AdvanceView(qc.View)
 	r.bc.UpdateHighQC(qc)
 	log.Debugf("[%v] has advanced to view %v", r.ID(), r.pm.GetCurView())
 	r.UpdateStateByQC(qc)
-	log.Debugf("[%v] has updated state by qc: %v", r.ID(), qc.View)
 	// TODO: send the qc to next leader
 	//if !r.IsLeader(r.ID(), r.pm.GetCurView()) {
 	//	go r.Send(r.FindLeaderFor(r.pm.GetCurView()), qc)
@@ -225,7 +263,9 @@ func (r *Replica) processCertificate(qc *blockchain.QC) {
 	if !ok {
 		return
 	}
+	r.mu.Lock()
 	committedBlocks, err := r.bc.CommitBlock(block.ID)
+	r.mu.Unlock()
 	if err != nil {
 		log.Errorf("[%v] cannot commit blocks", r.ID())
 		return
@@ -245,9 +285,9 @@ func (r *Replica) processCommittedBlocks(blocks []*blockchain.Block) {
 		}
 		r.pd.RemoveTxns(block.Payload)
 		//delay := int(r.pm.GetCurView() - block.View)
-		//if r.ID().Node() == config.Configuration.N() {
-		log.Infof("[%v] the block is committed, No. of transactions: %v, view: %v, current view: %v, id: %x", r.ID(), len(block.Payload), block.View, r.pm.GetCurView(), block.ID)
-		//}
+		if r.ID().Node() == config.Configuration.N() {
+			log.Infof("[%v] the block is committed, No. of transactions: %v, view: %v, current view: %v, id: %x", r.ID(), len(block.Payload), block.View, r.pm.GetCurView(), block.ID)
+		}
 	}
 	//	print measurement
 	//if r.ID().Node() == config.Configuration.N() {
@@ -257,8 +297,23 @@ func (r *Replica) processCommittedBlocks(blocks []*blockchain.Block) {
 	//}
 }
 
+func (r *Replica) verifyVoteSignature(vote *blockchain.Vote) (bool, error) {
+	return r.publicKeys[vote.Voter.Node()].Verify(vote.Signature, crypto.IDToByte(vote.BlockID))
+}
+
 func (r *Replica) processVote(vote *blockchain.Vote) {
+	voteIsVerified, err := r.verifyVoteSignature(vote)
+	if err != nil {
+		log.Fatalf("[%v] Error in verifying the signature in vote id: %x", r.ID(), vote.BlockID)
+		return
+	}
+	if voteIsVerified == false {
+		log.Warningf("[%v] received a vote with unvalid signature. vote id: %x", r.ID(), vote.BlockID)
+		return
+	}
+	r.mu.Lock()
 	isBuilt, qc := r.bc.AddVote(vote)
+	r.mu.Unlock()
 	if !isBuilt {
 		return
 	}
@@ -279,6 +334,11 @@ func (r *Replica) processVote(vote *blockchain.Vote) {
 func (r *Replica) processTmoMsg(tmo *pacemaker.TMO) {
 	log.Debugf("[%v] is processing tmo from %v", r.ID(), tmo.NodeID)
 	r.bc.UpdateHighQC(tmo.HighQC)
+	tmoIsVerified, _ := r.verifyQuorumSignature(tmo.HighQC)
+	if tmoIsVerified == false {
+		log.Warningf("[%v] has received a TC with unvalid signatures", r.ID())
+		return
+	}
 	isBuilt, tc := r.pm.ProcessRemoteTmo(tmo)
 	if !isBuilt {
 		log.Debugf("[%v] not enough tc for %v", r.ID(), tmo.View)
@@ -297,7 +357,7 @@ func (r *Replica) processTC(tc *pacemaker.TC) {
 		return
 	}
 	r.pm.UpdateTC(tc)
-	go r.pm.AdvanceView(tc.View)
+	r.pm.AdvanceView(tc.View)
 }
 
 func (r *Replica) processNewView(newView types.View) {
@@ -305,6 +365,12 @@ func (r *Replica) processNewView(newView types.View) {
 	if !r.IsLeader(r.ID(), newView) {
 		return
 	}
+	r.totalView = int(newView)
+	if newView == 1 {
+		r.proposeBlock(newView)
+		return
+	}
+
 	r.proposeBlock(newView)
 }
 
@@ -324,7 +390,7 @@ func (r *Replica) processLocalTmo() {
 
 func (r *Replica) proposeBlock(view types.View) {
 	log.Infof("[%v] is trying to propose a block", r.ID())
-	block := r.pd.ProduceBlock(view, r.Safety.Forkchoice(), r.ID())
+	block := r.pd.ProduceBlock(view, r.Safety.Forkchoice(), r.ID(), r.privateKey)
 	tc := r.pm.GetHighTC()
 	if tc != nil && tc.View > block.QC.View {
 		block.QC.View = tc.View
@@ -334,26 +400,10 @@ func (r *Replica) proposeBlock(view types.View) {
 	//	return
 	//}
 	log.Infof("[%v] is going to propose block for view: %v, id: %x, prevID: %x", r.ID(), view, block.ID, block.PrevID)
-	r.processBlock(block)
+	time.Sleep(10 * time.Millisecond)
 	r.Broadcast(block)
+	r.processBlock(block)
 	log.Debugf("[%v] broadcast is done for sending the block", r.ID())
-}
-
-func (r *Replica) LocalListen() {
-	for {
-		r.timer = time.NewTimer(r.pm.GetTimerForView())
-	L:
-		for {
-			select {
-			case view := <-r.pm.EnteringViewEvent():
-				r.eventChan <- view
-				break L
-			case timeout := <-r.timer.C:
-				r.eventChan <- timeout
-			}
-		}
-
-	}
 }
 
 // Start starts event loop
@@ -364,26 +414,32 @@ func (r *Replica) Start() {
 	}
 	go r.Run()
 	<-r.start
-	go r.LocalListen()
 	for r.isStarted.Load() {
-		event := <-r.eventChan
-		switch v := event.(type) {
-		case types.View:
-			r.processNewView(v)
-		case blockchain.Block:
-			r.processBlock(&v)
-		case blockchain.Vote:
-			r.processVote(&v)
-		case pacemaker.TMO:
-			r.processTmoMsg(&v)
-		case time.Time:
-			r.processLocalTmo()
-		case pacemaker.TC:
-			r.processTC(&v)
-		case blockchain.QC:
-			r.processCertificate(&v)
-		default:
-			log.Debugf("[%v] unknown event %v", r.ID(), v)
+		r.timer = time.NewTimer(r.pm.GetTimerForView())
+		log.Debugf("[%v] timer is reset", r.ID())
+	L:
+		for {
+			select {
+			case newView := <-r.pm.EnteringViewEvent():
+				go r.processNewView(newView)
+				break L
+			case newBlock := <-r.blockMsg:
+				go r.processBlock(newBlock)
+			case newVote := <-r.voteMsg:
+				go r.processVote(newVote)
+			case newTimeout := <-r.timeouts:
+				go r.processTmoMsg(newTimeout)
+			case <-r.timer.C:
+				go r.processLocalTmo()
+			case newTC := <-r.tcs:
+				go r.processTC(newTC)
+			case newQC := <-r.qcMsg:
+				if r.isByz {
+					go r.preprocessQC(newQC)
+				} else {
+					go r.processCertificate(newQC)
+				}
+			}
 		}
 	}
 }
