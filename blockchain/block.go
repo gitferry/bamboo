@@ -9,6 +9,8 @@ import (
 	"github.com/gitferry/bamboo/types"
 )
 
+var privateKey crypto.PrivateKey
+
 type Block struct {
 	types.View
 	QC       *QC
@@ -31,18 +33,18 @@ type rawBlock struct {
 }
 
 // MakeBlock creates an unsigned block
-func MakeBlock(view types.View, qc *QC, payload []*message.Transaction, proposer identity.NodeID) *Block {
+func MakeBlock(view types.View, qc *QC, payload []*message.Transaction, proposer identity.NodeID, priv *crypto.PrivateKey) *Block {
 	b := new(Block)
 	b.View = view
 	b.Proposer = proposer
 	b.QC = qc
 	b.Payload = payload
 	b.PrevID = qc.BlockID
-	b.makeID()
+	b.makeID(priv)
 	return b
 }
 
-func (b *Block) makeID() {
+func (b *Block) makeID(priv *crypto.PrivateKey) {
 	raw := &rawBlock{
 		View:     b.View,
 		QC:       b.QC,
@@ -56,4 +58,6 @@ func (b *Block) makeID() {
 	}
 	raw.Payload = payloadIDs
 	b.ID = crypto.MakeID(raw)
+	privateKey = *priv
+	b.Sig, _ = privateKey.Sign(crypto.IDToByte(b.ID), nil)
 }

@@ -5,6 +5,7 @@ import (
 
 	"github.com/gitferry/bamboo/crypto"
 	"github.com/gitferry/bamboo/identity"
+	"github.com/gitferry/bamboo/log"
 	"github.com/gitferry/bamboo/types"
 )
 
@@ -16,6 +17,7 @@ type Vote struct {
 }
 
 type QC struct {
+	Leader  identity.NodeID
 	View    types.View
 	BlockID crypto.Identifier
 	crypto.AggSig
@@ -27,11 +29,20 @@ type Quorum struct {
 	votes map[crypto.Identifier]map[identity.NodeID]*Vote
 }
 
-func MakeVote(view types.View, voter identity.NodeID, id crypto.Identifier) *Vote {
+var privKey crypto.PrivateKey
+
+func MakeVote(view types.View, voter identity.NodeID, id crypto.Identifier, priv *crypto.PrivateKey) *Vote {
+	privKey = *priv
+	sig, err := privKey.Sign(crypto.IDToByte(id), nil)
+	if err != nil {
+		log.Fatalf("[%v] has an error when signing a vote", voter)
+		return nil
+	}
 	return &Vote{
-		View:    view,
-		Voter:   voter,
-		BlockID: id,
+		View:      view,
+		Voter:     voter,
+		BlockID:   id,
+		Signature: sig,
 	}
 }
 
