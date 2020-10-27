@@ -6,7 +6,6 @@ import (
 	"github.com/gitferry/bamboo/identity"
 	"github.com/gitferry/bamboo/message"
 	"github.com/gitferry/bamboo/types"
-	"time"
 )
 
 type Producer struct {
@@ -19,13 +18,7 @@ func NewProducer() *Producer {
 
 func (pd *Producer) ProduceBlock(view types.View, qc *blockchain.QC, proposer identity.NodeID) *blockchain.Block {
 	var payload []*message.Transaction
-	for i := 0; i < 2; i++ {
-		payload = pd.mempool.Some(config.Configuration.BSize)
-		if len(payload) > 0 {
-			break
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
+	payload = pd.mempool.Some(config.Configuration.BSize)
 	block := blockchain.MakeBlock(view, qc, payload, proposer)
 	pd.mempool.Backend.RemTxns(payload)
 	return block

@@ -52,6 +52,7 @@ func NewHTTPClient() *HTTPClient {
 		HTTP:   config.Configuration.HTTPAddrs,
 		Client: &http.Client{},
 	}
+	// will not send request to Byzantine nodes
 	bzn := config.GetConfig().ByzNo
 	for i := 1; i <= bzn; i++ {
 		id := identity.NewNodeID(i)
@@ -102,6 +103,7 @@ func (c *HTTPClient) rest(key db.Key, value db.Value) (db.Value, map[string]stri
 	}
 	req.Header.Set(HTTPClientID, string(c.ID))
 	req.Header.Set(HTTPCommandID, strconv.Itoa(c.CID))
+	req.Header.Set("Connection", "keep-alive")
 	// r.Header.Set(HTTPTimestamp, strconv.FormatInt(time.Now().UnixNano(), 10))
 
 	rep, err := c.Client.Do(req)

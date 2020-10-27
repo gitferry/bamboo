@@ -4,8 +4,8 @@
 *.dll
 *.so
 *.dylib
-client
-server
+bin/client
+bin/server
 
 # Test binary, built with `go test -c`
 *.test
@@ -23,3 +23,4 @@ bin/*.csv
 # Dependency directories (remove the comment below to include it)
 # vendor/
 .idea/
+.DS_Store

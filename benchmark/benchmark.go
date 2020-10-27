@@ -136,9 +136,9 @@ func (b *Benchmark) next() int {
 		log.Fatalf("unknown distribution %s", b.Distribution)
 	}
 
-	// if b.Throttle > 0 {
-	// 	b.rate.Wait()
-	// }
+	if b.Throttle > 0 {
+		b.rate.Wait()
+	}
 
 	return key
 }
