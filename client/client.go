@@ -2,14 +2,10 @@ package main
 
 import (
 	"encoding/binary"
-	"flag"
-
 	"github.com/gitferry/bamboo"
 	"github.com/gitferry/bamboo/benchmark"
 	"github.com/gitferry/bamboo/db"
 )
-
-var load = flag.Bool("load", false, "Load K keys into DB")
 
 // Database implements bamboo.DB interface for benchmarking
 type Database struct {
