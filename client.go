@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"github.com/gitferry/bamboo/node"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -101,8 +102,8 @@ func (c *HTTPClient) rest(key db.Key, value db.Value) (db.Value, map[string]stri
 		log.Error(err)
 		return nil, nil, err
 	}
-	req.Header.Set(HTTPClientID, string(c.ID))
-	req.Header.Set(HTTPCommandID, strconv.Itoa(c.CID))
+	req.Header.Set(node.HTTPClientID, string(c.ID))
+	req.Header.Set(node.HTTPCommandID, strconv.Itoa(c.CID))
 	req.Header.Set("Connection", "keep-alive")
 	// r.Header.Set(HTTPTimestamp, strconv.FormatInt(time.Now().UnixNano(), 10))
 
