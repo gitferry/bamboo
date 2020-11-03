@@ -17,6 +17,7 @@ type Streamlet struct {
 	election.Election
 	pm              *pacemaker.Pacemaker
 	bc              *blockchain.BlockChain
+	notarizedChain  [][]*blockchain.Block
 	committedBlocks chan *blockchain.Block
 }
 
@@ -29,25 +30,40 @@ func NewStreamlet(
 	sl := new(Streamlet)
 	sl.Node = node
 	sl.Election = elec
+	sl.notarizedChain = make([][]*blockchain.Block, 0)
 	sl.pm = pm
 	sl.bc = blockchain.NewBlockchain(config.GetConfig().N())
 	sl.committedBlocks = committedBlocks
 	return sl
 }
 
+// ProcessBlock processes an incoming block as follows:
+// 1. check if the view of the block matches current view (ignore for now)
+// 2. check if the view of the block matches the proposer's view (ignore for now)
+// 3. insert the block into the block tree
+// 4. if the view of the block is lower than the current view, don't vote
+// 5. if the block is extending the longest notarized chain, vote for the block
+// 6. if the view of the block is higher than the the current view, buffer the block
+// and process it when entering that view
 func (sl *Streamlet) ProcessBlock(block *blockchain.Block) error {
 	log.Debugf("[%v] is processing block, view: %v, id: %x", sl.ID(), block.View, block.ID)
-	// TODO: should uncomment the following checks
+
+	// TODO: ignore some checks for now
+	curView := sl.pm.GetCurView()
+	if block.View < curView {
+		return fmt.Errorf("received a stale block")
+	}
+	if block.View > curView {
+		// buffer future blocks
+		// TODO: buffer the block
+		log.Debugf("[%v] buffer the block for future processing")
+		return nil
+	}
 	if !sl.Election.IsLeader(block.Proposer, block.View) {
 		return fmt.Errorf("received a proposal (%v) from an invalid leader (%v)", block.View, block.Proposer)
 	}
 	sl.bc.AddBlock(block)
-
-	shouldVote, err := sl.votingRule(block)
-	// TODO: add block buffer
-	if err != nil {
-		return fmt.Errorf("cannot decide whether to vote: %w", err)
-	}
+	shouldVote := sl.votingRule(block)
 	if !shouldVote {
 		log.Debugf("[%v] is not going to vote for block, id: %x", sl.ID(), block.ID)
 		return nil
@@ -58,6 +74,10 @@ func (sl *Streamlet) ProcessBlock(block *blockchain.Block) error {
 	sl.ProcessVote(vote)
 	sl.Broadcast(vote)
 	return nil
+}
+
+func (sl *Streamlet) ProcessCertificate(qc *blockchain.QC) {
+
 }
 
 func (sl *Streamlet) ProcessVote(vote *blockchain.Vote) {
@@ -94,7 +114,8 @@ func (sl *Streamlet) ProcessLocalTmo(view types.View) {
 
 func (sl *Streamlet) MakeProposal(payload []*message.Transaction) *blockchain.Block {
 	// TODO: choose the tail of the longest notarized chain
-	block := blockchain.MakeBlock(sl.pm.GetCurView(), sl.bc.GetHighQC(), payload, sl.ID())
+	//block := blockchain.MakeBlock(sl.pm.GetCurView(), sl.bc.GetHighQC(), payload, sl.ID())
+	var block *blockchain.Block
 	return block
 }
 
@@ -106,19 +127,23 @@ func (sl *Streamlet) processTC(tc *pacemaker.TC) {
 	go sl.pm.AdvanceView(tc.View)
 }
 
+// 1. advance view
+// 2. update notarized chain
+// 3. check commit rule
+// 4. commit blocks
 func (sl *Streamlet) processCertificate(qc *blockchain.QC) {
 	if qc.View < sl.pm.GetCurView() {
 		return
 	}
 	go sl.pm.AdvanceView(qc.View)
-	sl.bc.UpdateHighQC(qc)
-	log.Debugf("[%v] has advanced to view %v", sl.ID(), sl.pm.GetCurView())
-	sl.updateStateByQC(qc)
-	log.Debugf("[%v] has updated state by qc: %v", sl.ID(), qc.View)
+	err := sl.updateNotarizedChain(qc)
+	if err != nil {
+		log.Warningf("[%v] cannot notarize the block, %x: %w", sl.ID(), qc.BlockID, err)
+	}
 	if qc.View < 3 {
 		return
 	}
-	ok, block, _ := sl.commitRule(qc)
+	ok, block := sl.commitRule()
 	if !ok {
 		return
 	}
@@ -132,26 +157,73 @@ func (sl *Streamlet) processCertificate(qc *blockchain.QC) {
 	}
 }
 
-func (sl *Streamlet) votingRule(block *blockchain.Block) (bool, error) {
+func (sl *Streamlet) updateNotarizedChain(qc *blockchain.QC) error {
+	block, err := sl.bc.GetBlockByID(qc.BlockID)
+	if err != nil {
+		return fmt.Errorf("cannot find the block")
+	}
+	// check the last block in the notarized chain
+	// could be improved by checking view
+	for i := sl.GetNotarizedHeight() - 1; i >= 0; i-- {
+		lastBlocks := sl.notarizedChain[i]
+		for _, b := range lastBlocks {
+			if b.ID == block.PrevID {
+				newArray := make([]*blockchain.Block, 0)
+				newArray = append(newArray, block)
+				sl.notarizedChain = append(sl.notarizedChain, newArray)
+				return nil
+			}
+		}
+	}
+	return fmt.Errorf("the block is not extending the notarized chain")
+}
+
+func (sl *Streamlet) GetNotarizedHeight() int {
+	return len(sl.notarizedChain) + 1
+}
+
+// 1. get the tail of the longest notarized chain (could be more than one)
+// 2. check if the block is extending one of them
+func (sl *Streamlet) votingRule(block *blockchain.Block) bool {
 	if block.View <= 2 {
-		return true, nil
+		return true
 	}
-	// TODO: check if the block is extending the longest notarized chain
+	lastBlocks := sl.notarizedChain[sl.GetNotarizedHeight()-1]
+	for _, b := range lastBlocks {
+		if block.PrevID == b.ID {
+			return true
+		}
+	}
 
-	return true, nil
+	return false
 }
 
-func (sl *Streamlet) commitRule(qc *blockchain.QC) (bool, *blockchain.Block, error) {
-	// TODO: chop off the tail block of the longest notarized chain and
-	// commit the remaining blocks that have not been committed
-
-	return false, nil, nil
-}
-
-func (sl *Streamlet) updateStateByQC(qc *blockchain.QC) error {
-	if qc.View <= 2 {
-		return nil
+// 1. get the last three blocks in the notarized chain
+// 2. check if they are consecutive
+// 3. if so, return the second block to commit
+func (sl *Streamlet) commitRule() (bool, *blockchain.Block) {
+	height := sl.GetNotarizedHeight()
+	if height < 3 {
+		return false, nil
 	}
-	// TODO: update the notarized chain
-	return nil
+	lastBlocks := sl.notarizedChain[height-1]
+	if len(lastBlocks) != 1 {
+		return false, nil
+	}
+	lastBlock := lastBlocks[0]
+	secondBlocks := sl.notarizedChain[height-2]
+	if len(secondBlocks) != 1 {
+		return false, nil
+	}
+	secondBlock := secondBlocks[0]
+	firstBlocks := sl.notarizedChain[height-3]
+	if len(firstBlocks) != 1 {
+		return false, nil
+	}
+	firstBlock := firstBlocks[0]
+	// check three-chain
+	if ((firstBlock.View + 1) == secondBlock.View) && ((secondBlock.View + 1) == lastBlock.View) {
+		return true, secondBlock
+	}
+	return false, nil
 }

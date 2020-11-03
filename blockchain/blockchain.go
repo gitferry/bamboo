@@ -8,9 +8,9 @@ import (
 )
 
 type BlockChain struct {
-	highQC  *QC
-	forrest *LevelledForest
-	quorum  *Quorum
+	forrest          *LevelledForest
+	quorum           *Quorum
+	longestTailBlock *Block
 	// measurement
 	highestComitted       int
 	committedBlocks       int
@@ -21,7 +21,6 @@ func NewBlockchain(n int) *BlockChain {
 	bc := new(BlockChain)
 	bc.forrest = NewLevelledForest()
 	bc.quorum = NewQuorum(n)
-	bc.highQC = &QC{View: 0}
 	return bc
 }
 
@@ -29,23 +28,10 @@ func (bc *BlockChain) AddBlock(block *Block) {
 	blockContainer := &BlockContainer{block}
 	// TODO: add checks
 	bc.forrest.AddVertex(blockContainer)
-	if block.QC.View > bc.highQC.View {
-		bc.highQC = block.QC
-	}
 }
 
 func (bc *BlockChain) AddVote(vote *Vote) (bool, *QC) {
 	return bc.quorum.Add(vote)
-}
-
-func (bc *BlockChain) GetHighQC() *QC {
-	return bc.highQC
-}
-
-func (bc *BlockChain) UpdateHighQC(qc *QC) {
-	if qc.View > bc.highQC.View {
-		bc.highQC = qc
-	}
 }
 
 func (bc *BlockChain) CalForkingRate() float32 {

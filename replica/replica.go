@@ -2,7 +2,6 @@ package replica
 
 import (
 	"encoding/gob"
-	"github.com/gitferry/bamboo/node"
 	"time"
 
 	"go.uber.org/atomic"
@@ -15,7 +14,9 @@ import (
 	"github.com/gitferry/bamboo/log"
 	"github.com/gitferry/bamboo/mempool"
 	"github.com/gitferry/bamboo/message"
+	"github.com/gitferry/bamboo/node"
 	"github.com/gitferry/bamboo/pacemaker"
+	"github.com/gitferry/bamboo/streamlet"
 	"github.com/gitferry/bamboo/types"
 )
 
@@ -30,6 +31,7 @@ type Replica struct {
 	isByz           bool
 	timer           *time.Timer
 	committedBlocks chan *blockchain.Block
+	eventChan       chan interface{}
 }
 
 // NewReplica creates a new replica instance
@@ -43,14 +45,16 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 	r.pd = mempool.NewProducer()
 	r.pm = pacemaker.NewPacemaker(config.GetConfig().N())
 	r.start = make(chan bool)
+	r.eventChan = make(chan interface{})
 	r.committedBlocks = make(chan *blockchain.Block)
 	r.isByz = isByz
 	r.Register(blockchain.Block{}, r.HandleBlock)
 	r.Register(blockchain.Vote{}, r.HandleVote)
 	r.Register(pacemaker.TMO{}, r.HandleTmo)
+	r.Register(blockchain.QC{}, r.HandleQC)
 	r.Register(message.Transaction{}, r.handleTxn)
-	gob.Register(blockchain.Block{})
 	gob.Register(blockchain.QC{})
+	gob.Register(blockchain.Block{})
 	gob.Register(blockchain.Vote{})
 	gob.Register(pacemaker.TC{})
 	gob.Register(pacemaker.TMO{})
@@ -59,6 +63,8 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 		r.Safety = hotstuff.NewHotStuff(r.Node, r.pm, r.Election, r.committedBlocks)
 	//case "tchs":
 	//	r.Safety = tchs.Newtchs(bc)
+	case "streamlet":
+		r.Safety = streamlet.NewStreamlet(r.Node, r.pm, r.Election, r.committedBlocks)
 	default:
 		r.Safety = hotstuff.NewHotStuff(r.Node, r.pm, r.Election, r.committedBlocks)
 	}
@@ -69,20 +75,30 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 
 func (r *Replica) HandleBlock(block blockchain.Block) {
 	log.Debugf("[%v] received a block from %v, view is %v", r.ID(), block.Proposer, block.View)
-	err := r.Safety.ProcessBlock(&block)
-	if err != nil {
-		log.Warningf("[%v] cannot process block %w", r.ID(), err)
-	}
+	//err := r.Safety.ProcessBlock(&block)
+	//if err != nil {
+	//	log.Warningf("[%v] cannot process block %w", r.ID(), err)
+	//	return
+	//}
+	r.eventChan <- block
 }
 
 func (r *Replica) HandleVote(vote blockchain.Vote) {
 	log.Debugf("[%v] received a vote from %v, blockID is %x", r.ID(), vote.Voter, vote.BlockID)
-	r.Safety.ProcessVote(&vote)
+	//r.Safety.ProcessVote(&vote)
+	r.eventChan <- vote
+}
+
+func (r *Replica) HandleQC(qc blockchain.QC) {
+	log.Debugf("[%v] received a qc, blockID is %x", r.ID(), qc.BlockID)
+	//r.Safety.ProcessVote(&vote)
+	r.eventChan <- qc
 }
 
 func (r *Replica) HandleTmo(tmo pacemaker.TMO) {
 	log.Debugf("[%v] received a timeout from %v for view %v", r.ID(), tmo.NodeID, tmo.View)
-	r.Safety.ProcessRemoteTmo(&tmo)
+	//r.Safety.ProcessRemoteTmo(&tmo)
+	r.eventChan <- tmo
 }
 
 func (r *Replica) handleTxn(m message.Transaction) {
@@ -123,23 +139,15 @@ func (r *Replica) processNewView(newView types.View) {
 }
 
 func (r *Replica) proposeBlock(view types.View) {
-	log.Infof("[%v] is trying to propose a block", r.ID())
 	block := r.Safety.MakeProposal(r.pd.GeneratePayload())
 	log.Infof("[%v] is going to propose block for view: %v, id: %x, prevID: %x", r.ID(), view, block.ID, block.PrevID)
-	_ = r.Safety.ProcessBlock(block)
+	go r.HandleBlock(*block)
 	r.Broadcast(block)
 	log.Debugf("[%v] broadcast is done for sending the block", r.ID())
 }
 
-// Start starts event loop
-func (r *Replica) Start() {
-	// fail-stop case
-	if r.isByz {
-		return
-	}
-	go r.Run()
-	<-r.start
-	for r.isStarted.Load() {
+func (r *Replica) ListenLocalEvent() {
+	for {
 		r.timer = time.NewTimer(r.pm.GetTimerForView())
 	L:
 		for {
@@ -152,6 +160,30 @@ func (r *Replica) Start() {
 			case committedBlock := <-r.committedBlocks:
 				r.processCommittedBlock(committedBlock)
 			}
+		}
+	}
+}
+
+// Start starts event loop
+func (r *Replica) Start() {
+	// fail-stop case
+	if r.isByz {
+		return
+	}
+	go r.Run()
+	<-r.start
+	go r.ListenLocalEvent()
+	for r.isStarted.Load() {
+		event := <-r.eventChan
+		switch v := event.(type) {
+		case blockchain.Block:
+			_ = r.Safety.ProcessBlock(&v)
+		case blockchain.Vote:
+			r.Safety.ProcessVote(&v)
+		case pacemaker.TMO:
+			r.Safety.ProcessRemoteTmo(&v)
+		case blockchain.QC:
+			r.Safety.ProcessCertificate(&v)
 		}
 	}
 }

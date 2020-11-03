@@ -12,5 +12,6 @@ type Safety interface {
 	ProcessVote(vote *blockchain.Vote)
 	ProcessRemoteTmo(tmo *pacemaker.TMO)
 	ProcessLocalTmo(view types.View)
+	ProcessCertificate(qc *blockchain.QC)
 	MakeProposal(payload []*message.Transaction) *blockchain.Block
 }

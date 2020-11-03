@@ -17,6 +17,8 @@ github.com/StackExchange/wmi v0.0.0-20180116203802-5d049714c4a6/go.mod h1:3eOhrU
 github.com/VictoriaMetrics/fastcache v1.5.7/go.mod h1:ptDBkNMQI4RtmVo8VS/XwRY6RoTu1dAWCbrk+6WsEM8=
 github.com/ailidani/paxi v0.0.0-20200403074310-56f526a6d468 h1:6eS9zUAaKURf680MlK3IcuHjbZi4mnRRwmfQA391iKA=
 github.com/ailidani/paxi v0.0.0-20200403074310-56f526a6d468/go.mod h1:kfxiU5NfDNpLLlxizGRKvkKzdDQwrMF5hA+LcBOyZ+Y=
+github.com/ailidani/paxi v0.0.0-20200918165309-7127c003b391 h1:/NmGObc1pM3tfv1dS9zXPCaD8prBY2T/3VYPSNBobl0=
+github.com/ailidani/paxi v0.0.0-20200918165309-7127c003b391/go.mod h1:kfxiU5NfDNpLLlxizGRKvkKzdDQwrMF5hA+LcBOyZ+Y=
 github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc/go.mod h1:LOuyumcjzFXgccqObfd/Ljyb9UuFJ6TxHnclSeseNhc=
 github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 h1:JYp7IbQjafoB+tBA3gMyHYHrpOtNuDiK/uB5uXxq5wM=
 github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751/go.mod h1:LOuyumcjzFXgccqObfd/Ljyb9UuFJ6TxHnclSeseNhc=
