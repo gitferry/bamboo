@@ -102,12 +102,11 @@ func (n *node) handleRoot(w http.ResponseWriter, r *http.Request) {
 		json.Unmarshal(body, &cmd)
 	}
 
-	n.totalTxn++
 	req.Command = cmd
 	req.Timestamp = time.Now().UnixNano()
 	req.NodeID = n.id // TODO does this work when forward twice
 	req.C = make(chan message.TransactionReply, 1)
-	req.ID = string(n.id) + "." + strconv.Itoa(n.totalTxn)
+	req.ID = string(n.id) + "." + cmd.String()
 
 	n.MessageChan <- req
 

@@ -75,29 +75,21 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 
 func (r *Replica) HandleBlock(block blockchain.Block) {
 	log.Debugf("[%v] received a block from %v, view is %v", r.ID(), block.Proposer, block.View)
-	//err := r.Safety.ProcessBlock(&block)
-	//if err != nil {
-	//	log.Warningf("[%v] cannot process block %w", r.ID(), err)
-	//	return
-	//}
 	r.eventChan <- block
 }
 
 func (r *Replica) HandleVote(vote blockchain.Vote) {
 	log.Debugf("[%v] received a vote from %v, blockID is %x", r.ID(), vote.Voter, vote.BlockID)
-	//r.Safety.ProcessVote(&vote)
 	r.eventChan <- vote
 }
 
 func (r *Replica) HandleQC(qc blockchain.QC) {
 	log.Debugf("[%v] received a qc, blockID is %x", r.ID(), qc.BlockID)
-	//r.Safety.ProcessVote(&vote)
 	r.eventChan <- qc
 }
 
 func (r *Replica) HandleTmo(tmo pacemaker.TMO) {
 	log.Debugf("[%v] received a timeout from %v for view %v", r.ID(), tmo.NodeID, tmo.View)
-	//r.Safety.ProcessRemoteTmo(&tmo)
 	r.eventChan <- tmo
 }
 
@@ -141,8 +133,8 @@ func (r *Replica) processNewView(newView types.View) {
 func (r *Replica) proposeBlock(view types.View) {
 	block := r.Safety.MakeProposal(r.pd.GeneratePayload())
 	log.Infof("[%v] is going to propose block for view: %v, id: %x, prevID: %x", r.ID(), view, block.ID, block.PrevID)
-	go r.HandleBlock(*block)
 	r.Broadcast(block)
+	_ = r.Safety.ProcessBlock(block)
 	log.Debugf("[%v] broadcast is done for sending the block", r.ID())
 }
 
@@ -153,7 +145,7 @@ func (r *Replica) ListenLocalEvent() {
 		for {
 			select {
 			case view := <-r.pm.EnteringViewEvent():
-				r.processNewView(view)
+				r.eventChan <- view
 				break L
 			case <-r.timer.C:
 				r.Safety.ProcessLocalTmo(r.pm.GetCurView())
@@ -176,6 +168,8 @@ func (r *Replica) Start() {
 	for r.isStarted.Load() {
 		event := <-r.eventChan
 		switch v := event.(type) {
+		case types.View:
+			r.processNewView(v)
 		case blockchain.Block:
 			_ = r.Safety.ProcessBlock(&v)
 		case blockchain.Vote:

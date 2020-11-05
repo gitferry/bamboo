@@ -30,6 +30,7 @@ type HotStuff struct {
 	committedBlocks chan *blockchain.Block
 	bufferedQCs     *BufferQC
 	bufferedBlocks  map[crypto.Identifier]*blockchain.Block
+	bufferedVotes   map[crypto.Identifier][]*blockchain.Vote
 	highQC          *blockchain.QC
 	mu              sync.Mutex
 }
@@ -58,14 +59,14 @@ func NewHotStuff(
 }
 
 func (bqc *BufferQC) Add(qc *blockchain.QC) {
-	bqc.mu.Lock()
-	defer bqc.mu.Unlock()
+	//bqc.mu.Lock()
+	//defer bqc.mu.Unlock()
 	bqc.qcs[qc.BlockID] = qc
 }
 
 func (bqc *BufferQC) Get(id crypto.Identifier) (*blockchain.QC, bool) {
-	bqc.mu.Lock()
-	defer bqc.mu.Unlock()
+	//bqc.mu.Lock()
+	//defer bqc.mu.Unlock()
 	qc, ok := bqc.qcs[id]
 	return qc, ok
 }
@@ -85,7 +86,6 @@ func (hs *HotStuff) ProcessBlock(block *blockchain.Block) error {
 		return fmt.Errorf("the block should contain a QC")
 	}
 	hs.ProcessCertificate(block.QC)
-	// TODO: should uncomment the following checks
 	curView = hs.pm.GetCurView()
 	if block.View < curView {
 		log.Warningf("[%v] received a stale proposal from %v", hs.ID(), block.Proposer)
@@ -97,23 +97,22 @@ func (hs *HotStuff) ProcessBlock(block *blockchain.Block) error {
 	hs.bc.AddBlock(block)
 
 	// process buffered QC
-	//hs.mu.Lock()
 	qc, ok := hs.bufferedQCs.Get(block.ID)
 	if ok {
 		hs.ProcessCertificate(qc)
+		// TODO: garbage collection
 		//delete(hs.bufferedQCs, block.ID)
 	}
-	//hs.mu.Unlock()
 
-	//shouldVote, err := hs.votingRule(block)
-	//if err != nil {
-	//	log.Errorf("cannot decide whether to vote the block, %w", err)
-	//	return err
-	//}
-	//if !shouldVote {
-	//	log.Debugf("[%v] is not going to vote for block, id: %x", hs.ID(), block.ID)
-	//	return nil
-	//}
+	shouldVote, err := hs.votingRule(block)
+	if err != nil {
+		log.Errorf("cannot decide whether to vote the block, %w", err)
+		return err
+	}
+	if !shouldVote {
+		log.Debugf("[%v] is not going to vote for block, id: %x", hs.ID(), block.ID)
+		return nil
+	}
 	vote := blockchain.MakeVote(block.View, hs.ID(), block.ID)
 	// TODO: sign the vote
 	// vote to the current leader
@@ -123,6 +122,7 @@ func (hs *HotStuff) ProcessBlock(block *blockchain.Block) error {
 	} else {
 		hs.Send(voteAggregator, vote)
 	}
+	log.Debugf("[%v] vote is sent, id: %x", hs.ID(), vote.BlockID)
 
 	b, ok := hs.bufferedBlocks[block.ID]
 	if ok {
@@ -133,8 +133,10 @@ func (hs *HotStuff) ProcessBlock(block *blockchain.Block) error {
 }
 
 func (hs *HotStuff) ProcessVote(vote *blockchain.Vote) {
+	log.Debugf("[%v] is processing the vote, block id: %x", hs.ID(), vote.BlockID)
 	isBuilt, qc := hs.bc.AddVote(vote)
 	if !isBuilt {
+		log.Debugf("[%v] not sufficient votes to build a QC, block id: %x", hs.ID(), vote.BlockID)
 		return
 	}
 	// send the QC to the next leader
@@ -211,24 +213,27 @@ func (hs *HotStuff) preprocessQC(qc *blockchain.QC) {
 }
 
 func (hs *HotStuff) GetHighQC() *blockchain.QC {
+	hs.mu.Lock()
+	defer hs.mu.Unlock()
 	return hs.highQC
 }
 
 func (hs *HotStuff) updateHighQC(qc *blockchain.QC) {
+	hs.mu.Lock()
+	defer hs.mu.Unlock()
 	if qc.View > hs.highQC.View {
 		hs.highQC = qc
 	}
 }
 
 func (hs *HotStuff) ProcessCertificate(qc *blockchain.QC) {
+	log.Debugf("[%v] is processing a QC, block id: %x", hs.ID(), qc.BlockID)
 	if qc.View < hs.pm.GetCurView() {
 		return
 	}
 	err := hs.updatePreferredView(qc)
 	if err != nil {
-		//hs.mu.Lock()
 		hs.bufferedQCs.Add(qc)
-		//hs.mu.Unlock()
 		log.Debugf("[%v] a qc is buffered, view: %v, id: %x", hs.ID(), qc.View, qc.BlockID)
 		return
 	}
@@ -250,9 +255,11 @@ func (hs *HotStuff) ProcessCertificate(qc *blockchain.QC) {
 		log.Errorf("[%v] cannot commit blocks", hs.ID())
 		return
 	}
-	for _, block := range committedBlocks {
-		hs.committedBlocks <- block
-	}
+	go func() {
+		for _, block := range committedBlocks {
+			hs.committedBlocks <- block
+		}
+	}()
 }
 
 func (hs *HotStuff) votingRule(block *blockchain.Block) (bool, error) {
@@ -270,8 +277,8 @@ func (hs *HotStuff) votingRule(block *blockchain.Block) (bool, error) {
 }
 
 func (hs *HotStuff) commitRule(qc *blockchain.QC) (bool, *blockchain.Block, error) {
-	hs.mu.Lock()
-	defer hs.mu.Unlock()
+	//hs.mu.Lock()
+	//defer hs.mu.Unlock()
 	parentBlock, err := hs.bc.GetParentBlock(qc.BlockID)
 	if err != nil {
 		return false, nil, fmt.Errorf("cannot commit any block: %w", err)
@@ -287,8 +294,8 @@ func (hs *HotStuff) commitRule(qc *blockchain.QC) (bool, *blockchain.Block, erro
 }
 
 func (hs *HotStuff) updateLastVotedView(targetView types.View) error {
-	hs.mu.Lock()
-	defer hs.mu.Unlock()
+	//hs.mu.Lock()
+	//defer hs.mu.Unlock()
 	if targetView < hs.lastVotedView {
 		return fmt.Errorf("target view is lower than the last voted view")
 	}
