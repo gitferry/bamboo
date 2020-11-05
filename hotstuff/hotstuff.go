@@ -115,8 +115,8 @@ func (hs *HotStuff) ProcessBlock(block *blockchain.Block) error {
 	}
 	vote := blockchain.MakeVote(block.View, hs.ID(), block.ID)
 	// TODO: sign the vote
-	// vote to the current leader
-	voteAggregator := block.Proposer
+	// vote to the next leader
+	voteAggregator := hs.FindLeaderFor(block.View + 1)
 	if voteAggregator == hs.ID() {
 		hs.ProcessVote(vote)
 	} else {
@@ -140,17 +140,17 @@ func (hs *HotStuff) ProcessVote(vote *blockchain.Vote) {
 		return
 	}
 	// send the QC to the next leader
-	log.Debugf("[%v] a qc is built, block id: %x", hs.ID(), qc.BlockID)
-	nextLeader := hs.FindLeaderFor(qc.View + 1)
-	if nextLeader == hs.ID() {
-		if config.Configuration.IsByzantine(nextLeader) {
-			hs.preprocessQC(qc)
-		} else {
-			hs.ProcessCertificate(qc)
-		}
-	} else {
-		hs.Send(nextLeader, qc)
-	}
+	//log.Debugf("[%v] a qc is built, block id: %x", hs.ID(), qc.BlockID)
+	//nextLeader := hs.FindLeaderFor(qc.View + 1)
+	//if nextLeader == hs.ID() {
+	//	if config.Configuration.IsByzantine(nextLeader) {
+	//		hs.preprocessQC(qc)
+	//	} else {
+	hs.ProcessCertificate(qc)
+	//	}
+	//} else {
+	//	hs.Send(nextLeader, qc)
+	//}
 
 	return
 }
