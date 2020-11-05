@@ -2,6 +2,7 @@ package replica
 
 import (
 	"encoding/gob"
+	"github.com/gitferry/bamboo/tchs"
 	"time"
 
 	"go.uber.org/atomic"
@@ -61,8 +62,8 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 	switch alg {
 	case "hotstuff":
 		r.Safety = hotstuff.NewHotStuff(r.Node, r.pm, r.Election, r.committedBlocks)
-	//case "tchs":
-	//	r.Safety = tchs.Newtchs(bc)
+	case "tchs":
+		r.Safety = tchs.NewTchs(r.Node, r.pm, r.Election, r.committedBlocks)
 	case "streamlet":
 		r.Safety = streamlet.NewStreamlet(r.Node, r.pm, r.Election, r.committedBlocks)
 	default:

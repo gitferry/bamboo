@@ -2,23 +2,18 @@ package hotstuff
 
 import (
 	"fmt"
-	"github.com/gitferry/bamboo/crypto"
-	"github.com/gitferry/bamboo/node"
 	"sync"
 
 	"github.com/gitferry/bamboo/blockchain"
 	"github.com/gitferry/bamboo/config"
+	"github.com/gitferry/bamboo/crypto"
 	"github.com/gitferry/bamboo/election"
 	"github.com/gitferry/bamboo/log"
 	"github.com/gitferry/bamboo/message"
+	"github.com/gitferry/bamboo/node"
 	"github.com/gitferry/bamboo/pacemaker"
 	"github.com/gitferry/bamboo/types"
 )
-
-type BufferQC struct {
-	qcs map[crypto.Identifier]*blockchain.QC
-	mu  sync.Mutex
-}
 
 type HotStuff struct {
 	node.Node
@@ -28,17 +23,11 @@ type HotStuff struct {
 	preferredView   types.View
 	bc              *blockchain.BlockChain
 	committedBlocks chan *blockchain.Block
-	bufferedQCs     *BufferQC
+	bufferedQCs     map[crypto.Identifier]*blockchain.QC
 	bufferedBlocks  map[crypto.Identifier]*blockchain.Block
 	bufferedVotes   map[crypto.Identifier][]*blockchain.Vote
 	highQC          *blockchain.QC
 	mu              sync.Mutex
-}
-
-func NewBufferQC() *BufferQC {
-	bqc := new(BufferQC)
-	bqc.qcs = make(map[crypto.Identifier]*blockchain.QC)
-	return bqc
 }
 
 func NewHotStuff(
@@ -52,23 +41,10 @@ func NewHotStuff(
 	hs.pm = pm
 	hs.bc = blockchain.NewBlockchain(config.GetConfig().N())
 	hs.bufferedBlocks = make(map[crypto.Identifier]*blockchain.Block)
-	hs.bufferedQCs = NewBufferQC()
+	hs.bufferedQCs = make(map[crypto.Identifier]*blockchain.QC)
 	hs.highQC = &blockchain.QC{View: 0}
 	hs.committedBlocks = committedBlocks
 	return hs
-}
-
-func (bqc *BufferQC) Add(qc *blockchain.QC) {
-	//bqc.mu.Lock()
-	//defer bqc.mu.Unlock()
-	bqc.qcs[qc.BlockID] = qc
-}
-
-func (bqc *BufferQC) Get(id crypto.Identifier) (*blockchain.QC, bool) {
-	//bqc.mu.Lock()
-	//defer bqc.mu.Unlock()
-	qc, ok := bqc.qcs[id]
-	return qc, ok
 }
 
 func (hs *HotStuff) ProcessBlock(block *blockchain.Block) error {
@@ -97,11 +73,10 @@ func (hs *HotStuff) ProcessBlock(block *blockchain.Block) error {
 	hs.bc.AddBlock(block)
 
 	// process buffered QC
-	qc, ok := hs.bufferedQCs.Get(block.ID)
+	qc, ok := hs.bufferedQCs[block.ID]
 	if ok {
 		hs.ProcessCertificate(qc)
 		// TODO: garbage collection
-		//delete(hs.bufferedQCs, block.ID)
 	}
 
 	shouldVote, err := hs.votingRule(block)
@@ -128,7 +103,6 @@ func (hs *HotStuff) ProcessBlock(block *blockchain.Block) error {
 	if ok {
 		return hs.ProcessBlock(b)
 	}
-
 	return nil
 }
 
@@ -139,20 +113,7 @@ func (hs *HotStuff) ProcessVote(vote *blockchain.Vote) {
 		log.Debugf("[%v] not sufficient votes to build a QC, block id: %x", hs.ID(), vote.BlockID)
 		return
 	}
-	// send the QC to the next leader
-	//log.Debugf("[%v] a qc is built, block id: %x", hs.ID(), qc.BlockID)
-	//nextLeader := hs.FindLeaderFor(qc.View + 1)
-	//if nextLeader == hs.ID() {
-	//	if config.Configuration.IsByzantine(nextLeader) {
-	//		hs.preprocessQC(qc)
-	//	} else {
 	hs.ProcessCertificate(qc)
-	//	}
-	//} else {
-	//	hs.Send(nextLeader, qc)
-	//}
-
-	return
 }
 
 func (hs *HotStuff) ProcessRemoteTmo(tmo *pacemaker.TMO) {
@@ -233,16 +194,12 @@ func (hs *HotStuff) ProcessCertificate(qc *blockchain.QC) {
 	}
 	err := hs.updatePreferredView(qc)
 	if err != nil {
-		hs.bufferedQCs.Add(qc)
+		hs.bufferedQCs[qc.BlockID] = qc
 		log.Debugf("[%v] a qc is buffered, view: %v, id: %x", hs.ID(), qc.View, qc.BlockID)
 		return
 	}
 	hs.pm.AdvanceView(qc.View)
 	hs.updateHighQC(qc)
-	// TODO: send the qc to next leader
-	//if !r.IsLeader(r.ID(), r.pm.GetCurView()) {
-	//	go r.Send(r.FindLeaderFor(r.pm.GetCurView()), qc)
-	//}
 	if qc.View < 3 {
 		return
 	}
