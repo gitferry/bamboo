@@ -52,9 +52,7 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 	r.Register(blockchain.Block{}, r.HandleBlock)
 	r.Register(blockchain.Vote{}, r.HandleVote)
 	r.Register(pacemaker.TMO{}, r.HandleTmo)
-	r.Register(blockchain.QC{}, r.HandleQC)
 	r.Register(message.Transaction{}, r.handleTxn)
-	gob.Register(blockchain.QC{})
 	gob.Register(blockchain.Block{})
 	gob.Register(blockchain.Vote{})
 	gob.Register(pacemaker.TC{})
@@ -84,11 +82,6 @@ func (r *Replica) HandleVote(vote blockchain.Vote) {
 	r.eventChan <- vote
 }
 
-func (r *Replica) HandleQC(qc blockchain.QC) {
-	log.Debugf("[%v] received a qc, blockID is %x", r.ID(), qc.BlockID)
-	r.eventChan <- qc
-}
-
 func (r *Replica) HandleTmo(tmo pacemaker.TMO) {
 	log.Debugf("[%v] received a timeout from %v for view %v", r.ID(), tmo.NodeID, tmo.View)
 	r.eventChan <- tmo
@@ -104,7 +97,7 @@ func (r *Replica) handleTxn(m message.Transaction) {
 		time.Sleep(200 * time.Millisecond)
 	}
 
-	//	the last node is to kick-off the protocol
+	// kick-off the protocol
 	if r.pm.GetCurView() == 0 && r.IsLeader(r.ID(), 1) {
 		log.Debugf("[%v] is going to kick off the protocol", r.ID())
 		r.pm.AdvanceView(0)
@@ -177,8 +170,6 @@ func (r *Replica) Start() {
 			r.Safety.ProcessVote(&v)
 		case pacemaker.TMO:
 			r.Safety.ProcessRemoteTmo(&v)
-		case blockchain.QC:
-			r.Safety.ProcessCertificate(&v)
 		}
 	}
 }

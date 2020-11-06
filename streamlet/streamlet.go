@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/gitferry/bamboo/blockchain"
 	"github.com/gitferry/bamboo/config"
+	"github.com/gitferry/bamboo/crypto"
 	"github.com/gitferry/bamboo/election"
 	"github.com/gitferry/bamboo/log"
 	"github.com/gitferry/bamboo/message"
@@ -18,6 +19,8 @@ type Streamlet struct {
 	pm              *pacemaker.Pacemaker
 	bc              *blockchain.BlockChain
 	notarizedChain  [][]*blockchain.Block
+	bufferedBlocks  map[crypto.Identifier]*blockchain.Block
+	bufferedQCs     map[crypto.Identifier]*blockchain.QC
 	committedBlocks chan *blockchain.Block
 }
 
@@ -30,10 +33,13 @@ func NewStreamlet(
 	sl := new(Streamlet)
 	sl.Node = node
 	sl.Election = elec
-	sl.notarizedChain = make([][]*blockchain.Block, 0)
 	sl.pm = pm
-	sl.bc = blockchain.NewBlockchain(config.GetConfig().N())
 	sl.committedBlocks = committedBlocks
+	sl.bc = blockchain.NewBlockchain(config.GetConfig().N())
+	sl.bufferedBlocks = make(map[crypto.Identifier]*blockchain.Block)
+	sl.bufferedQCs = make(map[crypto.Identifier]*blockchain.QC)
+	sl.notarizedChain = make([][]*blockchain.Block, 0)
+	sl.pm.AdvanceView(0)
 	return sl
 }
 
@@ -47,15 +53,13 @@ func NewStreamlet(
 // and process it when entering that view
 func (sl *Streamlet) ProcessBlock(block *blockchain.Block) error {
 	log.Debugf("[%v] is processing block, view: %v, id: %x", sl.ID(), block.View, block.ID)
-
-	// TODO: ignore some checks for now
 	curView := sl.pm.GetCurView()
 	if block.View < curView {
 		return fmt.Errorf("received a stale block")
 	}
 	if block.View > curView {
 		// buffer future blocks
-		// TODO: buffer the block
+		sl.bufferedBlocks[block.PrevID] = block
 		log.Debugf("[%v] buffer the block for future processing")
 		return nil
 	}
@@ -73,11 +77,12 @@ func (sl *Streamlet) ProcessBlock(block *blockchain.Block) error {
 	// vote to the current leader
 	sl.ProcessVote(vote)
 	sl.Broadcast(vote)
+
+	b, ok := sl.bufferedBlocks[block.ID]
+	if ok {
+		return sl.ProcessBlock(b)
+	}
 	return nil
-}
-
-func (sl *Streamlet) ProcessCertificate(qc *blockchain.QC) {
-
 }
 
 func (sl *Streamlet) ProcessVote(vote *blockchain.Vote) {
@@ -113,9 +118,19 @@ func (sl *Streamlet) ProcessLocalTmo(view types.View) {
 }
 
 func (sl *Streamlet) MakeProposal(payload []*message.Transaction) *blockchain.Block {
-	// TODO: choose the tail of the longest notarized chain
-	//block := blockchain.MakeBlock(sl.pm.GetCurView(), sl.bc.GetHighQC(), payload, sl.ID())
-	var block *blockchain.Block
+	var prevID crypto.Identifier
+	if sl.pm.GetCurView() == 1 {
+		prevID = crypto.MakeID("Genesis block")
+	} else {
+		tailNotarizedBlock := sl.notarizedChain[sl.GetNotarizedHeight()][0]
+		prevID = tailNotarizedBlock.ID
+	}
+	block := blockchain.MakeBlock(sl.pm.GetCurView(), &blockchain.QC{
+		View:      0,
+		BlockID:   prevID,
+		AggSig:    nil,
+		Signature: nil,
+	}, prevID, payload, sl.ID())
 	return block
 }
 
@@ -135,10 +150,13 @@ func (sl *Streamlet) processCertificate(qc *blockchain.QC) {
 	if qc.View < sl.pm.GetCurView() {
 		return
 	}
-	go sl.pm.AdvanceView(qc.View)
+	sl.pm.AdvanceView(qc.View)
 	err := sl.updateNotarizedChain(qc)
 	if err != nil {
+		// the corresponding block does not exist, buffer the qc
+		sl.bufferedQCs[qc.BlockID] = qc
 		log.Warningf("[%v] cannot notarize the block, %x: %w", sl.ID(), qc.BlockID, err)
+		return
 	}
 	if qc.View < 3 {
 		return
@@ -152,9 +170,11 @@ func (sl *Streamlet) processCertificate(qc *blockchain.QC) {
 		log.Errorf("[%v] cannot commit blocks", sl.ID())
 		return
 	}
-	for _, block := range committedBlocks {
-		sl.committedBlocks <- block
-	}
+	go func() {
+		for _, block := range committedBlocks {
+			sl.committedBlocks <- block
+		}
+	}()
 }
 
 func (sl *Streamlet) updateNotarizedChain(qc *blockchain.QC) error {

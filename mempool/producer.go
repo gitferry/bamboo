@@ -19,7 +19,7 @@ func NewProducer() *Producer {
 func (pd *Producer) ProduceBlock(view types.View, qc *blockchain.QC, proposer identity.NodeID) *blockchain.Block {
 	var payload []*message.Transaction
 	payload = pd.mempool.Some(config.Configuration.BSize)
-	block := blockchain.MakeBlock(view, qc, payload, proposer)
+	block := blockchain.MakeBlock(view, qc, qc.BlockID, payload, proposer)
 	pd.mempool.Backend.RemTxns(payload)
 	return block
 }

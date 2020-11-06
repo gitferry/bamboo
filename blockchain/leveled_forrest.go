@@ -2,7 +2,6 @@ package blockchain
 
 import (
 	"fmt"
-
 	"github.com/gitferry/bamboo/crypto"
 )
 

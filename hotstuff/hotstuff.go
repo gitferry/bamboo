@@ -25,7 +25,6 @@ type HotStuff struct {
 	committedBlocks chan *blockchain.Block
 	bufferedQCs     map[crypto.Identifier]*blockchain.QC
 	bufferedBlocks  map[crypto.Identifier]*blockchain.Block
-	bufferedVotes   map[crypto.Identifier][]*blockchain.Vote
 	highQC          *blockchain.QC
 	mu              sync.Mutex
 }
@@ -61,7 +60,7 @@ func (hs *HotStuff) ProcessBlock(block *blockchain.Block) error {
 	} else {
 		return fmt.Errorf("the block should contain a QC")
 	}
-	hs.ProcessCertificate(block.QC)
+	hs.processCertificate(block.QC)
 	curView = hs.pm.GetCurView()
 	if block.View < curView {
 		log.Warningf("[%v] received a stale proposal from %v", hs.ID(), block.Proposer)
@@ -75,7 +74,7 @@ func (hs *HotStuff) ProcessBlock(block *blockchain.Block) error {
 	// process buffered QC
 	qc, ok := hs.bufferedQCs[block.ID]
 	if ok {
-		hs.ProcessCertificate(qc)
+		hs.processCertificate(qc)
 		// TODO: garbage collection
 	}
 
@@ -113,7 +112,7 @@ func (hs *HotStuff) ProcessVote(vote *blockchain.Vote) {
 		log.Debugf("[%v] not sufficient votes to build a QC, block id: %x", hs.ID(), vote.BlockID)
 		return
 	}
-	hs.ProcessCertificate(qc)
+	hs.processCertificate(qc)
 }
 
 func (hs *HotStuff) ProcessRemoteTmo(tmo *pacemaker.TMO) {
@@ -140,7 +139,8 @@ func (hs *HotStuff) ProcessLocalTmo(view types.View) {
 }
 
 func (hs *HotStuff) MakeProposal(payload []*message.Transaction) *blockchain.Block {
-	block := blockchain.MakeBlock(hs.pm.GetCurView(), hs.GetHighQC(), payload, hs.ID())
+	qc := hs.GetHighQC()
+	block := blockchain.MakeBlock(hs.pm.GetCurView(), qc, qc.BlockID, payload, hs.ID())
 	return block
 }
 
@@ -187,7 +187,7 @@ func (hs *HotStuff) updateHighQC(qc *blockchain.QC) {
 	}
 }
 
-func (hs *HotStuff) ProcessCertificate(qc *blockchain.QC) {
+func (hs *HotStuff) processCertificate(qc *blockchain.QC) {
 	log.Debugf("[%v] is processing a QC, block id: %x", hs.ID(), qc.BlockID)
 	if qc.View < hs.pm.GetCurView() {
 		return
