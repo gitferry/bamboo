@@ -5,6 +5,10 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"errors"
+
+	"github.com/gitferry/bamboo/identity"
+
+	"github.com/gitferry/bamboo/config"
 )
 
 // SigningAlgorithm is an identifier for a signing algorithm and curve.
@@ -23,6 +27,9 @@ const (
 	ECDSA_P256      = "ECDSA_P256"
 	ECDSA_SECp256k1 = "ECDSA_SECp256k1"
 )
+
+var keys []PrivateKey
+var pubKeys []PublicKey
 
 // PrivateKey is an unspecified signature scheme private key
 type PrivateKey interface {
@@ -50,6 +57,20 @@ type PublicKey interface {
 	//Encode() ([]byte, error)
 }
 
+func SetKeys() error {
+	keys = make([]PrivateKey, config.GetConfig().N())
+	pubKeys = make([]PublicKey, config.GetConfig().N())
+	var err error
+	for i := 0; i < config.GetConfig().N(); i++ {
+		keys[i], err = GenerateKey(config.GetConfig().GetSignatureScheme())
+		if err != nil {
+			return err
+		}
+		pubKeys[i] = keys[i].PublicKey()
+	}
+	return nil
+}
+
 func GenerateKey(signer string) (PrivateKey, error) {
 	if signer == ECDSA_P256 {
 		pubkeyCurve := elliptic.P256()
@@ -66,4 +87,36 @@ func GenerateKey(signer string) (PrivateKey, error) {
 	} else {
 		return nil, errors.New("Invalid signature scheme!")
 	}
+}
+
+// Use the following functions for signing and verification.
+
+func PrivSign(data []byte, nodeID identity.NodeID, hasher Hasher) (Signature, error) {
+	return keys[nodeID.Node()].Sign(data, hasher)
+}
+
+func PubVerify(sig Signature, data []byte, nodeID identity.NodeID) (bool, error) {
+	return pubKeys[nodeID.Node()].Verify(sig, data)
+}
+
+func VerifyQuorumSignature(leaderSig Signature, qcID Identifier, leader identity.NodeID, aggregatedSigs AggSig, blockID Identifier, aggSigners []identity.NodeID) (bool, error) {
+	leaderSigCorrect, err := PubVerify(leaderSig, IDToByte(qcID), leader)
+	if err != nil {
+		return false, err
+	}
+	if leaderSigCorrect == false {
+		return false, nil
+	}
+	var sigIsCorrect bool
+	var errAgg error
+	for i, signer := range aggSigners {
+		sigIsCorrect, errAgg = PubVerify(aggregatedSigs[i], IDToByte(blockID), signer)
+		if errAgg != nil {
+			return false, errAgg
+		}
+		if sigIsCorrect == false {
+			return false, nil
+		}
+	}
+	return true, nil
 }
