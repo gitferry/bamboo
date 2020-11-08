@@ -2,10 +2,10 @@ package blockchain
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/gitferry/bamboo/crypto"
 	"github.com/gitferry/bamboo/identity"
-	"github.com/gitferry/bamboo/log"
 	"github.com/gitferry/bamboo/types"
 )
 
@@ -29,11 +29,9 @@ type Quorum struct {
 	votes map[crypto.Identifier]map[identity.NodeID]*Vote
 }
 
-var privKey crypto.PrivateKey
-
-func MakeVote(view types.View, voter identity.NodeID, id crypto.Identifier, priv *crypto.PrivateKey) *Vote {
-	privKey = *priv
-	sig, err := privKey.Sign(crypto.IDToByte(id), nil)
+func MakeVote(view types.View, voter identity.NodeID, id crypto.Identifier) *Vote {
+	sig, err := crypto.PrivSign(crypto.IDToByte(id), voter, nil)
+	//sig, err := privKey.Sign(crypto.IDToByte(id), nil)
 	if err != nil {
 		log.Fatalf("[%v] has an error when signing a vote", voter)
 		return nil
