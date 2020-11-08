@@ -54,8 +54,8 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 	r.pd = mempool.NewProducer()
 	r.pm = pacemaker.NewPacemaker(config.GetConfig().N())
 	r.eventChan = make(chan interface{}, 1)
-	r.hasher, _ = crypto.NewHasher(config.GetConfig().GetHashScheme())
-	r.signer = config.GetConfig().GetSignatureScheme()
+	//r.hasher, _ = crypto.NewHasher(config.GetConfig().GetHashScheme())
+	//r.signer = config.GetConfig().GetSignatureScheme()
 	//r.privateKey, r.publicKeys = config.GetConfig().GetKeys(id.Node())
 	r.start = make(chan bool)
 	r.isByz = isByz
