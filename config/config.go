@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/gitferry/bamboo/crypto"
+	//"github.com/gitferry/bamboo/crypto"
 	"github.com/gitferry/bamboo/identity"
 	"github.com/gitferry/bamboo/log"
 	"github.com/gitferry/bamboo/transport"
@@ -45,8 +45,8 @@ type Config struct {
 	//npz map[int]int // nodes per zone
 }
 
-var keys []crypto.PrivateKey
-var pubKeys []crypto.PublicKey
+//var keys []crypto.PrivateKey
+//var pubKeys []crypto.PublicKey
 
 // Bconfig holds all benchmark configuration
 type Bconfig struct {
@@ -105,23 +105,23 @@ func MakeDefaultConfig() Config {
 	}
 }
 
-func SetKeys() error {
-	keys = make([]crypto.PrivateKey, Configuration.N())
-	pubKeys = make([]crypto.PublicKey, Configuration.N())
-	var err error
-	for i := 0; i < Configuration.N(); i++ {
-		keys[i], err = crypto.GenerateKey(Configuration.signer)
-		if err != nil {
-			return err
-		}
-		pubKeys[i] = keys[i].PublicKey()
-	}
-	return nil
-}
+//func SetKeys() error {
+//	keys = make([]crypto.PrivateKey, Configuration.N())
+//	pubKeys = make([]crypto.PublicKey, Configuration.N())
+//	var err error
+//	for i := 0; i < Configuration.N(); i++ {
+//		keys[i], err = crypto.GenerateKey(Configuration.signer)
+//		if err != nil {
+//			return err
+//		}
+//		pubKeys[i] = keys[i].PublicKey()
+//	}
+//	return nil
+//}
 
-func (c Config) GetKeys(id int) (*crypto.PrivateKey, []crypto.PublicKey) {
-	return &keys[id], pubKeys
-}
+//func (c Config) GetKeys(id int) (*crypto.PrivateKey, []crypto.PublicKey) {
+//	return &keys[id], pubKeys
+//}
 
 // IDs returns all node ids
 func (c Config) IDs() []identity.NodeID {
