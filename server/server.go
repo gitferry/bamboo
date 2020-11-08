@@ -9,6 +9,7 @@ import (
 
 	"github.com/gitferry/bamboo"
 	"github.com/gitferry/bamboo/config"
+	"github.com/gitferry/bamboo/crypto"
 	"github.com/gitferry/bamboo/identity"
 	"github.com/gitferry/bamboo/log"
 )
@@ -32,10 +33,10 @@ func replica(id identity.NodeID, isByz bool) {
 
 func main() {
 	bamboo.Init()
-	// The private and public keys are generated here. Check config.go.
-	errConfig := config.SetKeys()
-	if errConfig != nil {
-		log.Fatal("Could not generate keys:", errConfig)
+	// The private and public keys are generated here. Check the crypto package.
+	errCrypto := crypto.SetKeys()
+	if errCrypto != nil {
+		log.Fatal("Could not generate keys:", errCrypto)
 	}
 	if *cpuprofile != "" {
 		f, err := os.Create(*cpuprofile)
