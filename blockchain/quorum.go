@@ -15,6 +15,7 @@ type Vote struct {
 }
 
 type QC struct {
+	Leader  identity.NodeID
 	View    types.View
 	BlockID crypto.Identifier
 	crypto.AggSig
@@ -27,10 +28,17 @@ type Quorum struct {
 }
 
 func MakeVote(view types.View, voter identity.NodeID, id crypto.Identifier) *Vote {
+	// TODO: uncomment the following
+	//sig, err := crypto.PrivSign(crypto.IDToByte(id), voter, nil)
+	//if err != nil {
+	//	log.Fatalf("[%v] has an error when signing a vote", voter)
+	//	return nil
+	//}
 	return &Vote{
 		View:    view,
 		Voter:   voter,
 		BlockID: id,
+		//Signature: sig,
 	}
 }
 

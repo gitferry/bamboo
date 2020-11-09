@@ -2,6 +2,7 @@ package replica
 
 import (
 	"encoding/gob"
+	"github.com/gitferry/bamboo/crypto"
 	"github.com/gitferry/bamboo/tchs"
 	"time"
 
@@ -33,6 +34,8 @@ type Replica struct {
 	timer           *time.Timer
 	committedBlocks chan *blockchain.Block
 	eventChan       chan interface{}
+	hasher          crypto.Hasher
+	signer          string
 }
 
 // NewReplica creates a new replica instance

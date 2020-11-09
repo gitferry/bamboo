@@ -6,6 +6,7 @@ import (
 
 	"github.com/gitferry/bamboo"
 	"github.com/gitferry/bamboo/config"
+	"github.com/gitferry/bamboo/crypto"
 	"github.com/gitferry/bamboo/identity"
 	"github.com/gitferry/bamboo/log"
 	"github.com/gitferry/bamboo/replica"
@@ -28,6 +29,11 @@ func initReplica(id identity.NodeID, isByz bool) {
 
 func main() {
 	bamboo.Init()
+	// the private and public keys are generated here
+	errCrypto := crypto.SetKeys()
+	if errCrypto != nil {
+		log.Fatal("Could not generate keys:", errCrypto)
+	}
 
 	if *simulation {
 		var wg sync.WaitGroup

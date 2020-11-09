@@ -3,8 +3,18 @@ package crypto
 import (
 	"bytes"
 	"encoding/hex"
+	"errors"
 	"io"
 )
+
+const (
+	SHA3_224 = "sha3_224"
+	SHA3_256 = "sha3_256"
+	SHA3_384 = "sha3_384"
+	SHA3_512 = "sha3_512"
+)
+
+//var hashTypes = []string{SHA3_224, SHA3_256, SHA3_384, SHA3_512}
 
 // Hash is the hash algorithms output types
 type Hash []byte
@@ -56,6 +66,17 @@ func HashesToBytes(hashes []Hash) [][]byte {
 
 // NewHasher chooses and initializes a hashing algorithm
 // Deprecated and will removed later: use dedicated hash generation functions instead.
-func NewHasher() (Hasher, error) {
-	return NewSHA3_256(), nil
+// UPDATE By Ali: This function is used to build a new hasher for a replica
+func NewHasher(hashType string) (Hasher, error) {
+	if hashType == SHA3_224 {
+		return NewSHA3_224(), nil
+	} else if hashType == SHA3_256 {
+		return NewSHA3_256(), nil
+	} else if hashType == SHA3_384 {
+		return NewSHA3_384(), nil
+	} else if hashType == SHA3_512 {
+		return NewSHA3_512(), nil
+	} else {
+		return nil, errors.New("Invalid hasher type!")
+	}
 }
