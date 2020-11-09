@@ -21,6 +21,8 @@
   "timeout": 1000,
   "bsize":20,
   "delta": 1,
+  "hasher": "sha3_256",
+  "signer": "ECDSA_P256",
   "benchmark": {
     "T": 20,
     "N": 0,

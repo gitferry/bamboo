@@ -38,17 +38,16 @@ func MakeBlock(view types.View, qc *QC, prevID crypto.Identifier, payload []*mes
 	b.QC = qc
 	b.Payload = payload
 	b.PrevID = prevID
-	b.makeID()
+	b.makeID(proposer)
 	return b
 }
 
-func (b *Block) makeID() {
+func (b *Block) makeID(nodeID identity.NodeID) {
 	raw := &rawBlock{
 		View:     b.View,
 		QC:       b.QC,
 		Proposer: b.Proposer,
 		PrevID:   b.PrevID,
-		Sig:      b.Sig,
 	}
 	var payloadIDs []string
 	for _, txn := range b.Payload {
@@ -56,4 +55,6 @@ func (b *Block) makeID() {
 	}
 	raw.Payload = payloadIDs
 	b.ID = crypto.MakeID(raw)
+	// TODO: uncomment the following
+	//b.Sig, _ = crypto.PrivSign(crypto.IDToByte(b.ID), nodeID, nil)
 }

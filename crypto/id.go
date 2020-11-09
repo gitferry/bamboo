@@ -1,6 +1,8 @@
 package crypto
 
-import "github.com/gitferry/bamboo/types/encoding"
+import (
+	"github.com/gitferry/bamboo/types/encoding"
+)
 
 type Identifier [32]byte
 
@@ -16,4 +18,8 @@ func HashToID(hash []byte) Identifier {
 	var id Identifier
 	copy(id[:], hash)
 	return id
+}
+
+func IDToByte(id Identifier) []byte {
+	return id[:]
 }
