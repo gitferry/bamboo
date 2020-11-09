@@ -16,12 +16,13 @@ import (
 type Streamlet struct {
 	node.Node
 	election.Election
-	pm              *pacemaker.Pacemaker
-	bc              *blockchain.BlockChain
-	notarizedChain  [][]*blockchain.Block
-	bufferedBlocks  map[crypto.Identifier]*blockchain.Block
-	bufferedQCs     map[crypto.Identifier]*blockchain.QC
-	committedBlocks chan *blockchain.Block
+	pm                     *pacemaker.Pacemaker
+	bc                     *blockchain.BlockChain
+	notarizedChain         [][]*blockchain.Block
+	bufferedBlocks         map[crypto.Identifier]*blockchain.Block
+	bufferedQCs            map[crypto.Identifier]*blockchain.QC
+	bufferedNotarizedBlock map[crypto.Identifier]*blockchain.QC
+	committedBlocks        chan *blockchain.Block
 }
 
 // NewStreamlet creates a new Streamlet instance
@@ -38,6 +39,7 @@ func NewStreamlet(
 	sl.bc = blockchain.NewBlockchain(config.GetConfig().N())
 	sl.bufferedBlocks = make(map[crypto.Identifier]*blockchain.Block)
 	sl.bufferedQCs = make(map[crypto.Identifier]*blockchain.QC)
+	sl.bufferedNotarizedBlock = make(map[crypto.Identifier]*blockchain.QC)
 	sl.notarizedChain = make([][]*blockchain.Block, 0)
 	sl.pm.AdvanceView(0)
 	return sl
@@ -57,11 +59,14 @@ func (sl *Streamlet) ProcessBlock(block *blockchain.Block) error {
 	if block.View < curView {
 		return fmt.Errorf("received a stale block")
 	}
-	if block.View > curView {
+	_, err := sl.bc.GetBlockByID(block.PrevID)
+	if err != nil && block.View > 1 {
 		// buffer future blocks
 		sl.bufferedBlocks[block.PrevID] = block
-		log.Debugf("[%v] buffer the block for future processing")
+		log.Debugf("[%v] buffer the block for future processing, view: %v, id: %x", sl.ID(), block.View, block.ID)
 		return nil
+	}
+	if block.View > curView {
 	}
 	if !sl.Election.IsLeader(block.Proposer, block.View) {
 		return fmt.Errorf("received a proposal (%v) from an invalid leader (%v)", block.View, block.Proposer)
@@ -70,6 +75,8 @@ func (sl *Streamlet) ProcessBlock(block *blockchain.Block) error {
 	shouldVote := sl.votingRule(block)
 	if !shouldVote {
 		log.Debugf("[%v] is not going to vote for block, id: %x", sl.ID(), block.ID)
+		sl.bufferedBlocks[block.PrevID] = block
+		log.Debugf("[%v] buffer the block for future processing, view: %v, id: %x", sl.ID(), block.View, block.ID)
 		return nil
 	}
 	vote := blockchain.MakeVote(block.View, sl.ID(), block.ID)
@@ -78,6 +85,11 @@ func (sl *Streamlet) ProcessBlock(block *blockchain.Block) error {
 	sl.ProcessVote(vote)
 	sl.Broadcast(vote)
 
+	// process buffers
+	qc, ok := sl.bufferedQCs[block.ID]
+	if ok {
+		sl.processCertificate(qc)
+	}
 	b, ok := sl.bufferedBlocks[block.ID]
 	if ok {
 		return sl.ProcessBlock(b)
@@ -91,7 +103,7 @@ func (sl *Streamlet) ProcessVote(vote *blockchain.Vote) {
 		return
 	}
 	// send the QC to the next leader
-	log.Debugf("[%v] a qc is built, block id: %x", sl.ID(), qc.BlockID)
+	log.Debugf("[%v] a qc is built, view: %v, block id: %x", sl.ID(), qc.View, qc.BlockID)
 	sl.processCertificate(qc)
 
 	return
@@ -119,10 +131,10 @@ func (sl *Streamlet) ProcessLocalTmo(view types.View) {
 
 func (sl *Streamlet) MakeProposal(payload []*message.Transaction) *blockchain.Block {
 	var prevID crypto.Identifier
-	if sl.pm.GetCurView() == 1 {
+	if sl.GetNotarizedHeight() == 0 {
 		prevID = crypto.MakeID("Genesis block")
 	} else {
-		tailNotarizedBlock := sl.notarizedChain[sl.GetNotarizedHeight()][0]
+		tailNotarizedBlock := sl.notarizedChain[sl.GetNotarizedHeight()-1][0]
 		prevID = tailNotarizedBlock.ID
 	}
 	block := blockchain.MakeBlock(sl.pm.GetCurView(), &blockchain.QC{
@@ -147,17 +159,24 @@ func (sl *Streamlet) processTC(tc *pacemaker.TC) {
 // 3. check commit rule
 // 4. commit blocks
 func (sl *Streamlet) processCertificate(qc *blockchain.QC) {
+	log.Debugf("[%v] is processing a qc, view: %v, block id: %x", sl.ID(), qc.View, qc.BlockID)
 	if qc.View < sl.pm.GetCurView() {
 		return
 	}
-	sl.pm.AdvanceView(qc.View)
-	err := sl.updateNotarizedChain(qc)
-	if err != nil {
-		// the corresponding block does not exist, buffer the qc
+	_, err := sl.bc.GetBlockByID(qc.BlockID)
+	if err != nil && qc.View > 1 {
+		//	TODO: buffer the QC
+		log.Debugf("[%v] buffered the QC, view: %v, id: %x", sl.ID(), qc.View, qc.BlockID)
 		sl.bufferedQCs[qc.BlockID] = qc
+		return
+	}
+	err = sl.updateNotarizedChain(qc)
+	if err != nil {
+		// the corresponding block does not exist
 		log.Warningf("[%v] cannot notarize the block, %x: %w", sl.ID(), qc.BlockID, err)
 		return
 	}
+	sl.pm.AdvanceView(qc.View)
 	if qc.View < 3 {
 		return
 	}
@@ -175,6 +194,17 @@ func (sl *Streamlet) processCertificate(qc *blockchain.QC) {
 			sl.committedBlocks <- block
 		}
 	}()
+	b, ok := sl.bufferedBlocks[qc.BlockID]
+	if ok {
+		_ = sl.ProcessBlock(b)
+		delete(sl.bufferedBlocks, qc.BlockID)
+	}
+	qc, ok = sl.bufferedNotarizedBlock[qc.BlockID]
+	if ok {
+		log.Debugf("[%v] found a bufferred qc, view: %v, block id: %x", sl.ID(), qc.View, qc.BlockID)
+		sl.processCertificate(qc)
+		delete(sl.bufferedQCs, qc.BlockID)
+	}
 }
 
 func (sl *Streamlet) updateNotarizedChain(qc *blockchain.QC) error {
@@ -184,22 +214,34 @@ func (sl *Streamlet) updateNotarizedChain(qc *blockchain.QC) error {
 	}
 	// check the last block in the notarized chain
 	// could be improved by checking view
-	for i := sl.GetNotarizedHeight() - 1; i >= 0; i-- {
+	if sl.GetNotarizedHeight() == 0 {
+		log.Debugf("[%v] is processing the first notarized block, view: %v, id: %x", sl.ID(), qc.View, qc.BlockID)
+		newArray := make([]*blockchain.Block, 0)
+		newArray = append(newArray, block)
+		sl.notarizedChain = append(sl.notarizedChain, newArray)
+		return nil
+	}
+	for i := sl.GetNotarizedHeight() - 1; i >= 0 || i >= sl.GetNotarizedHeight()-3; i-- {
 		lastBlocks := sl.notarizedChain[i]
 		for _, b := range lastBlocks {
 			if b.ID == block.PrevID {
-				newArray := make([]*blockchain.Block, 0)
-				newArray = append(newArray, block)
-				sl.notarizedChain = append(sl.notarizedChain, newArray)
+				var blocks []*blockchain.Block
+				if i < sl.GetNotarizedHeight()-1 {
+					blocks = make([]*blockchain.Block, 0)
+				}
+				blocks = append(blocks, block)
+				sl.notarizedChain = append(sl.notarizedChain, blocks)
 				return nil
 			}
 		}
 	}
+	sl.bufferedNotarizedBlock[block.PrevID] = qc
+	log.Debugf("[%v] the parent block is not notarized, buffered for now, view: %v, block id: %x", sl.ID(), qc.View, qc.BlockID)
 	return fmt.Errorf("the block is not extending the notarized chain")
 }
 
 func (sl *Streamlet) GetNotarizedHeight() int {
-	return len(sl.notarizedChain) + 1
+	return len(sl.notarizedChain)
 }
 
 // 1. get the tail of the longest notarized chain (could be more than one)

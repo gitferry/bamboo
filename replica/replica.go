@@ -73,7 +73,7 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 /* Message Handlers */
 
 func (r *Replica) HandleBlock(block blockchain.Block) {
-	log.Debugf("[%v] received a block from %v, view is %v", r.ID(), block.Proposer, block.View)
+	log.Debugf("[%v] received a block from %v, view is %v, id: %x", r.ID(), block.Proposer, block.View, block.ID)
 	r.eventChan <- block
 }
 
@@ -117,7 +117,7 @@ func (r *Replica) processCommittedBlock(block *blockchain.Block) {
 }
 
 func (r *Replica) processNewView(newView types.View) {
-	log.Debugf("[%v] is processing new view: %v", r.ID(), newView)
+	log.Debugf("[%v] is processing new view: %v, leader is %v", r.ID(), newView, r.FindLeaderFor(newView))
 	if !r.IsLeader(r.ID(), newView) {
 		return
 	}
