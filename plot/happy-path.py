@@ -59,8 +59,8 @@ def do_plot():
     plt.xlabel('Throughput (txn/s)')
     # plt.xlabel('Requests (Tx) in log scale')
     plt.tight_layout()
-    plt.show()
-    # plt.savefig('happy-path.pdf', format='pdf', dpi=1000)
+    # plt.show()
+    plt.savefig('happy-path.png', format='png', dpi=1000)
 
 if __name__ == '__main__':
     do_plot()
