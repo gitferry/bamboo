@@ -10,7 +10,7 @@ client
 # Test binary, built with `go test -c`
 *.test
 *.log
-*.log
+*.data
 *.xml
 latency
 *.csv
