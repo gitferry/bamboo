@@ -3,11 +3,9 @@ package crypto
 import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
-	"crypto/rand"
 	"errors"
-	"github.com/gitferry/bamboo/identity"
-
 	"github.com/gitferry/bamboo/config"
+	"github.com/gitferry/bamboo/identity"
 )
 
 // SigningAlgorithm is an identifier for a signing algorithm and curve.
@@ -56,12 +54,20 @@ type PublicKey interface {
 	//Encode() ([]byte, error)
 }
 
+type StaticRand struct {
+	identity.NodeID
+}
+
+func (sr *StaticRand) Read(x []byte) (int, error) {
+	return sr.Node(), nil
+}
+
 func SetKeys() error {
 	keys = make([]PrivateKey, config.GetConfig().N())
 	pubKeys = make([]PublicKey, config.GetConfig().N())
 	var err error
 	for i := 0; i < config.GetConfig().N(); i++ {
-		keys[i], err = GenerateKey(config.GetConfig().GetSignatureScheme())
+		keys[i], err = GenerateKey(config.GetConfig().GetSignatureScheme(), identity.NewNodeID(i+1))
 		if err != nil {
 			return err
 		}
@@ -70,10 +76,11 @@ func SetKeys() error {
 	return nil
 }
 
-func GenerateKey(signer string) (PrivateKey, error) {
+func GenerateKey(signer string, id identity.NodeID) (PrivateKey, error) {
 	if signer == ECDSA_P256 {
 		pubkeyCurve := elliptic.P256()
-		priv, err := ecdsa.GenerateKey(pubkeyCurve, rand.Reader)
+		// use static id
+		priv, err := ecdsa.GenerateKey(pubkeyCurve, &StaticRand{id})
 		if err != nil {
 			return nil, err
 		}
@@ -95,7 +102,7 @@ func PrivSign(data []byte, nodeID identity.NodeID, hasher Hasher) (Signature, er
 }
 
 func PubVerify(sig Signature, data []byte, nodeID identity.NodeID) (bool, error) {
-	return pubKeys[nodeID.Node()].Verify(sig, data)
+	return pubKeys[nodeID.Node()-1].Verify(sig, data)
 }
 
 func VerifyQuorumSignature(aggregatedSigs AggSig, blockID Identifier, aggSigners []identity.NodeID) (bool, error) {

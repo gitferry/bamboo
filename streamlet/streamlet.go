@@ -66,10 +66,14 @@ func (sl *Streamlet) ProcessBlock(block *blockchain.Block) error {
 		log.Debugf("[%v] buffer the block for future processing, view: %v, id: %x", sl.ID(), block.View, block.ID)
 		return nil
 	}
-	if block.View > curView {
-	}
 	if !sl.Election.IsLeader(block.Proposer, block.View) {
 		return fmt.Errorf("received a proposal (%v) from an invalid leader (%v)", block.View, block.Proposer)
+	}
+	if block.Proposer != sl.ID() {
+		blockIsVerified, _ := crypto.PubVerify(block.Sig, crypto.IDToByte(block.ID), block.Proposer)
+		if !blockIsVerified {
+			log.Warningf("[%v] received a block with an invalid signature", sl.ID())
+		}
 	}
 	sl.bc.AddBlock(block)
 	shouldVote := sl.votingRule(block)
@@ -80,7 +84,6 @@ func (sl *Streamlet) ProcessBlock(block *blockchain.Block) error {
 		return nil
 	}
 	vote := blockchain.MakeVote(block.View, sl.ID(), block.ID)
-	// TODO: sign the vote
 	// vote to the current leader
 	sl.ProcessVote(vote)
 	sl.Broadcast(vote)
@@ -98,6 +101,18 @@ func (sl *Streamlet) ProcessBlock(block *blockchain.Block) error {
 }
 
 func (sl *Streamlet) ProcessVote(vote *blockchain.Vote) {
+	log.Debugf("[%v] is processing the vote, block id: %x", sl.ID(), vote.BlockID)
+	if vote.Voter != sl.ID() {
+		voteIsVerified, err := crypto.PubVerify(vote.Signature, crypto.IDToByte(vote.BlockID), vote.Voter)
+		if err != nil {
+			log.Fatalf("[%v] Error in verifying the signature in vote id: %x", sl.ID(), vote.BlockID)
+			return
+		}
+		if !voteIsVerified {
+			log.Warningf("[%v] received a vote with invalid signature. vote id: %x", sl.ID(), vote.BlockID)
+			return
+		}
+	}
 	isBuilt, qc := sl.bc.AddVote(vote)
 	if !isBuilt {
 		return
@@ -165,10 +180,16 @@ func (sl *Streamlet) processCertificate(qc *blockchain.QC) {
 	}
 	_, err := sl.bc.GetBlockByID(qc.BlockID)
 	if err != nil && qc.View > 1 {
-		//	TODO: buffer the QC
 		log.Debugf("[%v] buffered the QC, view: %v, id: %x", sl.ID(), qc.View, qc.BlockID)
 		sl.bufferedQCs[qc.BlockID] = qc
 		return
+	}
+	if qc.Leader != sl.ID() {
+		quorumIsVerified, _ := crypto.VerifyQuorumSignature(qc.AggSig, qc.BlockID, qc.Signers)
+		if quorumIsVerified == false {
+			log.Warningf("[%v] received a quorum with invalid signatures", sl.ID())
+			return
+		}
 	}
 	err = sl.updateNotarizedChain(qc)
 	if err != nil {

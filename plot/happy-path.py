@@ -4,42 +4,34 @@ import matplotlib.pyplot as plt
 expt = [
     ('HotStuff',[
         # (512,5.96925),
-        (1000,3.59),
-        (4949,3.78),
-        (8714,4.05),
-        (12317,4.36),
-        (15523,5.05),
-        (18698,5.85),
-        (20840,7.86),
-        (21108,11.7),
-        (21022,18.54),
-        (20982,29)
+        (1000,12.46),
+        (4944,13.28),
+        (8677,13.14),
+        (12047,15.17),
+        (14775,19.53),
+        (16585,57.06),
+	    (16684,96.41),
+        (17244,233.72)
         # (262144, 295.122)
     ], '-o'),
     ('2C-HS',[
-        (1000,3.08),
-        (4961,3.16),
-        (8764,3.49),
-        (12407,3.73),
-        (15829,4.2),
-        (18934,5.06),
-        (21106,7.4),
-        (21508,8.9),
-        (21525,14.81),
-        (20865,24.54),
-        (20906,31.82)
+        (1000,10.56),
+        (4934,10.74),
+        (8640,11.13),
+        (12017,12.80),
+        (14900,16.05),
+        (16833,32),
+        (17527,185.78)
     ], '--+'),
     ('Streamlet',[
-        (1000,3.78),
-        (4958,2.76),
-        (8671,3.42),
-        (12257,3.94),
-        (15690,5.13),
-        (18581,5.83),
-        (21139,5.82),
-        (21399,10.09),
-        (19989,19.43),
-        (19793,45.68)
+        (1000,10.79),
+        (4947,11.08),
+        (8625,11.61),
+        (11952,12.74),
+        (14721,16.84),
+	    (16256,25.19),
+        (16817,119.03),
+	    (17034,149.32)
     ], '-*')]
 
 
@@ -58,15 +50,15 @@ def do_plot():
             latency.append(l)
         ax.plot(throughput, latency, style, label='%s' % name)
     #ax.set_xscale("log")
-    #ax.set_yscale("log")
-    plt.ylim([0, 50])
+    ax.set_yscale("log")
+    # plt.ylim([0, 50])
     #plt.xlim([10**3.8, 10**6.4])
-    plt.legend(loc='best')
-    #plt.ylabel('Throughput (Tx per second) in log scale')
-    plt.ylabel('Latency')
-    plt.xlabel('Throughput')
+    plt.legend(loc='upper left')
+    # plt.ylabel('Throughput (Tx per second) in log scale')
+    plt.ylabel('Latency (ms)')
+    plt.xlabel('Throughput (txn/s)')
     # plt.xlabel('Requests (Tx) in log scale')
-    # plt.tight_layout()
+    plt.tight_layout()
     plt.show()
     # plt.savefig('happy-path.pdf', format='pdf', dpi=1000)
 

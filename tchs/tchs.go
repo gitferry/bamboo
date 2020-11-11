@@ -56,6 +56,12 @@ func (th *Tchs) ProcessBlock(block *blockchain.Block) error {
 		log.Debugf("[%v] the block is buffered, id: %x", th.ID(), block.ID)
 		return nil
 	}
+	if block.Proposer != th.ID() {
+		blockIsVerified, _ := crypto.PubVerify(block.Sig, crypto.IDToByte(block.ID), block.Proposer)
+		if !blockIsVerified {
+			log.Warningf("[%v] received a block with an invalid signature", th.ID())
+		}
+	}
 	if block.QC != nil {
 		th.updateHighQC(block.QC)
 	} else {
@@ -108,11 +114,23 @@ func (th *Tchs) ProcessBlock(block *blockchain.Block) error {
 
 func (th *Tchs) ProcessVote(vote *blockchain.Vote) {
 	log.Debugf("[%v] is processing the vote, block id: %x", th.ID(), vote.BlockID)
+	if th.ID() != vote.Voter {
+		voteIsVerified, err := crypto.PubVerify(vote.Signature, crypto.IDToByte(vote.BlockID), vote.Voter)
+		if err != nil {
+			log.Fatalf("[%v] Error in verifying the signature in vote id: %x", th.ID(), vote.BlockID)
+			return
+		}
+		if !voteIsVerified {
+			log.Warningf("[%v] received a vote with unvalid signature. vote id: %x", th.ID(), vote.BlockID)
+			return
+		}
+	}
 	isBuilt, qc := th.bc.AddVote(vote)
 	if !isBuilt {
 		log.Debugf("[%v] not sufficient votes to build a QC, block id: %x", th.ID(), vote.BlockID)
 		return
 	}
+	qc.Leader = th.ID()
 	th.processCertificate(qc)
 }
 
@@ -192,6 +210,14 @@ func (th *Tchs) processCertificate(qc *blockchain.QC) {
 	log.Debugf("[%v] is processing a QC, block id: %x", th.ID(), qc.BlockID)
 	if qc.View < th.pm.GetCurView() {
 		return
+	}
+	// TODO: verify QC sigs
+	if qc.Leader != th.ID() {
+		quorumIsVerified, _ := crypto.VerifyQuorumSignature(qc.AggSig, qc.BlockID, qc.Signers)
+		if quorumIsVerified == false {
+			log.Warningf("[%v] received a quorum with invalid signatures", th.ID())
+			return
+		}
 	}
 	err := th.updatePreferredView(qc)
 	if err != nil {
