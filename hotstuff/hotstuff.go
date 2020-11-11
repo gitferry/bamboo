@@ -50,10 +50,10 @@ func (hs *HotStuff) ProcessBlock(block *blockchain.Block) error {
 	log.Debugf("[%v] is processing block, view: %v, id: %x", hs.ID(), block.View, block.ID)
 	curView := hs.pm.GetCurView()
 	// TODO: uncomment the following verification
-	//blockIsVerified, _ := crypto.PubVerify(block.Sig, crypto.IDToByte(block.ID), block.Proposer)
-	//if !blockIsVerified {
-	//	log.Warningf("[%v] received a block with an invalid signature", hs.ID())
-	//}
+	blockIsVerified, _ := crypto.PubVerify(block.Sig, crypto.IDToByte(block.ID), block.Proposer)
+	if !blockIsVerified {
+		log.Warningf("[%v] received a block with an invalid signature", hs.ID())
+	}
 	if block.View > curView+1 {
 		//	buffer the block
 		hs.bufferedBlocks[block.PrevID] = block
@@ -65,7 +65,9 @@ func (hs *HotStuff) ProcessBlock(block *blockchain.Block) error {
 	} else {
 		return fmt.Errorf("the block should contain a QC")
 	}
-	hs.processCertificate(block.QC)
+	if block.Proposer != hs.ID() {
+		hs.processCertificate(block.QC)
+	}
 	curView = hs.pm.GetCurView()
 	if block.View < curView {
 		log.Warningf("[%v] received a stale proposal from %v", hs.ID(), block.Proposer)
@@ -112,15 +114,15 @@ func (hs *HotStuff) ProcessBlock(block *blockchain.Block) error {
 func (hs *HotStuff) ProcessVote(vote *blockchain.Vote) {
 	log.Debugf("[%v] is processing the vote, block id: %x", hs.ID(), vote.BlockID)
 	// TODO: uncomment the following verification
-	//voteIsVerified, err := crypto.PubVerify(vote.Signature, crypto.IDToByte(vote.BlockID), vote.Voter)
-	//if err != nil {
-	//	log.Fatalf("[%v] Error in verifying the signature in vote id: %x", hs.ID(), vote.BlockID)
-	//	return
-	//}
-	//if !voteIsVerified {
-	//	log.Warningf("[%v] received a vote with unvalid signature. vote id: %x", hs.ID(), vote.BlockID)
-	//	return
-	//}
+	voteIsVerified, err := crypto.PubVerify(vote.Signature, crypto.IDToByte(vote.BlockID), vote.Voter)
+	if err != nil {
+		log.Fatalf("[%v] Error in verifying the signature in vote id: %x", hs.ID(), vote.BlockID)
+		return
+	}
+	if !voteIsVerified {
+		log.Warningf("[%v] received a vote with unvalid signature. vote id: %x", hs.ID(), vote.BlockID)
+		return
+	}
 	isBuilt, qc := hs.bc.AddVote(vote)
 	if !isBuilt {
 		log.Debugf("[%v] not sufficient votes to build a QC, block id: %x", hs.ID(), vote.BlockID)
@@ -207,11 +209,11 @@ func (hs *HotStuff) processCertificate(qc *blockchain.QC) {
 		return
 	}
 	// TODO: verify QC sigs
-	//quorumIsVerified, _ := crypto.verifyQuorumSignature()
-	//if quorumIsVerified == false {
-	//	log.Warningf("[%v] received a quorum with invalid signatures", r.ID())
-	//	return
-	//}
+	quorumIsVerified, _ := crypto.VerifyQuorumSignature(qc.AggSig, qc.BlockID, qc.Signers)
+	if quorumIsVerified == false {
+		log.Warningf("[%v] received a quorum with invalid signatures", hs.ID())
+		return
+	}
 	err := hs.updatePreferredView(qc)
 	if err != nil {
 		hs.bufferedQCs[qc.BlockID] = qc

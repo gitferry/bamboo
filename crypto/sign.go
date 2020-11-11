@@ -5,7 +5,6 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"errors"
-
 	"github.com/gitferry/bamboo/identity"
 
 	"github.com/gitferry/bamboo/config"
@@ -92,21 +91,14 @@ func GenerateKey(signer string) (PrivateKey, error) {
 // Use the following functions for signing and verification.
 
 func PrivSign(data []byte, nodeID identity.NodeID, hasher Hasher) (Signature, error) {
-	return keys[nodeID.Node()].Sign(data, hasher)
+	return keys[nodeID.Node()-1].Sign(data, hasher)
 }
 
 func PubVerify(sig Signature, data []byte, nodeID identity.NodeID) (bool, error) {
 	return pubKeys[nodeID.Node()].Verify(sig, data)
 }
 
-func VerifyQuorumSignature(leaderSig Signature, qcID Identifier, leader identity.NodeID, aggregatedSigs AggSig, blockID Identifier, aggSigners []identity.NodeID) (bool, error) {
-	leaderSigCorrect, err := PubVerify(leaderSig, IDToByte(qcID), leader)
-	if err != nil {
-		return false, err
-	}
-	if leaderSigCorrect == false {
-		return false, nil
-	}
+func VerifyQuorumSignature(aggregatedSigs AggSig, blockID Identifier, aggSigners []identity.NodeID) (bool, error) {
 	var sigIsCorrect bool
 	var errAgg error
 	for i, signer := range aggSigners {

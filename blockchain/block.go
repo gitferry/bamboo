@@ -56,5 +56,5 @@ func (b *Block) makeID(nodeID identity.NodeID) {
 	raw.Payload = payloadIDs
 	b.ID = crypto.MakeID(raw)
 	// TODO: uncomment the following
-	//b.Sig, _ = crypto.PrivSign(crypto.IDToByte(b.ID), nodeID, nil)
+	b.Sig, _ = crypto.PrivSign(crypto.IDToByte(b.ID), nodeID, nil)
 }

@@ -27,6 +27,7 @@ func (pd *Producer) ProduceBlock(view types.View, qc *blockchain.QC, proposer id
 func (pd *Producer) GeneratePayload() []*message.Transaction {
 	var payload []*message.Transaction
 	payload = pd.mempool.Some(config.Configuration.BSize)
+	//payload = pd.mempool.All()
 	pd.mempool.Backend.RemTxns(payload)
 	return payload
 }

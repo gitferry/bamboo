@@ -2,8 +2,10 @@ package blockchain
 
 import (
 	"fmt"
+
 	"github.com/gitferry/bamboo/crypto"
 	"github.com/gitferry/bamboo/identity"
+	"github.com/gitferry/bamboo/log"
 	"github.com/gitferry/bamboo/types"
 )
 
@@ -18,6 +20,7 @@ type QC struct {
 	Leader  identity.NodeID
 	View    types.View
 	BlockID crypto.Identifier
+	Signers []identity.NodeID
 	crypto.AggSig
 	crypto.Signature
 }
@@ -29,16 +32,16 @@ type Quorum struct {
 
 func MakeVote(view types.View, voter identity.NodeID, id crypto.Identifier) *Vote {
 	// TODO: uncomment the following
-	//sig, err := crypto.PrivSign(crypto.IDToByte(id), voter, nil)
-	//if err != nil {
-	//	log.Fatalf("[%v] has an error when signing a vote", voter)
-	//	return nil
-	//}
+	sig, err := crypto.PrivSign(crypto.IDToByte(id), voter, nil)
+	if err != nil {
+		log.Fatalf("[%v] has an error when signing a vote", voter)
+		return nil
+	}
 	return &Vote{
-		View:    view,
-		Voter:   voter,
-		BlockID: id,
-		//Signature: sig,
+		View:      view,
+		Voter:     voter,
+		BlockID:   id,
+		Signature: sig,
 	}
 }
 
@@ -61,9 +64,15 @@ func (q *Quorum) Add(vote *Vote) (bool, *QC) {
 	}
 	q.votes[vote.BlockID][vote.Voter] = vote
 	if q.superMajority(vote.BlockID) {
+		aggSig, signers, err := q.getSigs(vote.BlockID)
+		if err != nil {
+			log.Warningf("cannot generate a valid qc, view: %v, block id: %x: %w", vote.View, vote.BlockID, err)
+		}
 		qc := &QC{
 			View:    vote.View,
 			BlockID: vote.BlockID,
+			AggSig:  aggSig,
+			Signers: signers,
 		}
 		return true, qc
 	}
@@ -80,15 +89,17 @@ func (q *Quorum) size(blockID crypto.Identifier) int {
 	return len(q.votes[blockID])
 }
 
-func (q *Quorum) GetSigs(blockID crypto.Identifier) (crypto.AggSig, error) {
+func (q *Quorum) getSigs(blockID crypto.Identifier) (crypto.AggSig, []identity.NodeID, error) {
 	var sigs crypto.AggSig
+	var signers []identity.NodeID
 	_, exists := q.votes[blockID]
 	if !exists {
-		return nil, fmt.Errorf("sigs does not exist, id: %x", blockID)
+		return nil, nil, fmt.Errorf("sigs does not exist, id: %x", blockID)
 	}
 	for _, vote := range q.votes[blockID] {
 		sigs = append(sigs, vote.Signature)
+		signers = append(signers, vote.Voter)
 	}
 
-	return sigs, nil
+	return sigs, signers, nil
 }

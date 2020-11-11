@@ -33,10 +33,13 @@ func (p *Pacemaker) ProcessRemoteTmo(tmo *TMO) (bool, *TC) {
 }
 
 func (p *Pacemaker) AdvanceView(view types.View) {
+	p.mu.Lock()
 	if view < p.curView {
+		p.mu.Unlock()
 		return
 	}
 	p.curView = view + 1
+	p.mu.Unlock()
 	go func() {
 		p.newViewChan <- view + 1 // reset timer for the next view
 	}()
@@ -47,6 +50,8 @@ func (p *Pacemaker) EnteringViewEvent() chan types.View {
 }
 
 func (p *Pacemaker) GetCurView() types.View {
+	p.mu.Lock()
+	defer p.mu.Unlock()
 	return p.curView
 }
 

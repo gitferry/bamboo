@@ -177,13 +177,15 @@ func (b *Backend) All() []*message.Transaction {
 
 // Some returns a certain amount of transactions from the pool.
 func (b *Backend) Some(size int) []*message.Transaction {
-	for i := 0; i < 10; i++ {
-		if b.Size() > uint(size) {
-			b.mu.RLock()
-			defer b.mu.RUnlock()
-			return b.Backdata.Some(size)
-		}
-		time.Sleep(1 * time.Millisecond)
-	}
-	return b.All()
+	//for i := 0; i < 10; i++ {
+	//	if b.Size() > uint(size) {
+	//		b.mu.RLock()
+	//		defer b.mu.RUnlock()
+	//		return b.Backdata.Some(size)
+	//	}
+	//	time.Sleep(1 * time.Millisecond)
+	//}
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	return b.Backdata.Some(size)
 }
