@@ -1,0 +1,19 @@
+2020-11-13 14:23:18.586262 [net info] starting all threads...
+2020-11-13 14:23:18.586412 [net warn] ignoring option name in conf file: block-size
+2020-11-13 14:23:18.586424 [net warn] ignoring option name in conf file: nworker
+2020-11-13 14:23:18.586429 [net warn] ignoring option name in conf file: repnworker
+2020-11-13 14:23:18.586434 [net warn] ignoring option name in conf file: clinworker
+2020-11-13 14:23:18.586438 [net warn] ignoring option name in conf file: repburst
+2020-11-13 14:23:18.586442 [net warn] ignoring option name in conf file: cliburst
+2020-11-13 14:23:18.586447 [net warn] ignoring option name in conf file: pace-maker
+2020-11-13 14:23:18.586457 [net info] loaded configuration from hotstuff.conf
+2020-11-13 14:23:18.586522 [hotstuff info] nfaulty = 1
+2020-11-13 14:23:18.586795 [net info] created <Conn fd=11 addr=<NetAddr 172.17.16.37:20000> mode=active>
+2020-11-13 14:23:18.587079 [net info] created <Conn fd=19 addr=<NetAddr 172.17.16.13:20000> mode=active>
+2020-11-13 14:23:18.587109 [net info] connected to remote <Conn fd=11 addr=<NetAddr 172.17.16.37:20000> mode=active>
+2020-11-13 14:23:18.587326 [net info] created <Conn fd=21 addr=<NetAddr 172.17.16.43:20000> mode=active>
+2020-11-13 14:23:18.587537 [net info] created <Conn fd=23 addr=<NetAddr 172.17.16.34:20000> mode=active>
+2020-11-13 14:23:18.587563 [net info] connected to remote <Conn fd=19 addr=<NetAddr 172.17.16.13:20000> mode=active>
+2020-11-13 14:23:18.587579 [net info] connected to remote <Conn fd=21 addr=<NetAddr 172.17.16.43:20000> mode=active>
+2020-11-13 14:23:18.587664 [net info] connected to remote <Conn fd=23 addr=<NetAddr 172.17.16.34:20000> mode=active>
+2020-11-13 14:25:46.919512 [net info] stopping all threads...

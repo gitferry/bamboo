@@ -60,7 +60,7 @@ def do_plot():
     # plt.xlabel('Requests (Tx) in log scale')
     plt.tight_layout()
     # plt.show()
-    plt.savefig('happy-path.png', format='png', dpi=1000)
+    plt.savefig('happy-path.png', format='png', dpi=100)
 
 if __name__ == '__main__':
     do_plot()

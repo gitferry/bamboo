@@ -37,6 +37,7 @@ func (l *Limiter) Wait() {
 	l.sleep += l.interval - now.Sub(l.last)
 
 	if l.sleep < l.slack {
+		// TODO: warning
 		l.sleep = l.slack
 	}
 

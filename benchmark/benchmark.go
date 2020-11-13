@@ -55,6 +55,8 @@ func NewBenchmark(db DB) *Benchmark {
 
 // Run starts the main logic of benchmarking
 func (b *Benchmark) Run() {
+	var genCount, sendCount, confirmCount uint64
+
 	b.latency = make([]time.Duration, 0)
 	keys := make(chan int, b.Concurrency*10)
 	latencies := make(chan time.Duration, b.Concurrency)
@@ -79,7 +81,10 @@ func (b *Benchmark) Run() {
 			default:
 				b.wait.Add(1)
 				//log.Debugf("is generating key No.%v", j)
-				keys <- b.next()
+				k := b.next()
+				genCount++
+				keys <- k
+				sendCount++
 				j++
 				//log.Debugf("generated key No.%v", j-1)
 			}
@@ -97,9 +102,11 @@ func (b *Benchmark) Run() {
 	b.db.Stop()
 	close(keys)
 	stat := Statistic(b.latency)
+	confirmCount = uint64(len(b.latency))
 	log.Infof("Concurrency = %d", b.Concurrency)
 	log.Infof("Benchmark Time = %v\n", t)
 	log.Infof("Throughput = %f\n", float64(len(b.latency))/t.Seconds())
+	log.Infof("genCount: %d, sendCount: %d, confirmCount: %d", genCount, sendCount, confirmCount)
 	log.Info(stat)
 
 	stat.WriteFile("latency")

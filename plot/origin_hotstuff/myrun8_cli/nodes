@@ -1,0 +1,24 @@
+[nodes_setup]
+175.24.249.115
+42.192.10.104
+42.192.10.27
+42.192.11.246
+42.192.17.246
+
+[nodes]
+replica0 ansible_host=42.192.10.104 host_idx=0 extra_conf=hotstuff.gen-sec0.conf
+replica1 ansible_host=42.192.10.27 host_idx=0 extra_conf=hotstuff.gen-sec1.conf
+replica2 ansible_host=42.192.11.246 host_idx=0 extra_conf=hotstuff.gen-sec2.conf
+replica3 ansible_host=42.192.17.246 host_idx=0 extra_conf=hotstuff.gen-sec3.conf
+
+[clients]
+client0 ansible_host=175.24.249.115 host_idx=1 cid=0
+client1 ansible_host=175.24.249.115 host_idx=2 cid=1
+client2 ansible_host=175.24.249.115 host_idx=3 cid=2
+client3 ansible_host=175.24.249.115 host_idx=4 cid=3
+client4 ansible_host=175.24.249.115 host_idx=5 cid=4
+client5 ansible_host=175.24.249.115 host_idx=6 cid=5
+client6 ansible_host=175.24.249.115 host_idx=7 cid=6
+client7 ansible_host=175.24.249.115 host_idx=8 cid=7
+client8 ansible_host=175.24.249.115 host_idx=9 cid=8
+client9 ansible_host=175.24.249.115 host_idx=10 cid=9
