@@ -1,6 +1,7 @@
 package benchmark
 
 import (
+	"github.com/gitferry/bamboo/log"
 	"sync"
 	"time"
 )
@@ -38,6 +39,7 @@ func (l *Limiter) Wait() {
 
 	if l.sleep < l.slack {
 		// TODO: warning
+		log.Warningf("minus sleep")
 		l.sleep = l.slack
 	}
 

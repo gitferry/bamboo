@@ -114,6 +114,7 @@ func (s *socket) Send(to identity.NodeID, m interface{}) {
 	}
 
 	t.Send(m)
+	//log.Debugf("[%v] message %v is sent to %v", s.id, m, to)
 }
 
 func (s *socket) Recv() interface{} {
@@ -148,7 +149,7 @@ func (s *socket) Broadcast(m interface{}) {
 		if id == s.id {
 			continue
 		}
-		go s.Send(id, m)
+		s.Send(id, m)
 	}
 }
 

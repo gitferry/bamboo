@@ -99,11 +99,12 @@ func (hs *HotStuff) ProcessBlock(block *blockchain.Block) error {
 	// vote to the next leader
 	voteAggregator := hs.FindLeaderFor(block.View + 1)
 	if voteAggregator == hs.ID() {
+		log.Debugf("[%v] vote is sent to itself, id: %x", hs.ID(), vote.BlockID)
 		hs.ProcessVote(vote)
 	} else {
+		log.Debugf("[%v] vote is sent to %v, id: %x", hs.ID(), voteAggregator, vote.BlockID)
 		hs.Send(voteAggregator, vote)
 	}
-	log.Debugf("[%v] vote is sent, id: %x", hs.ID(), vote.BlockID)
 
 	b, ok := hs.bufferedBlocks[block.ID]
 	if ok {

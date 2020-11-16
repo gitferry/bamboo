@@ -10,6 +10,8 @@ import (
 	"github.com/gitferry/bamboo/log"
 )
 
+var count uint64
+
 // DB is general interface implemented by client to call client library
 type DB interface {
 	Init() error
@@ -58,7 +60,7 @@ func (b *Benchmark) Run() {
 	var genCount, sendCount, confirmCount uint64
 
 	b.latency = make([]time.Duration, 0)
-	keys := make(chan int, b.Concurrency*10)
+	keys := make(chan int, b.Concurrency)
 	latencies := make(chan time.Duration, b.Concurrency)
 	defer close(latencies)
 	go b.collect(latencies)
@@ -142,7 +144,8 @@ func (b *Benchmark) next() int {
 	var key int
 	switch b.Distribution {
 	case "uniform":
-		key = rand.Intn(b.K) + b.Min
+		count++
+		key = int(count)
 	default:
 		log.Fatalf("unknown distribution %s", b.Distribution)
 	}

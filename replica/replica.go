@@ -81,6 +81,11 @@ func (r *Replica) HandleBlock(block blockchain.Block) {
 }
 
 func (r *Replica) HandleVote(vote blockchain.Vote) {
+	if vote.View < r.pm.GetCurView() {
+		log.Debugf("[%v] received a stale vote, view: %v, block id: %x", r.ID(), vote.View, vote.BlockID)
+		return
+	}
+
 	log.Debugf("[%v] received a vote from %v, blockID is %x", r.ID(), vote.Voter, vote.BlockID)
 	r.eventChan <- vote
 }
@@ -130,8 +135,8 @@ func (r *Replica) processNewView(newView types.View) {
 func (r *Replica) proposeBlock(view types.View) {
 	block := r.Safety.MakeProposal(r.pd.GeneratePayload())
 	log.Infof("[%v] is going to propose block for view: %v, id: %x, prevID: %x", r.ID(), view, block.ID, block.PrevID)
-	r.Broadcast(block)
 	_ = r.Safety.ProcessBlock(block)
+	r.Broadcast(block)
 	log.Debugf("[%v] broadcast is done for sending the block", r.ID())
 }
 
