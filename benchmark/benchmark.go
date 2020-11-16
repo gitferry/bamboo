@@ -61,7 +61,7 @@ func (b *Benchmark) Run() {
 
 	b.latency = make([]time.Duration, 0)
 	keys := make(chan int, b.Concurrency)
-	latencies := make(chan time.Duration, b.Concurrency)
+	latencies := make(chan time.Duration, 1000)
 	defer close(latencies)
 	go b.collect(latencies)
 
@@ -71,7 +71,6 @@ func (b *Benchmark) Run() {
 
 	b.db.Init()
 	b.startTime = time.Now()
-	j := 0
 	if b.T > 0 {
 		timer := time.NewTimer(time.Second * time.Duration(b.T))
 	loop:
@@ -87,7 +86,6 @@ func (b *Benchmark) Run() {
 				genCount++
 				keys <- k
 				sendCount++
-				j++
 				//log.Debugf("generated key No.%v", j-1)
 			}
 		}
