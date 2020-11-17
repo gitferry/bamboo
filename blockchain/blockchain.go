@@ -79,10 +79,10 @@ func (bc *BlockChain) GetGrandParentBlock(id crypto.Identifier) (*Block, error) 
 }
 
 // CommitBlock prunes blocks and returns committed blocks up to the last committed one and prunedBlocks
-func (bc *BlockChain) CommitBlock(id crypto.Identifier) ([]*Block, []*Block, error) {
+func (bc *BlockChain) CommitBlock(id crypto.Identifier) ([]*Block, error) {
 	vertex, ok := bc.forrest.GetVertex(id)
 	if !ok {
-		return nil, nil, fmt.Errorf("cannot find the block, id: %x", id)
+		return nil, fmt.Errorf("cannot find the block, id: %x", id)
 	}
 	committedView := vertex.GetBlock().View
 	bc.highestComitted = int(vertex.GetBlock().View)
@@ -99,12 +99,12 @@ func (bc *BlockChain) CommitBlock(id crypto.Identifier) ([]*Block, []*Block, err
 		}
 		block = vertex.GetBlock()
 	}
-	prunedBlocks, err := bc.forrest.PruneUpToLevel(uint64(committedView))
+	err := bc.forrest.PruneUpToLevel(uint64(committedView))
 	if err != nil {
-		return nil, nil, fmt.Errorf("cannot prune the blockchain to the committed block, id: %w", err)
+		return nil, fmt.Errorf("cannot prune the blockchain to the committed block, id: %w", err)
 	}
 
-	return committedBlocks, prunedBlocks, nil
+	return committedBlocks, nil
 }
 
 func (bc *BlockChain) GetChildrenBlocks(id crypto.Identifier) []*Block {

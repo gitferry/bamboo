@@ -35,8 +35,7 @@ func NewTchs(
 	node node.Node,
 	pm *pacemaker.Pacemaker,
 	elec election.Election,
-	committedBlocks chan *blockchain.Block,
-	prunedBlocks chan *blockchain.Block) *Tchs {
+	committedBlocks chan *blockchain.Block) *Tchs {
 	th := new(Tchs)
 	th.Node = node
 	th.Election = elec
@@ -46,7 +45,7 @@ func NewTchs(
 	th.bufferedQCs = make(map[crypto.Identifier]*blockchain.QC)
 	th.highQC = &blockchain.QC{View: 0}
 	th.committedBlocks = committedBlocks
-	th.prunedBlocks = prunedBlocks
+	//th.prunedBlocks = prunedBlocks
 	return th
 }
 
@@ -237,7 +236,7 @@ func (th *Tchs) processCertificate(qc *blockchain.QC) {
 	if !ok {
 		return
 	}
-	committedBlocks, prunedBlocks, err := th.bc.CommitBlock(block.ID)
+	committedBlocks, err := th.bc.CommitBlock(block.ID)
 	if err != nil {
 		log.Errorf("[%v] cannot commit blocks", th.ID())
 		return
@@ -246,9 +245,9 @@ func (th *Tchs) processCertificate(qc *blockchain.QC) {
 		for _, cBlock := range committedBlocks {
 			th.committedBlocks <- cBlock
 		}
-		for _, pBlock := range prunedBlocks {
-			th.prunedBlocks <- pBlock
-		}
+		//for _, pBlock := range prunedBlocks {
+		//	th.prunedBlocks <- pBlock
+		//}
 	}()
 }
 

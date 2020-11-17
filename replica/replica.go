@@ -33,10 +33,10 @@ type Replica struct {
 	isByz           bool
 	timer           *time.Timer
 	committedBlocks chan *blockchain.Block
-	prunedBlocks    chan *blockchain.Block
-	eventChan       chan interface{}
-	hasher          crypto.Hasher
-	signer          string
+	//prunedBlocks    chan *blockchain.Block
+	eventChan chan interface{}
+	hasher    crypto.Hasher
+	signer    string
 }
 
 // NewReplica creates a new replica instance
@@ -52,7 +52,7 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 	r.start = make(chan bool)
 	r.eventChan = make(chan interface{})
 	r.committedBlocks = make(chan *blockchain.Block)
-	r.prunedBlocks = make(chan *blockchain.Block)
+	//r.prunedBlocks = make(chan *blockchain.Block)
 	r.isByz = isByz
 	r.Register(blockchain.Block{}, r.HandleBlock)
 	r.Register(blockchain.Vote{}, r.HandleVote)
@@ -64,13 +64,13 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 	gob.Register(pacemaker.TMO{})
 	switch alg {
 	case "hotstuff":
-		r.Safety = hotstuff.NewHotStuff(r.Node, r.pm, r.Election, r.committedBlocks, r.prunedBlocks)
+		r.Safety = hotstuff.NewHotStuff(r.Node, r.pm, r.Election, r.committedBlocks)
 	case "tchs":
-		r.Safety = tchs.NewTchs(r.Node, r.pm, r.Election, r.committedBlocks, r.prunedBlocks)
+		r.Safety = tchs.NewTchs(r.Node, r.pm, r.Election, r.committedBlocks)
 	case "streamlet":
-		r.Safety = streamlet.NewStreamlet(r.Node, r.pm, r.Election, r.committedBlocks, r.prunedBlocks)
+		r.Safety = streamlet.NewStreamlet(r.Node, r.pm, r.Election, r.committedBlocks)
 	default:
-		r.Safety = hotstuff.NewHotStuff(r.Node, r.pm, r.Election, r.committedBlocks, r.prunedBlocks)
+		r.Safety = hotstuff.NewHotStuff(r.Node, r.pm, r.Election, r.committedBlocks)
 	}
 	return r
 }
@@ -104,7 +104,7 @@ func (r *Replica) handleTxn(m message.Transaction) {
 		r.isStarted.Store(true)
 		r.start <- true
 		// wait for others to get started
-		time.Sleep(200 * time.Millisecond)
+		time.Sleep(100 * time.Millisecond)
 	}
 
 	// kick-off the protocol
@@ -125,15 +125,15 @@ func (r *Replica) processCommittedBlock(block *blockchain.Block) {
 	log.Infof("[%v] the block is committed, No. of transactions: %v, view: %v, current view: %v, id: %x", r.ID(), len(block.Payload), block.View, r.pm.GetCurView(), block.ID)
 }
 
-func (r *Replica) processPrunedBlock(block *blockchain.Block) {
-	for _, txn := range block.Payload {
-		if r.ID() == txn.NodeID {
-			// collect txn back to mem pool
-			r.pd.CollectTxn(txn)
-		}
-	}
-	log.Infof("[%v] the block is pruned, No. of transactions: %v, view: %v, current view: %v, id: %x", r.ID(), len(block.Payload), block.View, r.pm.GetCurView(), block.ID)
-}
+//func (r *Replica) processPrunedBlock(block *blockchain.Block) {
+//	for _, txn := range block.Payload {
+//		if r.ID() == txn.NodeID {
+//			// collect txn back to mem pool
+//			r.pd.CollectTxn(txn)
+//		}
+//	}
+//	log.Infof("[%v] the block is pruned, No. of transactions: %v, view: %v, current view: %v, id: %x", r.ID(), len(block.Payload), block.View, r.pm.GetCurView(), block.ID)
+//}
 
 func (r *Replica) processNewView(newView types.View) {
 	log.Debugf("[%v] is processing new view: %v, leader is %v", r.ID(), newView, r.FindLeaderFor(newView))
@@ -164,8 +164,8 @@ func (r *Replica) ListenLocalEvent() {
 				r.Safety.ProcessLocalTmo(r.pm.GetCurView())
 			case committedBlock := <-r.committedBlocks:
 				r.processCommittedBlock(committedBlock)
-			case prunedBlock := <-r.prunedBlocks:
-				r.processPrunedBlock(prunedBlock)
+				//case prunedBlock := <-r.prunedBlocks:
+				//	r.processPrunedBlock(prunedBlock)
 			}
 		}
 	}
