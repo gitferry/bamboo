@@ -19,7 +19,7 @@
   "buffer_size": 10240,
   "multiversion": false,
   "timeout": 1000,
-  "bsize":500,
+  "bsize":100,
   "delta": 1,
   "hasher": "sha3_256",
   "signer": "ECDSA_P256",

@@ -23,6 +23,7 @@ type HotStuff struct {
 	preferredView   types.View
 	bc              *blockchain.BlockChain
 	committedBlocks chan *blockchain.Block
+	prunedBlocks    chan *blockchain.Block
 	bufferedQCs     map[crypto.Identifier]*blockchain.QC
 	bufferedBlocks  map[crypto.Identifier]*blockchain.Block
 	highQC          *blockchain.QC
@@ -33,7 +34,7 @@ func NewHotStuff(
 	node node.Node,
 	pm *pacemaker.Pacemaker,
 	elec election.Election,
-	committedBlocks chan *blockchain.Block) *HotStuff {
+	committedBlocks chan *blockchain.Block, prunedBlocks chan *blockchain.Block) *HotStuff {
 	hs := new(HotStuff)
 	hs.Node = node
 	hs.Election = elec
@@ -43,6 +44,7 @@ func NewHotStuff(
 	hs.bufferedQCs = make(map[crypto.Identifier]*blockchain.QC)
 	hs.highQC = &blockchain.QC{View: 0}
 	hs.committedBlocks = committedBlocks
+	hs.prunedBlocks = prunedBlocks
 	return hs
 }
 
@@ -164,6 +166,10 @@ func (hs *HotStuff) MakeProposal(payload []*message.Transaction) *blockchain.Blo
 	return block
 }
 
+//func (hs *HotStuff) ForkChoice() crypto.Identifier {
+//
+//}
+
 func (hs *HotStuff) processTC(tc *pacemaker.TC) {
 	if tc.View < hs.pm.GetCurView() {
 		return
@@ -234,14 +240,17 @@ func (hs *HotStuff) processCertificate(qc *blockchain.QC) {
 	if !ok {
 		return
 	}
-	committedBlocks, err := hs.bc.CommitBlock(block.ID)
+	committedBlocks, prunedBlocks, err := hs.bc.CommitBlock(block.ID)
 	if err != nil {
 		log.Errorf("[%v] cannot commit blocks", hs.ID())
 		return
 	}
 	go func() {
-		for _, block := range committedBlocks {
-			hs.committedBlocks <- block
+		for _, cBlock := range committedBlocks {
+			hs.committedBlocks <- cBlock
+		}
+		for _, pBlock := range prunedBlocks {
+			hs.prunedBlocks <- pBlock
 		}
 	}()
 }

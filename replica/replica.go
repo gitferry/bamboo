@@ -33,6 +33,7 @@ type Replica struct {
 	isByz           bool
 	timer           *time.Timer
 	committedBlocks chan *blockchain.Block
+	prunedBlocks    chan *blockchain.Block
 	eventChan       chan interface{}
 	hasher          crypto.Hasher
 	signer          string
@@ -51,6 +52,7 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 	r.start = make(chan bool)
 	r.eventChan = make(chan interface{})
 	r.committedBlocks = make(chan *blockchain.Block)
+	r.prunedBlocks = make(chan *blockchain.Block)
 	r.isByz = isByz
 	r.Register(blockchain.Block{}, r.HandleBlock)
 	r.Register(blockchain.Vote{}, r.HandleVote)
@@ -62,13 +64,13 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 	gob.Register(pacemaker.TMO{})
 	switch alg {
 	case "hotstuff":
-		r.Safety = hotstuff.NewHotStuff(r.Node, r.pm, r.Election, r.committedBlocks)
+		r.Safety = hotstuff.NewHotStuff(r.Node, r.pm, r.Election, r.committedBlocks, r.prunedBlocks)
 	case "tchs":
-		r.Safety = tchs.NewTchs(r.Node, r.pm, r.Election, r.committedBlocks)
+		r.Safety = tchs.NewTchs(r.Node, r.pm, r.Election, r.committedBlocks, r.prunedBlocks)
 	case "streamlet":
-		r.Safety = streamlet.NewStreamlet(r.Node, r.pm, r.Election, r.committedBlocks)
+		r.Safety = streamlet.NewStreamlet(r.Node, r.pm, r.Election, r.committedBlocks, r.prunedBlocks)
 	default:
-		r.Safety = hotstuff.NewHotStuff(r.Node, r.pm, r.Election, r.committedBlocks)
+		r.Safety = hotstuff.NewHotStuff(r.Node, r.pm, r.Election, r.committedBlocks, r.prunedBlocks)
 	}
 	return r
 }
@@ -120,8 +122,17 @@ func (r *Replica) processCommittedBlock(block *blockchain.Block) {
 			txn.Reply(message.TransactionReply{})
 		}
 	}
-	r.pd.RemoveTxns(block.Payload)
 	log.Infof("[%v] the block is committed, No. of transactions: %v, view: %v, current view: %v, id: %x", r.ID(), len(block.Payload), block.View, r.pm.GetCurView(), block.ID)
+}
+
+func (r *Replica) processPrunedBlock(block *blockchain.Block) {
+	for _, txn := range block.Payload {
+		if r.ID() == txn.NodeID {
+			// collect txn back to mem pool
+			r.pd.CollectTxn(txn)
+		}
+	}
+	log.Infof("[%v] the block is pruned, No. of transactions: %v, view: %v, current view: %v, id: %x", r.ID(), len(block.Payload), block.View, r.pm.GetCurView(), block.ID)
 }
 
 func (r *Replica) processNewView(newView types.View) {
@@ -153,6 +164,8 @@ func (r *Replica) ListenLocalEvent() {
 				r.Safety.ProcessLocalTmo(r.pm.GetCurView())
 			case committedBlock := <-r.committedBlocks:
 				r.processCommittedBlock(committedBlock)
+			case prunedBlock := <-r.prunedBlocks:
+				r.processPrunedBlock(prunedBlock)
 			}
 		}
 	}

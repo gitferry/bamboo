@@ -23,6 +23,7 @@ type Streamlet struct {
 	bufferedQCs            map[crypto.Identifier]*blockchain.QC
 	bufferedNotarizedBlock map[crypto.Identifier]*blockchain.QC
 	committedBlocks        chan *blockchain.Block
+	prunedBlocks           chan *blockchain.Block
 }
 
 // NewStreamlet creates a new Streamlet instance
@@ -30,12 +31,14 @@ func NewStreamlet(
 	node node.Node,
 	pm *pacemaker.Pacemaker,
 	elec election.Election,
-	committedBlocks chan *blockchain.Block) *Streamlet {
+	committedBlocks chan *blockchain.Block,
+	prunedBlocks chan *blockchain.Block) *Streamlet {
 	sl := new(Streamlet)
 	sl.Node = node
 	sl.Election = elec
 	sl.pm = pm
 	sl.committedBlocks = committedBlocks
+	sl.prunedBlocks = prunedBlocks
 	sl.bc = blockchain.NewBlockchain(config.GetConfig().N())
 	sl.bufferedBlocks = make(map[crypto.Identifier]*blockchain.Block)
 	sl.bufferedQCs = make(map[crypto.Identifier]*blockchain.QC)
@@ -205,14 +208,17 @@ func (sl *Streamlet) processCertificate(qc *blockchain.QC) {
 	if !ok {
 		return
 	}
-	committedBlocks, err := sl.bc.CommitBlock(block.ID)
+	committedBlocks, prunedBlocks, err := sl.bc.CommitBlock(block.ID)
 	if err != nil {
 		log.Errorf("[%v] cannot commit blocks", sl.ID())
 		return
 	}
 	go func() {
-		for _, block := range committedBlocks {
-			sl.committedBlocks <- block
+		for _, cBlock := range committedBlocks {
+			sl.committedBlocks <- cBlock
+		}
+		for _, pBlock := range prunedBlocks {
+			sl.prunedBlocks <- pBlock
 		}
 	}()
 	b, ok := sl.bufferedBlocks[qc.BlockID]
