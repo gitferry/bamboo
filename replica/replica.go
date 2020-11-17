@@ -97,19 +97,15 @@ func (r *Replica) HandleTmo(tmo pacemaker.TMO) {
 
 func (r *Replica) handleTxn(m message.Transaction) {
 	r.pd.CollectTxn(&m)
-	if !r.isStarted.Load() {
-		log.Debugf("[%v] is boosting", r.ID())
-		r.isStarted.Store(true)
-		r.start <- true
-		// wait for others to get started
-		time.Sleep(200 * time.Millisecond)
-	}
+	//if !r.isStarted.Load() {
+	//	log.Debugf("[%v] is boosting", r.ID())
+	//	r.isStarted.Store(true)
+	//	r.start <- true
+	//	// wait for others to get started
+	//	time.Sleep(200 * time.Millisecond)
+	//}
 
 	// kick-off the protocol
-	if r.pm.GetCurView() == 0 && r.IsLeader(r.ID(), 1) {
-		log.Debugf("[%v] is going to kick off the protocol", r.ID())
-		r.pm.AdvanceView(0)
-	}
 }
 
 /* Processors */
@@ -141,6 +137,10 @@ func (r *Replica) proposeBlock(view types.View) {
 }
 
 func (r *Replica) ListenLocalEvent() {
+	if r.pm.GetCurView() == 0 && r.IsLeader(r.ID(), 1) {
+		log.Debugf("[%v] is going to kick off the protocol", r.ID())
+		r.pm.AdvanceView(0)
+	}
 	for {
 		r.timer = time.NewTimer(r.pm.GetTimerForView())
 	L:
@@ -165,9 +165,9 @@ func (r *Replica) Start() {
 		return
 	}
 	go r.Run()
-	<-r.start
+	//<-r.start
 	go r.ListenLocalEvent()
-	for r.isStarted.Load() {
+	for {
 		event := <-r.eventChan
 		switch v := event.(type) {
 		case types.View:

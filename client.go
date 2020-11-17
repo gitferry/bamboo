@@ -7,10 +7,8 @@ import (
 	"github.com/gitferry/bamboo/node"
 	"io"
 	"io/ioutil"
-	"math/rand"
 	"net/http"
 	"net/http/httputil"
-	"reflect"
 	"strconv"
 	"sync"
 
@@ -80,8 +78,9 @@ func (c *HTTPClient) Put(key db.Key, value db.Value) error {
 }
 
 func (c *HTTPClient) GetURL(key db.Key) (identity.NodeID, string) {
-	keys := reflect.ValueOf(c.HTTP).MapKeys()
-	replicaID := keys[rand.Intn(len(keys))].Interface().(identity.NodeID)
+	//keys := reflect.ValueOf(c.HTTP).MapKeys()
+	//replicaID := keys[rand.Intn(len(keys))].Interface().(identity.NodeID)
+	replicaID := identity.NewNodeID(4)
 	return replicaID, c.HTTP[replicaID] + "/" + strconv.Itoa(int(key))
 }
 

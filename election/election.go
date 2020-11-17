@@ -1,11 +1,8 @@
 package election
 
 import (
-	"crypto/sha1"
-	"encoding/binary"
 	"github.com/gitferry/bamboo/identity"
 	"github.com/gitferry/bamboo/types"
-	"strconv"
 )
 
 type Election interface {
@@ -24,27 +21,32 @@ func NewRotation(peerNo int) *rotation {
 }
 
 func (r *rotation) IsLeader(id identity.NodeID, view types.View) bool {
-	if view <= 3 {
-		if id.Node() < r.peerNo {
-			return false
-		}
-		return true
+	//if view <= 3 {
+	//	if id.Node() < r.peerNo {
+	//		return false
+	//	}
+	//	return true
+	//}
+	//h := sha1.New()
+	//h.Write([]byte(strconv.Itoa(int(view) + 1)))
+	//bs := h.Sum(nil)
+	//data := binary.BigEndian.Uint64(bs)
+	//return data%uint64(r.peerNo) == uint64(id.Node()-1)
+	if id.Node() != 4 {
+		return false
 	}
-	h := sha1.New()
-	h.Write([]byte(strconv.Itoa(int(view) + 1)))
-	bs := h.Sum(nil)
-	data := binary.BigEndian.Uint64(bs)
-	return data%uint64(r.peerNo) == uint64(id.Node()-1)
+	return true
 }
 
 func (r *rotation) FindLeaderFor(view types.View) identity.NodeID {
-	if view <= 3 {
-		return identity.NewNodeID(r.peerNo)
-	}
-	h := sha1.New()
-	h.Write([]byte(strconv.Itoa(int(view + 1))))
-	bs := h.Sum(nil)
-	data := binary.BigEndian.Uint64(bs)
-	id := data%uint64(r.peerNo) + 1
-	return identity.NewNodeID(int(id))
+	//if view <= 3 {
+	//	return identity.NewNodeID(r.peerNo)
+	//}
+	//h := sha1.New()
+	//h.Write([]byte(strconv.Itoa(int(view + 1))))
+	//bs := h.Sum(nil)
+	//data := binary.BigEndian.Uint64(bs)
+	//id := data%uint64(r.peerNo) + 1
+	//return identity.NewNodeID(int(id))
+	return identity.NewNodeID(4)
 }
