@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"github.com/gitferry/bamboo/node"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -18,6 +17,7 @@ import (
 	"github.com/gitferry/bamboo/db"
 	"github.com/gitferry/bamboo/identity"
 	"github.com/gitferry/bamboo/log"
+	"github.com/gitferry/bamboo/node"
 )
 
 // Client interface provides get and put for key value store
@@ -89,7 +89,7 @@ func (c *HTTPClient) GetURL(key db.Key) (identity.NodeID, string) {
 // if value == nil, it's a read
 func (c *HTTPClient) rest(key db.Key, value db.Value) (db.Value, map[string]string, error) {
 	// get url
-	id, url := c.GetURL(key)
+	_, url := c.GetURL(key)
 
 	method := http.MethodGet
 	var body io.Reader
@@ -105,7 +105,6 @@ func (c *HTTPClient) rest(key db.Key, value db.Value) (db.Value, map[string]stri
 	req.Header.Set(node.HTTPClientID, string(c.ID))
 	req.Header.Set(node.HTTPCommandID, strconv.Itoa(c.CID))
 	req.Header.Set("Connection", "keep-alive")
-	// r.Header.Set(HTTPTimestamp, strconv.FormatInt(time.Now().UnixNano(), 10))
 
 	rep, err := c.Client.Do(req)
 	if err != nil {
@@ -113,25 +112,28 @@ func (c *HTTPClient) rest(key db.Key, value db.Value) (db.Value, map[string]stri
 		return nil, nil, err
 	}
 	defer rep.Body.Close()
+	//log.Debugf("node=%v type=%s key=%v value=%x", id, method, key, value)
 
-	// get headers
+	//get headers
 	metadata := make(map[string]string)
 	for k := range rep.Header {
 		metadata[k] = rep.Header.Get(k)
 	}
 
 	if rep.StatusCode == http.StatusOK {
-		b, err := ioutil.ReadAll(rep.Body)
-		if err != nil {
-			log.Error(err)
-			return nil, metadata, err
-		}
-		if value == nil {
-			log.Debugf("node=%v type=%s key=%v value=%x", id, method, key, db.Value(b))
-		} else {
-			log.Debugf("node=%v type=%s key=%v value=%x", id, method, key, value)
-		}
-		return db.Value(b), metadata, nil
+		//b, err := ioutil.ReadAll(rep.Body)
+		//if err != nil {
+		//	log.Error(err)
+		//	return nil, metadata, err
+		//	//return nil, nil, nil
+		//}
+		//if value == nil {
+		//	log.Debugf("node=%v type=%s key=%v value=%x", id, method, key, db.Value(b))
+		//} else {
+		//	log.Debugf("node=%v type=%s key=%v value=%x", id, method, key, value)
+		//}
+		//return db.Value(b), metadata, nil
+		return nil, nil, nil
 	}
 
 	// http call failed
