@@ -34,9 +34,10 @@ type Replica struct {
 	timer           *time.Timer
 	committedBlocks chan *blockchain.Block
 	//prunedBlocks    chan *blockchain.Block
-	eventChan chan interface{}
-	hasher    crypto.Hasher
-	signer    string
+	eventChan    chan interface{}
+	hasher       crypto.Hasher
+	signer       string
+	lastViewTime time.Time
 }
 
 // NewReplica creates a new replica instance
@@ -152,13 +153,30 @@ func (r *Replica) proposeBlock(view types.View) {
 }
 
 func (r *Replica) ListenLocalEvent() {
+	r.lastViewTime = time.Now()
 	r.timer = time.NewTimer(r.pm.GetTimerForView())
+	roundTimeMeasure := make([]time.Duration, 0, 5000)
 	for {
 		r.timer.Reset(r.pm.GetTimerForView())
 	L:
 		for {
 			select {
 			case view := <-r.pm.EnteringViewEvent():
+				// measure round time
+				now := time.Now()
+				lasts := now.Sub(r.lastViewTime)
+				if view >= 10 && int(view) < config.GetConfig().MaxRound {
+					roundTimeMeasure = append(roundTimeMeasure, lasts)
+				}
+				if int(view) == config.GetConfig().MaxRound {
+					var sumRoundTime time.Duration
+					for _, t := range roundTimeMeasure {
+						sumRoundTime = sumRoundTime + t
+					}
+					log.Infof("[%v] the average view duration is %v microseconds, measured %v views", r.ID(), float64(sumRoundTime.Microseconds())/float64(len(roundTimeMeasure)))
+				}
+				r.lastViewTime = now
+				log.Infof("[%v] the last view lasts %v millisecond, current view: %v", r.ID(), lasts, view)
 				r.eventChan <- view
 				break L
 			case <-r.timer.C:

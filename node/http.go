@@ -29,11 +29,11 @@ func (n *node) http() {
 	mux.HandleFunc("/", n.handleRoot)
 
 	// http string should be in form of ":8080"
-	url, err := url.Parse(config.Configuration.HTTPAddrs[n.id])
+	ip, err := url.Parse(config.Configuration.HTTPAddrs[n.id])
 	if err != nil {
 		log.Fatal("http url parse error: ", err)
 	}
-	port := ":" + url.Port()
+	port := ":" + ip.Port()
 	n.server = &http.Server{
 		Addr:    port,
 		Handler: mux,

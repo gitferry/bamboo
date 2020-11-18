@@ -24,6 +24,7 @@
   "hasher": "sha3_256",
   "signer": "ECDSA_P256",
   "pprof": true,
+  "maxRound": 5000,
   "benchmark": {
     "T": 10,
     "N": 0,

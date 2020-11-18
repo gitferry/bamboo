@@ -32,6 +32,7 @@ type Config struct {
 	Benchmark      Bconfig `json:"benchmark"` // benchmark configuration
 	Delta          int     `json:"delta"`     // timeout, seconds
 	Pprof          bool    `json:"pprof"`
+	MaxRound       int     `json:"maxRound"`
 
 	hasher string
 	signer string
