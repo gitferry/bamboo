@@ -36,14 +36,10 @@ func (b *Backend) insertFront(txn *message.Transaction) {
 }
 
 func (b *Backend) size() int {
-	b.mu.Lock()
-	defer b.mu.Unlock()
 	return b.txns.Len()
 }
 
 func (b *Backend) front() *list.Element {
-	b.mu.Lock()
-	defer b.mu.Unlock()
 	return b.txns.Front()
 }
 
@@ -51,19 +47,19 @@ func (b *Backend) remove(ele *list.Element) {
 	if ele == nil {
 		return
 	}
-	b.mu.Lock()
-	defer b.mu.Unlock()
 	b.txns.Remove(ele)
 }
 
 func (b *Backend) some(n int) []*message.Transaction {
-	batch := make([]*message.Transaction, 0)
 	var batchSize int
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	if n <= b.size() {
 		batchSize = n
 	} else {
 		batchSize = b.size()
 	}
+	batch := make([]*message.Transaction, 0, batchSize)
 	for i := 0; i < batchSize; i++ {
 		ele := b.front()
 		val, ok := ele.Value.(*message.Transaction)

@@ -31,6 +31,7 @@ type Config struct {
 	BSize          int     `json:"bsize"`
 	Benchmark      Bconfig `json:"benchmark"` // benchmark configuration
 	Delta          int     `json:"delta"`     // timeout, seconds
+	Pprof          bool    `json:"pprof"`
 
 	hasher string
 	signer string

@@ -12,7 +12,7 @@ if [ -z "${SERVER_PID}" ]; then
     int=1
     while (( $int<=$N ))
     do
-	    ./server -id $int -log_dir=. -log_level=debug -algorithm=hotstuff &
+	    ./server -id $int -log_dir=. -log_level=info -algorithm=hotstuff &
 	    echo $! >> ${SERVER_PID_FILE}
 	    let "int++"
     done

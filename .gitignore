@@ -14,6 +14,8 @@ client
 *.xml
 latency
 *.csv
+mem*
+cpu*
 
 
 # Output of the go coverage tool, specifically when used with LiteIDE

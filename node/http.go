@@ -5,7 +5,6 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	"net/http/pprof"
 	"net/url"
 	"strconv"
 	"time"
@@ -32,11 +31,6 @@ func (n *node) http() {
 	mux.HandleFunc("/history", n.handleHistory)
 	mux.HandleFunc("/crash", n.handleCrash)
 	mux.HandleFunc("/drop", n.handleDrop)
-	mux.HandleFunc("/debug/pprof/", pprof.Index)
-	mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
-	mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
-	mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
-	mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
 
 	// http string should be in form of ":8080"
 	url, err := url.Parse(config.Configuration.HTTPAddrs[n.id])
@@ -73,6 +67,7 @@ func (n *node) handleRoot(w http.ResponseWriter, r *http.Request) {
 		}
 		req.Properties[k] = r.Header.Get(k)
 	}
+	defer r.Body.Close()
 
 	// get command key and value
 	if len(r.URL.Path) > 1 {

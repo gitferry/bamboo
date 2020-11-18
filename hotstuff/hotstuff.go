@@ -110,7 +110,8 @@ func (hs *HotStuff) ProcessBlock(block *blockchain.Block) error {
 
 	b, ok := hs.bufferedBlocks[block.ID]
 	if ok {
-		return hs.ProcessBlock(b)
+		_ = hs.ProcessBlock(b)
+		delete(hs.bufferedBlocks, block.ID)
 	}
 	return nil
 }

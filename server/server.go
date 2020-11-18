@@ -48,6 +48,7 @@ func main() {
 		}
 		wg.Wait()
 	} else {
+		setupDebug()
 		initReplica(identity.NodeID(*id), *isByz)
 	}
 }

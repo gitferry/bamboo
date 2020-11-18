@@ -89,6 +89,10 @@ func (bc *BlockChain) CommitBlock(id crypto.Identifier) ([]*Block, error) {
 	var committedBlocks []*Block
 	for block := vertex.GetBlock(); uint64(block.View) > bc.forrest.LowestLevel; {
 		committedBlocks = append(committedBlocks, block)
+		_, ok := bc.quorum.votes[block.ID]
+		if ok {
+			delete(bc.quorum.votes, block.ID)
+		}
 		bc.committedBlocks++
 		if !config.Configuration.IsByzantine(block.Proposer) {
 			bc.honestCommittedBlocks++

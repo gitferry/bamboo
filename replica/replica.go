@@ -152,8 +152,9 @@ func (r *Replica) proposeBlock(view types.View) {
 }
 
 func (r *Replica) ListenLocalEvent() {
+	r.timer = time.NewTimer(r.pm.GetTimerForView())
 	for {
-		r.timer = time.NewTimer(r.pm.GetTimerForView())
+		r.timer.Reset(r.pm.GetTimerForView())
 	L:
 		for {
 			select {
@@ -162,12 +163,19 @@ func (r *Replica) ListenLocalEvent() {
 				break L
 			case <-r.timer.C:
 				r.Safety.ProcessLocalTmo(r.pm.GetCurView())
-			case committedBlock := <-r.committedBlocks:
-				r.processCommittedBlock(committedBlock)
+				//case committedBlock := <-r.committedBlocks:
+				//	r.processCommittedBlock(committedBlock)
 				//case prunedBlock := <-r.prunedBlocks:
 				//	r.processPrunedBlock(prunedBlock)
 			}
 		}
+	}
+}
+
+func (r *Replica) ListenCommittedBlocks() {
+	for {
+		committedBlock := <-r.committedBlocks
+		r.processCommittedBlock(committedBlock)
 	}
 }
 
@@ -180,6 +188,7 @@ func (r *Replica) Start() {
 	go r.Run()
 	<-r.start
 	go r.ListenLocalEvent()
+	go r.ListenCommittedBlocks()
 	for r.isStarted.Load() {
 		event := <-r.eventChan
 		switch v := event.(type) {
