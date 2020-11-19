@@ -23,18 +23,19 @@ type HotStuff struct {
 	preferredView   types.View
 	bc              *blockchain.BlockChain
 	committedBlocks chan *blockchain.Block
-	//prunedBlocks    chan *blockchain.Block
-	bufferedQCs    map[crypto.Identifier]*blockchain.QC
-	bufferedBlocks map[crypto.Identifier]*blockchain.Block
-	highQC         *blockchain.QC
-	mu             sync.Mutex
+	forkedBlocks    chan *blockchain.Block
+	bufferedQCs     map[crypto.Identifier]*blockchain.QC
+	bufferedBlocks  map[crypto.Identifier]*blockchain.Block
+	highQC          *blockchain.QC
+	mu              sync.Mutex
 }
 
 func NewHotStuff(
 	node node.Node,
 	pm *pacemaker.Pacemaker,
 	elec election.Election,
-	committedBlocks chan *blockchain.Block) *HotStuff {
+	committedBlocks chan *blockchain.Block,
+	forkedBlocks chan *blockchain.Block) *HotStuff {
 	hs := new(HotStuff)
 	hs.Node = node
 	hs.Election = elec
@@ -44,7 +45,7 @@ func NewHotStuff(
 	hs.bufferedQCs = make(map[crypto.Identifier]*blockchain.QC)
 	hs.highQC = &blockchain.QC{View: 0}
 	hs.committedBlocks = committedBlocks
-	//hs.prunedBlocks = prunedBlocks
+	hs.forkedBlocks = forkedBlocks
 	return hs
 }
 
@@ -241,7 +242,7 @@ func (hs *HotStuff) processCertificate(qc *blockchain.QC) {
 	if !ok {
 		return
 	}
-	committedBlocks, err := hs.bc.CommitBlock(block.ID)
+	committedBlocks, forkedBlocks, err := hs.bc.CommitBlock(block.ID)
 	if err != nil {
 		log.Errorf("[%v] cannot commit blocks", hs.ID())
 		return
@@ -250,9 +251,9 @@ func (hs *HotStuff) processCertificate(qc *blockchain.QC) {
 		for _, cBlock := range committedBlocks {
 			hs.committedBlocks <- cBlock
 		}
-		//for _, pBlock := range prunedBlocks {
-		//	hs.prunedBlocks <- pBlock
-		//}
+		for _, fBlock := range forkedBlocks {
+			hs.forkedBlocks <- fBlock
+		}
 	}()
 }
 
@@ -271,8 +272,6 @@ func (hs *HotStuff) votingRule(block *blockchain.Block) (bool, error) {
 }
 
 func (hs *HotStuff) commitRule(qc *blockchain.QC) (bool, *blockchain.Block, error) {
-	//hs.mu.Lock()
-	//defer hs.mu.Unlock()
 	parentBlock, err := hs.bc.GetParentBlock(qc.BlockID)
 	if err != nil {
 		return false, nil, fmt.Errorf("cannot commit any block: %w", err)

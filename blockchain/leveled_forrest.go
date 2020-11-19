@@ -2,7 +2,9 @@ package blockchain
 
 import (
 	"fmt"
+
 	"github.com/gitferry/bamboo/crypto"
+	"github.com/gitferry/bamboo/log"
 )
 
 // LevelledForest contains multiple trees (which is a potentially disconnected planar graph).
@@ -46,22 +48,26 @@ func NewLevelledForest() *LevelledForest {
 }
 
 // PruneUpToLevel prunes all blocks UP TO but NOT INCLUDING `level`
-func (f *LevelledForest) PruneUpToLevel(level uint64) error {
-	//prunedVertices := make([]*Block, 0)
+func (f *LevelledForest) PruneUpToLevel(level uint64) ([]*Block, error) {
+	forkBlocks := make([]*Block, 0)
 	if level < f.LowestLevel {
-		return fmt.Errorf("new lowest level %d cannot be smaller than previous last retained level %d", level, f.LowestLevel)
+		return nil, fmt.Errorf("new lowest level %d cannot be smaller than previous last retained level %d", level, f.LowestLevel)
 	}
 	for l := f.LowestLevel; l < level; l++ {
+		// find fork blocks
+		if len(f.verticesAtLevel[l]) > 1 {
+			for _, vc := range f.verticesAtLevel[l] {
+				forkBlocks = append(forkBlocks, vc.vertex.GetBlock())
+				log.Debugf("find a forking block, view: %v", vc.vertex.GetBlock().View)
+			}
+		}
 		for _, v := range f.verticesAtLevel[l] { // nil map behaves like empty map when iterating over it
-			//if level > 1 {
-			//	prunedVertices = append(prunedVertices, f.vertices[v.id].vertex.GetBlock())
-			//}
 			delete(f.vertices, v.id)
 		}
 		delete(f.verticesAtLevel, l)
 	}
 	f.LowestLevel = level
-	return nil
+	return forkBlocks, nil
 }
 
 // HasVertex returns true iff full vertex exists

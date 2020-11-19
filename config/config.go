@@ -33,6 +33,7 @@ type Config struct {
 	Delta          int     `json:"delta"`     // timeout, seconds
 	Pprof          bool    `json:"pprof"`
 	MaxRound       int     `json:"maxRound"`
+	Strategy       string  `json:"strategy"`
 
 	hasher string
 	signer string

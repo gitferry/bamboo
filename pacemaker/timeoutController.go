@@ -3,11 +3,13 @@ package pacemaker
 import (
 	"github.com/gitferry/bamboo/identity"
 	"github.com/gitferry/bamboo/types"
+	"sync"
 )
 
 type TimeoutController struct {
 	n        int                                     // the size of the network
 	timeouts map[types.View]map[identity.NodeID]*TMO // keeps track of timeout msgs
+	mu       sync.Mutex
 }
 
 func NewTimeoutController(n int) *TimeoutController {
@@ -18,6 +20,8 @@ func NewTimeoutController(n int) *TimeoutController {
 }
 
 func (tcl *TimeoutController) AddTmo(tmo *TMO) (bool, *TC) {
+	tcl.mu.Lock()
+	defer tcl.mu.Unlock()
 	if tcl.superMajority(tmo.View) {
 		return false, nil
 	}

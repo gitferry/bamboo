@@ -18,6 +18,9 @@ func NewMemPool() *MemPool {
 }
 
 func (mp *MemPool) addNew(tx *message.Transaction) {
-	//mp.Backend.Add(tx)
 	mp.Backend.insertBack(tx)
+}
+
+func (mp *MemPool) addOld(tx *message.Transaction) {
+	mp.Backend.insertFront(tx)
 }

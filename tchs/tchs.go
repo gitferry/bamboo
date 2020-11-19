@@ -23,7 +23,7 @@ type Tchs struct {
 	preferredView   types.View
 	bc              *blockchain.BlockChain
 	committedBlocks chan *blockchain.Block
-	prunedBlocks    chan *blockchain.Block
+	forkedBlocks    chan *blockchain.Block
 	bufferedQCs     map[crypto.Identifier]*blockchain.QC
 	bufferedBlocks  map[crypto.Identifier]*blockchain.Block
 	bufferedVotes   map[crypto.Identifier][]*blockchain.Vote
@@ -35,6 +35,7 @@ func NewTchs(
 	node node.Node,
 	pm *pacemaker.Pacemaker,
 	elec election.Election,
+	forkedBlocks chan *blockchain.Block,
 	committedBlocks chan *blockchain.Block) *Tchs {
 	th := new(Tchs)
 	th.Node = node
@@ -45,7 +46,7 @@ func NewTchs(
 	th.bufferedQCs = make(map[crypto.Identifier]*blockchain.QC)
 	th.highQC = &blockchain.QC{View: 0}
 	th.committedBlocks = committedBlocks
-	//th.prunedBlocks = prunedBlocks
+	th.forkedBlocks = forkedBlocks
 	return th
 }
 
@@ -87,15 +88,15 @@ func (th *Tchs) ProcessBlock(block *blockchain.Block) error {
 		// TODO: garbage collection
 	}
 
-	//shouldVote, err := th.votingRule(block)
-	//if err != nil {
-	//	log.Errorf("cannot decide whether to vote the block, %w", err)
-	//	return err
-	//}
-	//if !shouldVote {
-	//	log.Debugf("[%v] is not going to vote for block, id: %x", th.ID(), block.ID)
-	//	return nil
-	//}
+	shouldVote, err := th.votingRule(block)
+	if err != nil {
+		log.Errorf("cannot decide whether to vote the block, %w", err)
+		return err
+	}
+	if !shouldVote {
+		log.Debugf("[%v] is not going to vote for block, id: %x", th.ID(), block.ID)
+		return nil
+	}
 	vote := blockchain.MakeVote(block.View, th.ID(), block.ID)
 	// TODO: sign the vote
 	// vote to the next leader
@@ -236,7 +237,7 @@ func (th *Tchs) processCertificate(qc *blockchain.QC) {
 	if !ok {
 		return
 	}
-	committedBlocks, err := th.bc.CommitBlock(block.ID)
+	committedBlocks, forkedBlocks, err := th.bc.CommitBlock(block.ID)
 	if err != nil {
 		log.Errorf("[%v] cannot commit blocks", th.ID())
 		return
@@ -245,9 +246,9 @@ func (th *Tchs) processCertificate(qc *blockchain.QC) {
 		for _, cBlock := range committedBlocks {
 			th.committedBlocks <- cBlock
 		}
-		//for _, pBlock := range prunedBlocks {
-		//	th.prunedBlocks <- pBlock
-		//}
+		for _, fBlock := range forkedBlocks {
+			th.forkedBlocks <- fBlock
+		}
 	}()
 }
 
