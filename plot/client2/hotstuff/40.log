@@ -1,0 +1,43 @@
+Experiment with 40 clients:
+[0] throughput: 2027.104622, latency: 43.598853
+[1] throughput: 1999.873363, latency: 43.997886
+[2] throughput: 1990.798809, latency: 44.360187
+[3] throughput: 2009.061612, latency: 43.562774
+[4] throughput: 2013.301351, latency: 43.689574
+[5] throughput: 2016.729420, latency: 44.416312
+[6] throughput: 1993.014168, latency: 43.667335
+[7] throughput: 2016.818076, latency: 43.789286
+[8] throughput: 2030.653814, latency: 43.248463
+[9] throughput: 2036.946782, latency: 43.357788
+[10] throughput: 2022.146561, latency: 43.900246
+[11] throughput: 1996.122294, latency: 44.425302
+[12] throughput: 2002.344115, latency: 44.151958
+[13] throughput: 2019.829452, latency: 43.564060
+[14] throughput: 2016.048714, latency: 43.782127
+[15] throughput: 2006.277220, latency: 43.677045
+[16] throughput: 2021.424227, latency: 43.330803
+[17] throughput: 2011.641886, latency: 44.084053
+[18] throughput: 2004.829063, latency: 44.016672
+[19] throughput: 2026.924892, latency: 43.513640
+[20] throughput: 2034.579990, latency: 43.534513
+[21] throughput: 2001.401651, latency: 44.147677
+[22] throughput: 2000.319639, latency: 44.217937
+[23] throughput: 1999.129713, latency: 44.163515
+[24] throughput: 2031.185955, latency: 43.618175
+[25] throughput: 2001.985541, latency: 44.123363
+[26] throughput: 2021.500396, latency: 43.984127
+[27] throughput: 2009.963638, latency: 44.119339
+[28] throughput: 2008.981390, latency: 43.740876
+[29] throughput: 2025.496938, latency: 43.426506
+[30] throughput: 1970.415692, latency: 44.806441
+[31] throughput: 2015.798460, latency: 43.519036
+[32] throughput: 2030.846708, latency: 43.386614
+[33] throughput: 1990.307251, latency: 44.356612
+[34] throughput: 2000.777934, latency: 43.613751
+[35] throughput: 2009.549189, latency: 43.407050
+[36] throughput: 1989.883766, latency: 44.209136
+[37] throughput: 1989.169788, latency: 44.782560
+[38] throughput: 2039.410797, latency: 43.189454
+[39] throughput: 2013.527963, latency: 43.818246
+Total throughput: 80446.12284
+Average latency: 43.8574823
