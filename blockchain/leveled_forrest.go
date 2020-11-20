@@ -2,6 +2,7 @@ package blockchain
 
 import (
 	"fmt"
+	"github.com/gitferry/bamboo/log"
 
 	"github.com/gitferry/bamboo/crypto"
 )
@@ -48,22 +49,37 @@ func NewLevelledForest() *LevelledForest {
 
 // PruneUpToLevel prunes all blocks UP TO but NOT INCLUDING `level`
 func (f *LevelledForest) PruneUpToLevel(level uint64) ([]*Block, error) {
-	prunedBlocks := make([]*Block, 0)
+	// 1. find committed levels
+	// 2. go through each level and prune, if it is not committed, add it to pruned
+	forkedBlocks := make([]*Block, 0)
+	committedLevels := make(map[uint64]bool)
 	if level < f.LowestLevel {
 		return nil, fmt.Errorf("new lowest level %d cannot be smaller than previous last retained level %d", level, f.LowestLevel)
+	}
+	for l := level; l >= f.LowestLevel && l > 1; {
+		// assume each level has only one vertex
+		vertex := f.verticesAtLevel[l][0].vertex
+		parentID, _ := vertex.Parent()
+		parentVertex, ok := f.GetVertex(parentID)
+		if !ok || parentVertex.Level() < f.LowestLevel {
+			break
+		}
+		committedLevels[parentVertex.Level()] = true
+		l = parentVertex.Level()
 	}
 	for l := f.LowestLevel; l < level; l++ {
 		// find fork blocks
 		for _, v := range f.verticesAtLevel[l] { // nil map behaves like empty map when iterating over it
-			if l > 1 {
-				prunedBlocks = append(prunedBlocks, v.vertex.GetBlock())
+			if !committedLevels[l] && l > 1 {
+				log.Debugf("found a forked block, view: %v, id: %x", v.vertex.Level(), v.vertex.VertexID())
+				forkedBlocks = append(forkedBlocks, v.vertex.GetBlock())
 			}
 			delete(f.vertices, v.id)
 		}
 		delete(f.verticesAtLevel, l)
 	}
 	f.LowestLevel = level
-	return prunedBlocks, nil
+	return forkedBlocks, nil
 }
 
 // HasVertex returns true iff full vertex exists

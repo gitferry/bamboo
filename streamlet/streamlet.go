@@ -31,8 +31,8 @@ func NewStreamlet(
 	node node.Node,
 	pm *pacemaker.Pacemaker,
 	elec election.Election,
-	forkedBlocks chan *blockchain.Block,
-	committedBlocks chan *blockchain.Block) *Streamlet {
+	committedBlocks chan *blockchain.Block,
+	forkedBlocks chan *blockchain.Block) *Streamlet {
 	sl := new(Streamlet)
 	sl.Node = node
 	sl.Election = elec
@@ -216,9 +216,11 @@ func (sl *Streamlet) processCertificate(qc *blockchain.QC) {
 	go func() {
 		for _, cBlock := range committedBlocks {
 			sl.committedBlocks <- cBlock
+			log.Debugf("[%v] is going to commit block, view: %v, id: %x", sl.ID(), cBlock.View, cBlock.ID)
 		}
 		for _, fBlock := range forkedBlocks {
 			sl.forkedBlocks <- fBlock
+			log.Debugf("[%v] is going to collect forked block, view: %v, id: %x", sl.ID(), fBlock.View, fBlock.ID)
 		}
 	}()
 	b, ok := sl.bufferedBlocks[qc.BlockID]

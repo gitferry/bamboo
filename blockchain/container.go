@@ -13,6 +13,6 @@ type BlockContainer struct {
 func (b *BlockContainer) VertexID() crypto.Identifier { return b.Block.ID }
 func (b *BlockContainer) Level() uint64               { return uint64(b.Block.View) }
 func (b *BlockContainer) Parent() (crypto.Identifier, uint64) {
-	return b.Block.QC.BlockID, uint64(b.Block.QC.View)
+	return b.Block.PrevID, uint64(b.Block.QC.View)
 }
 func (b *BlockContainer) GetBlock() *Block { return b.Block }

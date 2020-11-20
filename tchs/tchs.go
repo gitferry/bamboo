@@ -35,8 +35,8 @@ func NewTchs(
 	node node.Node,
 	pm *pacemaker.Pacemaker,
 	elec election.Election,
-	forkedBlocks chan *blockchain.Block,
-	committedBlocks chan *blockchain.Block) *Tchs {
+	committedBlocks chan *blockchain.Block,
+	forkedBlocks chan *blockchain.Block) *Tchs {
 	th := new(Tchs)
 	th.Node = node
 	th.Election = elec
@@ -85,7 +85,7 @@ func (th *Tchs) ProcessBlock(block *blockchain.Block) error {
 	qc, ok := th.bufferedQCs[block.ID]
 	if ok {
 		th.processCertificate(qc)
-		// TODO: garbage collection
+		delete(th.bufferedQCs, block.ID)
 	}
 
 	shouldVote, err := th.votingRule(block)
@@ -98,7 +98,6 @@ func (th *Tchs) ProcessBlock(block *blockchain.Block) error {
 		return nil
 	}
 	vote := blockchain.MakeVote(block.View, th.ID(), block.ID)
-	// TODO: sign the vote
 	// vote to the next leader
 	voteAggregator := th.FindLeaderFor(block.View + 1)
 	if voteAggregator == th.ID() {
@@ -230,7 +229,7 @@ func (th *Tchs) processCertificate(qc *blockchain.QC) {
 	}
 	th.pm.AdvanceView(qc.View)
 	th.updateHighQC(qc)
-	if qc.View < 3 {
+	if qc.View < 2 {
 		return
 	}
 	ok, block, _ := th.commitRule(qc)

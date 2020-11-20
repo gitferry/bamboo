@@ -168,10 +168,6 @@ func (hs *HotStuff) MakeProposal(payload []*message.Transaction) *blockchain.Blo
 	return block
 }
 
-//func (hs *HotStuff) ForkChoice() crypto.Identifier {
-//
-//}
-
 func (hs *HotStuff) processTC(tc *pacemaker.TC) {
 	if tc.View < hs.pm.GetCurView() {
 		return
