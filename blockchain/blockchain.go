@@ -98,24 +98,27 @@ func (bc *BlockChain) CommitBlock(id crypto.Identifier) ([]*Block, []*Block, err
 		}
 		block = vertex.GetBlock()
 	}
-	forkBlocks, err := bc.forrest.PruneUpToLevel(uint64(committedView))
+	prunedBlocks, err := bc.forrest.PruneUpToLevel(uint64(committedView))
 	if err != nil {
 		return nil, nil, fmt.Errorf("cannot prune the blockchain to the committed block, id: %w", err)
 	}
 
-	return committedBlocks, bc.removeCommittedBlocks(committedBlocks, forkBlocks), nil
+	return committedBlocks, bc.removeCommittedBlocks(committedBlocks, prunedBlocks), nil
 }
 
-func (bc *BlockChain) removeCommittedBlocks(committed []*Block, forked []*Block) []*Block {
+func (bc *BlockChain) removeCommittedBlocks(committed []*Block, pruned []*Block) []*Block {
+	if len(pruned) == 1 || len(committed) >= len(pruned) {
+		return nil
+	}
 	for _, cb := range committed {
-		for i, fb := range forked {
-			if cb.ID == fb.ID {
-				forked = append(forked[:i], forked[i+1:]...)
+		for i, pb := range pruned {
+			if cb.ID == pb.ID {
+				pruned = append(pruned[:i], pruned[i+1:]...)
 				break
 			}
 		}
 	}
-	return forked
+	return pruned[1:]
 }
 
 func (bc *BlockChain) GetChildrenBlocks(id crypto.Identifier) []*Block {

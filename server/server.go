@@ -34,7 +34,6 @@ func main() {
 	if errCrypto != nil {
 		log.Fatal("Could not generate keys:", errCrypto)
 	}
-
 	if *simulation {
 		var wg sync.WaitGroup
 		wg.Add(1)
