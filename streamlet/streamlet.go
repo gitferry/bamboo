@@ -140,7 +140,7 @@ func (sl *Streamlet) ProcessRemoteTmo(tmo *pacemaker.TMO) {
 
 func (sl *Streamlet) ProcessLocalTmo(view types.View) {
 	tmo := &pacemaker.TMO{
-		View:   view + 1,
+		View:   view,
 		NodeID: sl.ID(),
 	}
 	sl.Broadcast(tmo)
