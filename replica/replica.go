@@ -2,14 +2,13 @@ package replica
 
 import (
 	"encoding/gob"
-	"github.com/gitferry/bamboo/crypto"
-	"github.com/gitferry/bamboo/tchs"
 	"time"
 
 	"go.uber.org/atomic"
 
 	"github.com/gitferry/bamboo/blockchain"
 	"github.com/gitferry/bamboo/config"
+	"github.com/gitferry/bamboo/crypto"
 	"github.com/gitferry/bamboo/election"
 	"github.com/gitferry/bamboo/hotstuff"
 	"github.com/gitferry/bamboo/identity"
@@ -19,8 +18,12 @@ import (
 	"github.com/gitferry/bamboo/node"
 	"github.com/gitferry/bamboo/pacemaker"
 	"github.com/gitferry/bamboo/streamlet"
+	"github.com/gitferry/bamboo/tchs"
 	"github.com/gitferry/bamboo/types"
 )
+
+const SILENCE = "silence"
+const FORK = "fork"
 
 type Replica struct {
 	node.Node
@@ -176,15 +179,11 @@ func (r *Replica) ListenLocalEvent() {
 					log.Infof("[%v] the average view duration is %v microseconds, measured %v views", r.ID(), float64(sumRoundTime.Microseconds())/float64(len(roundTimeMeasure)))
 				}
 				r.lastViewTime = now
-				log.Infof("[%v] the last view lasts %v millisecond, current view: %v", r.ID(), lasts, view)
+				log.Infof("[%v] the last view lasts %v milliseconds, current view: %v", r.ID(), lasts.Milliseconds(), view)
 				r.eventChan <- view
 				break L
 			case <-r.timer.C:
 				r.Safety.ProcessLocalTmo(r.pm.GetCurView())
-			case committedBlock := <-r.committedBlocks:
-				r.processCommittedBlock(committedBlock)
-			case forkedBlock := <-r.forkedBlocks:
-				r.processForkedBlock(forkedBlock)
 			}
 		}
 	}
@@ -192,15 +191,20 @@ func (r *Replica) ListenLocalEvent() {
 
 func (r *Replica) ListenCommittedBlocks() {
 	for {
-		committedBlock := <-r.committedBlocks
-		r.processCommittedBlock(committedBlock)
+		select {
+		case committedBlock := <-r.committedBlocks:
+			r.processCommittedBlock(committedBlock)
+		case forkedBlock := <-r.forkedBlocks:
+			r.processForkedBlock(forkedBlock)
+		}
 	}
 }
 
 // Start starts event loop
 func (r *Replica) Start() {
-	// fail-stop case
-	if r.isByz {
+	if r.isByz && config.GetConfig().Strategy == SILENCE {
+		// perform silence attack
+		log.Debugf("[%v] is performing silence attack", r.ID())
 		return
 	}
 	go r.Run()

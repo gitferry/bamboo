@@ -55,10 +55,12 @@ func NewHTTPClient() *HTTPClient {
 	}
 	// will not send request to Byzantine nodes
 	bzn := config.GetConfig().ByzNo
-	for i := 1; i <= bzn; i++ {
-		id := identity.NewNodeID(i)
-		delete(c.Addrs, id)
-		delete(c.HTTP, id)
+	if config.GetConfig().Strategy == "silence" {
+		for i := 1; i <= bzn; i++ {
+			id := identity.NewNodeID(i)
+			delete(c.Addrs, id)
+			delete(c.HTTP, id)
+		}
 	}
 	return c
 }

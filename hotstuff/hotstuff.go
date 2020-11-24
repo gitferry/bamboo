@@ -15,6 +15,8 @@ import (
 	"github.com/gitferry/bamboo/types"
 )
 
+const FORK = "fork"
+
 type HotStuff struct {
 	node.Node
 	election.Election
@@ -91,7 +93,7 @@ func (hs *HotStuff) ProcessBlock(block *blockchain.Block) error {
 
 	shouldVote, err := hs.votingRule(block)
 	if err != nil {
-		log.Errorf("cannot decide whether to vote the block, %w", err)
+		log.Errorf("[%v] cannot decide whether to vote the block, %w", hs.ID(), err)
 		return err
 	}
 	if !shouldVote {
@@ -136,6 +138,10 @@ func (hs *HotStuff) ProcessVote(vote *blockchain.Vote) {
 		return
 	}
 	qc.Leader = hs.ID()
+	if hs.IsByz() && config.GetConfig().Strategy == FORK {
+		hs.pm.AdvanceView(qc.View)
+		return
+	}
 	hs.processCertificate(qc)
 }
 
@@ -163,9 +169,30 @@ func (hs *HotStuff) ProcessLocalTmo(view types.View) {
 }
 
 func (hs *HotStuff) MakeProposal(payload []*message.Transaction) *blockchain.Block {
-	qc := hs.GetHighQC()
+	qc := hs.forkChoice()
 	block := blockchain.MakeBlock(hs.pm.GetCurView(), qc, qc.BlockID, payload, hs.ID())
 	return block
+}
+
+func (hs *HotStuff) forkChoice() *blockchain.QC {
+	var choice *blockchain.QC
+	if !hs.IsByz() || config.GetConfig().Strategy != FORK {
+		return hs.GetHighQC()
+	}
+	//	create a fork by returning highQC's parent's QC
+	parBlockID := hs.GetHighQC().BlockID
+	parBlock, err := hs.bc.GetBlockByID(parBlockID)
+	if err != nil {
+		log.Warningf("cannot get parent block of block id: %x: %w", parBlockID, err)
+	}
+	if parBlock.QC.View < hs.preferredView {
+		choice = hs.GetHighQC()
+	} else {
+		choice = parBlock.QC
+	}
+	// to simulate TC's view
+	choice.View = hs.pm.GetCurView() - 1
+	return choice
 }
 
 func (hs *HotStuff) processTC(tc *pacemaker.TC) {
@@ -176,26 +203,26 @@ func (hs *HotStuff) processTC(tc *pacemaker.TC) {
 	hs.pm.AdvanceView(tc.View)
 }
 
-func (hs *HotStuff) preprocessQC(qc *blockchain.QC) {
-	isThreeChain, _, err := hs.commitRule(qc)
-	if err != nil {
-		log.Warningf("[%v] cannot check commit rule", hs.ID())
-		return
-	}
-	if isThreeChain {
-		hs.pm.AdvanceView(qc.View)
-		return
-	}
-	for i := qc.View; ; i++ {
-		nextLeader := hs.FindLeaderFor(i + 1)
-		if !config.Configuration.IsByzantine(nextLeader) {
-			qc.View = i
-			log.Debugf("[%v] is going to send a stale qc to %v, view: %v, id: %x", hs.ID(), nextLeader, qc.View, qc.BlockID)
-			hs.Send(nextLeader, qc)
-			return
-		}
-	}
-}
+//func (hs *HotStuff) preprocessQC(qc *blockchain.QC) {
+//	isThreeChain, _, err := hs.commitRule(qc)
+//	if err != nil {
+//		log.Warningf("[%v] cannot check commit rule", hs.ID())
+//		return
+//	}
+//	if isThreeChain {
+//		hs.pm.AdvanceView(qc.View)
+//		return
+//	}
+//	for i := qc.View; ; i++ {
+//		nextLeader := hs.FindLeaderFor(i + 1)
+//		if !config.Configuration.IsByzantine(nextLeader) {
+//			qc.View = i
+//			log.Debugf("[%v] is going to send a stale qc to %v, view: %v, id: %x", hs.ID(), nextLeader, qc.View, qc.BlockID)
+//			hs.Send(nextLeader, qc)
+//			return
+//		}
+//	}
+//}
 
 func (hs *HotStuff) GetHighQC() *blockchain.QC {
 	hs.mu.Lock()
