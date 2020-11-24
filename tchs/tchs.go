@@ -15,6 +15,8 @@ import (
 	"github.com/gitferry/bamboo/types"
 )
 
+const FORK = "fork"
+
 type Tchs struct {
 	node.Node
 	election.Election
@@ -133,6 +135,10 @@ func (th *Tchs) ProcessVote(vote *blockchain.Vote) {
 		return
 	}
 	qc.Leader = th.ID()
+	if th.IsByz() && config.GetConfig().Strategy == FORK {
+		th.pm.AdvanceView(qc.View)
+		return
+	}
 	th.processCertificate(qc)
 }
 
@@ -160,9 +166,15 @@ func (th *Tchs) ProcessLocalTmo(view types.View) {
 }
 
 func (th *Tchs) MakeProposal(payload []*message.Transaction) *blockchain.Block {
-	qc := th.GetHighQC()
+	qc := th.forkChoice()
 	block := blockchain.MakeBlock(th.pm.GetCurView(), qc, qc.BlockID, payload, th.ID())
 	return block
+}
+
+func (th *Tchs) forkChoice() *blockchain.QC {
+	choice := th.GetHighQC()
+	choice.View = th.pm.GetCurView() - 1
+	return choice
 }
 
 func (th *Tchs) processTC(tc *pacemaker.TC) {
@@ -255,11 +267,14 @@ func (th *Tchs) votingRule(block *blockchain.Block) (bool, error) {
 	if block.View <= 2 {
 		return true, nil
 	}
-	parentBlock, err := th.bc.GetParentBlock(block.ID)
-	if err != nil {
-		return false, fmt.Errorf("cannot vote for block: %w", err)
-	}
-	if (block.View <= th.lastVotedView) || (parentBlock.View < th.preferredView) {
+	//parentBlock, err := th.bc.GetParentBlock(block.ID)
+	//if err != nil {
+	//	return false, fmt.Errorf("cannot vote for block: %w", err)
+	//}
+	//if (block.View <= th.lastVotedView) || (parentBlock.View < th.preferredView) {
+	//	return false, nil
+	//}
+	if block.View <= th.lastVotedView {
 		return false, nil
 	}
 	return true, nil

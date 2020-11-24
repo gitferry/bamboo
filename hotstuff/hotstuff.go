@@ -310,8 +310,6 @@ func (hs *HotStuff) commitRule(qc *blockchain.QC) (bool, *blockchain.Block, erro
 }
 
 func (hs *HotStuff) updateLastVotedView(targetView types.View) error {
-	//hs.mu.Lock()
-	//defer hs.mu.Unlock()
 	if targetView < hs.lastVotedView {
 		return fmt.Errorf("target view is lower than the last voted view")
 	}
