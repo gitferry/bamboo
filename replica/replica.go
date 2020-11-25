@@ -148,9 +148,14 @@ func (r *Replica) processNewView(newView types.View) {
 }
 
 func (r *Replica) proposeBlock(view types.View) {
+	createStart := time.Now()
 	block := r.Safety.MakeProposal(r.pd.GeneratePayload())
-	log.Infof("[%v] is going to propose block for view: %v, id: %x, prevID: %x", r.ID(), view, block.ID, block.PrevID)
+	createEnd := time.Now()
+	createDuration := createEnd.Sub(createStart)
+	log.Infof("[%v] finished creating the block for view: %v, used: %v microseconds, id: %x, prevID: %x", r.ID(), view, createDuration.Microseconds(), block.ID, block.PrevID)
 	_ = r.Safety.ProcessBlock(block)
+	processDuration := time.Now().Sub(createEnd)
+	log.Infof("[%v] finished processing the block for view: %v, used: %v microseconds, id: %x, prevID: %x", r.ID(), view, processDuration.Microseconds(), block.ID, block.PrevID)
 	r.Broadcast(block)
 	log.Debugf("[%v] broadcast is done for sending the block", r.ID())
 }
@@ -179,7 +184,7 @@ func (r *Replica) ListenLocalEvent() {
 					log.Infof("[%v] the average view duration is %v microseconds, measured %v views", r.ID(), float64(sumRoundTime.Microseconds())/float64(len(roundTimeMeasure)))
 				}
 				r.lastViewTime = now
-				log.Infof("[%v] the last view lasts %v milliseconds, current view: %v", r.ID(), lasts.Milliseconds(), view)
+				//log.Infof("[%v] the last view lasts %v milliseconds, current view: %v", r.ID(), lasts.Milliseconds(), view)
 				r.eventChan <- view
 				break L
 			case <-r.timer.C:
