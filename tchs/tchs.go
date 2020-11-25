@@ -28,7 +28,6 @@ type Tchs struct {
 	forkedBlocks    chan *blockchain.Block
 	bufferedQCs     map[crypto.Identifier]*blockchain.QC
 	bufferedBlocks  map[crypto.Identifier]*blockchain.Block
-	bufferedVotes   map[crypto.Identifier][]*blockchain.Vote
 	highQC          *blockchain.QC
 	mu              sync.Mutex
 }
@@ -225,7 +224,6 @@ func (th *Tchs) processCertificate(qc *blockchain.QC) {
 	if qc.View < th.pm.GetCurView() {
 		return
 	}
-	// TODO: verify QC sigs
 	if qc.Leader != th.ID() {
 		quorumIsVerified, _ := crypto.VerifyQuorumSignature(qc.AggSig, qc.BlockID, qc.Signers)
 		if quorumIsVerified == false {
