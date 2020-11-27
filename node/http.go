@@ -53,7 +53,7 @@ func (n *node) handleRoot(w http.ResponseWriter, r *http.Request) {
 	req.C = make(chan message.TransactionReply, 1)
 	req.ID = string(n.id) + "." + cmd.String()
 
-	n.MessageChan <- req
+	n.TxChan <- req
 
 	reply := <-req.C
 

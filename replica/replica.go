@@ -84,6 +84,7 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 func (r *Replica) HandleBlock(block blockchain.Block) {
 	log.Debugf("[%v] received a block from %v, view is %v, id: %x", r.ID(), block.Proposer, block.View, block.ID)
 	r.eventChan <- block
+	//	TODO: rm txn from payload
 }
 
 func (r *Replica) HandleVote(vote blockchain.Vote) {
@@ -102,6 +103,7 @@ func (r *Replica) HandleTmo(tmo pacemaker.TMO) {
 }
 
 func (r *Replica) handleTxn(m message.Transaction) {
+	r.Broadcast(m)
 	r.pd.AddTxn(&m)
 	if !r.isStarted.Load() {
 		log.Debugf("[%v] is boosting", r.ID())

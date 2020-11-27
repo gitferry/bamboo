@@ -32,6 +32,7 @@ type node struct {
 	socket.Socket
 	//Database
 	MessageChan chan interface{}
+	TxChan      chan interface{}
 	handles     map[string]reflect.Value
 	server      *http.Server
 	isByz       bool
@@ -49,6 +50,7 @@ func NewNode(id identity.NodeID, isByz bool) Node {
 		Socket: socket.NewSocket(id, config.Configuration.Addrs),
 		//Database:    NewDatabase(),
 		MessageChan: make(chan interface{}, config.Configuration.ChanBufferSize),
+		TxChan:      make(chan interface{}, config.Configuration.ChanBufferSize),
 		handles:     make(map[string]reflect.Value),
 		forwards:    make(map[string]*message.Transaction),
 	}
@@ -92,31 +94,45 @@ func (n *node) Run() {
 	if len(n.handles) > 0 {
 		go n.handle()
 		go n.recv()
+		go n.txn()
 	}
 	n.http()
 }
 
-// recv receives messages from socket and pass to message channel
+func (n *node) txn() {
+	for {
+		tx := <-n.TxChan
+		v := reflect.ValueOf(tx)
+		name := v.Type().String()
+		f, exists := n.handles[name]
+		if !exists {
+			log.Fatalf("no registered handle function for message type %v", name)
+		}
+		f.Call([]reflect.Value{v})
+	}
+}
+
+//recv receives messages from socket and pass to message channel
 func (n *node) recv() {
 	for {
 		m := n.Recv()
-		//switch m := m.(type) {
-		//case message.Transaction:
-		//	m.C = make(chan message.TransactionReply, 1)
-		//	go func(r message.Transaction) {
-		//		n.Send(r.NodeID, <-r.C)
-		//	}(m)
-		//	n.MessageChan <- m
-		//	continue
-		//
-		//case message.TransactionReply:
-		//	n.RLock()
-		//	r := n.forwards[m.Command.String()]
-		//	log.Debugf("node %v received reply %v", n.id, m)
-		//	n.RUnlock()
-		//	r.Reply(m)
-		//	continue
-		//}
+		switch m := m.(type) {
+		case message.Transaction:
+			m.C = make(chan message.TransactionReply, 1)
+			//go func(r message.Transaction) {
+			//	n.Send(r.NodeID, <-r.C)
+			//}(m)
+			n.TxChan <- m
+			continue
+
+		case message.TransactionReply:
+			n.RLock()
+			r := n.forwards[m.Command.String()]
+			log.Debugf("node %v received reply %v", n.id, m)
+			n.RUnlock()
+			r.Reply(m)
+			continue
+		}
 		n.MessageChan <- m
 	}
 }
