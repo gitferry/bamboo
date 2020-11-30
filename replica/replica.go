@@ -85,6 +85,9 @@ func (r *Replica) HandleBlock(block blockchain.Block) {
 	log.Debugf("[%v] received a block from %v, view is %v, id: %x", r.ID(), block.Proposer, block.View, block.ID)
 	r.eventChan <- block
 	//	TODO: rm txn from payload
+	for _, txn := range block.Payload {
+		r.pd.RemoveTxn(txn)
+	}
 }
 
 func (r *Replica) HandleVote(vote blockchain.Vote) {
@@ -103,7 +106,13 @@ func (r *Replica) HandleTmo(tmo pacemaker.TMO) {
 }
 
 func (r *Replica) handleTxn(m message.Transaction) {
-	r.Broadcast(m)
+	if !m.HasBroadcast {
+		m.HasBroadcast = true
+		r.Broadcast(m)
+	}
+	if m.NodeID == r.ID() {
+		r.pd.ReceiveTxFromClient(&m)
+	}
 	r.pd.AddTxn(&m)
 	if !r.isStarted.Load() {
 		log.Debugf("[%v] is boosting", r.ID())
@@ -125,7 +134,11 @@ func (r *Replica) handleTxn(m message.Transaction) {
 func (r *Replica) processCommittedBlock(block *blockchain.Block) {
 	for _, txn := range block.Payload {
 		if r.ID() == txn.NodeID {
-			txn.Reply(message.TransactionReply{})
+			tx, ok := r.pd.GetAndRmTxByID(txn.ID)
+			if ok && !tx.HasReplied {
+				tx.Reply(message.TransactionReply{})
+				tx.HasReplied = true
+			}
 		}
 	}
 	log.Infof("[%v] the block is committed, No. of transactions: %v, view: %v, current view: %v, id: %x", r.ID(), len(block.Payload), block.View, r.pm.GetCurView(), block.ID)
@@ -154,7 +167,7 @@ func (r *Replica) proposeBlock(view types.View) {
 	block := r.Safety.MakeProposal(r.pd.GeneratePayload())
 	createEnd := time.Now()
 	createDuration := createEnd.Sub(createStart)
-	log.Infof("[%v] finished creating the block for view: %v, used: %v microseconds, id: %x, prevID: %x", r.ID(), view, createDuration.Microseconds(), block.ID, block.PrevID)
+	log.Infof("[%v] finished creating the block for view: %v, payload size: %v, used: %v microseconds, id: %x, prevID: %x", r.ID(), view, len(block.Payload), createDuration.Microseconds(), block.ID, block.PrevID)
 	_ = r.Safety.ProcessBlock(block)
 	processDuration := time.Now().Sub(createEnd)
 	log.Infof("[%v] finished processing the block for view: %v, used: %v microseconds, id: %x, prevID: %x", r.ID(), view, processDuration.Microseconds(), block.ID, block.PrevID)

@@ -1,12 +1,12 @@
 package node
 
 import (
+	"io"
 	"net/http"
 	"net/url"
 	"sync"
 
 	"github.com/gitferry/bamboo/config"
-	"github.com/gitferry/bamboo/db"
 	"github.com/gitferry/bamboo/log"
 	"github.com/gitferry/bamboo/message"
 )
@@ -16,6 +16,9 @@ const (
 	HTTPClientID  = "Id"
 	HTTPCommandID = "Cid"
 )
+
+var totalRecevReq int
+var totalCommitReq int
 
 var ppFree = sync.Pool{
 	New: func() interface{} {
@@ -44,15 +47,15 @@ func (n *node) http() {
 
 func (n *node) handleRoot(w http.ResponseWriter, r *http.Request) {
 	var req message.Transaction
-	var cmd db.Command
 	defer r.Body.Close()
+	var err error
 
-	req.C = ppFree.Get().(chan message.TransactionReply)
-	req.Command = cmd
-	req.NodeID = n.id // TODO does this work when forward twice
+	//req.C = ppFree.Get().(chan message.TransactionReply)
 	req.C = make(chan message.TransactionReply, 1)
-	req.ID = string(n.id) + "." + cmd.String()
-
+	req.NodeID = n.id // TODO does this work when forward twice
+	req.ID = r.RequestURI
+	req.HasBroadcast = false
+	req.HasReplied = false
 	n.TxChan <- req
 
 	reply := <-req.C
@@ -60,5 +63,9 @@ func (n *node) handleRoot(w http.ResponseWriter, r *http.Request) {
 	if reply.Err != nil {
 		http.Error(w, reply.Err.Error(), http.StatusInternalServerError)
 		return
+	}
+	_, err = io.WriteString(w, string(reply.Value))
+	if err != nil {
+		log.Error(err)
 	}
 }

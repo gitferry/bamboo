@@ -44,10 +44,14 @@ func (b *Backend) size() int {
 }
 
 func (b *Backend) front() *list.Element {
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	return b.txns.Front()
 }
 
 func (b *Backend) remove(ele *list.Element) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	if ele == nil {
 		return
 	}
@@ -55,16 +59,19 @@ func (b *Backend) remove(ele *list.Element) {
 }
 
 func (b *Backend) some(n int) []*message.Transaction {
-	for {
-		s := b.size()
-		log.Debugf("has %v remaining tx in the mempool", s)
-		if s >= n {
+	var batchSize int
+	// trying to get ful size
+	for i := 0; i < 10; i++ {
+		batchSize = b.size()
+		log.Debugf("has %v remaining tx in the mempool", batchSize)
+		if batchSize >= n {
+			batchSize = n
 			break
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
-	batch := make([]*message.Transaction, 0, n)
-	for i := 0; i < n; i++ {
+	batch := make([]*message.Transaction, 0, batchSize)
+	for i := 0; i < batchSize; i++ {
 		ele := b.front()
 		val, ok := ele.Value.(*message.Transaction)
 		if !ok {

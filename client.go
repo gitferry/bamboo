@@ -91,7 +91,7 @@ func (c *HTTPClient) GetURL(key db.Key) (identity.NodeID, string) {
 // if value == nil, it's a read
 func (c *HTTPClient) rest(key db.Key, value db.Value) (db.Value, map[string]string, error) {
 	// get url
-	_, url := c.GetURL(key)
+	replicaID, url := c.GetURL(key)
 
 	method := http.MethodGet
 	var body io.Reader
@@ -114,7 +114,7 @@ func (c *HTTPClient) rest(key db.Key, value db.Value) (db.Value, map[string]stri
 		return nil, nil, err
 	}
 	defer rep.Body.Close()
-	//log.Debugf("node=%v type=%s key=%v value=%x", id, method, key, value)
+	log.Debugf("node id=%v key=%v value=%x", replicaID, key, value)
 
 	//get headers
 	metadata := make(map[string]string)
