@@ -1,6 +1,7 @@
 package message
 
 import (
+	"crypto/rand"
 	"encoding/gob"
 	"fmt"
 	"time"
@@ -51,6 +52,14 @@ type TransactionReply struct {
 	Properties map[string]string
 	Timestamp  int64
 	Err        error
+}
+
+func NewReply(size int) TransactionReply {
+	payload := make([]byte, size)
+	rand.Read(payload)
+	return TransactionReply{
+		Value: payload,
+	}
 }
 
 func (r TransactionReply) String() string {

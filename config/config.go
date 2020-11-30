@@ -34,6 +34,7 @@ type Config struct {
 	Pprof          bool    `json:"pprof"`
 	MaxRound       int     `json:"maxRound"`
 	Strategy       string  `json:"strategy"`
+	PayloadSize    int     `json:"payload_size"`
 
 	hasher string
 	signer string

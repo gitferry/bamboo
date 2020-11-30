@@ -15,7 +15,7 @@ var count uint64
 // DB is general interface implemented by client to call client library
 type DB interface {
 	Init() error
-	Write(key, value int) error
+	Write(key int, value []byte) error
 	Stop() error
 }
 
@@ -122,7 +122,9 @@ func (b *Benchmark) worker(keys <-chan int, result chan<- time.Duration) {
 		op := new(operation)
 		v = rand.Int()
 		s = time.Now()
-		err = b.db.Write(k, v)
+		value := make([]byte, config.GetConfig().PayloadSize)
+		rand.Read(value)
+		err = b.db.Write(k, value)
 		e = time.Now()
 		op.input = v
 		op.start = s.Sub(b.startTime).Nanoseconds()

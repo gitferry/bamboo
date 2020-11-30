@@ -136,7 +136,7 @@ func (r *Replica) processCommittedBlock(block *blockchain.Block) {
 		if r.ID() == txn.NodeID {
 			tx, ok := r.pd.GetAndRmTxByID(txn.ID)
 			if ok && !tx.HasReplied {
-				tx.Reply(message.TransactionReply{})
+				tx.Reply(message.NewReply(config.GetConfig().PayloadSize))
 				tx.HasReplied = true
 			}
 		}

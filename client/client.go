@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/binary"
 	"github.com/gitferry/bamboo"
 	"github.com/gitferry/bamboo/benchmark"
 	"github.com/gitferry/bamboo/db"
@@ -20,11 +19,9 @@ func (d *Database) Stop() error {
 	return nil
 }
 
-func (d *Database) Write(k, v int) error {
+func (d *Database) Write(k int, v []byte) error {
 	key := db.Key(k)
-	value := make([]byte, binary.MaxVarintLen64)
-	binary.PutUvarint(value, uint64(v))
-	err := d.Put(key, value)
+	err := d.Put(key, v)
 	return err
 }
 

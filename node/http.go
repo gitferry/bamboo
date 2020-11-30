@@ -17,9 +17,6 @@ const (
 	HTTPCommandID = "Cid"
 )
 
-var totalRecevReq int
-var totalCommitReq int
-
 var ppFree = sync.Pool{
 	New: func() interface{} {
 		return make(chan message.TransactionReply, 1)
@@ -50,8 +47,7 @@ func (n *node) handleRoot(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	var err error
 
-	//req.C = ppFree.Get().(chan message.TransactionReply)
-	req.C = make(chan message.TransactionReply, 1)
+	req.C = ppFree.Get().(chan message.TransactionReply)
 	req.NodeID = n.id // TODO does this work when forward twice
 	req.ID = r.RequestURI
 	req.HasBroadcast = false
