@@ -1,9 +1,12 @@
 package config
 
 import (
+	"bufio"
 	"encoding/json"
 	"flag"
+	"fmt"
 	"os"
+	"strconv"
 	"time"
 
 	//"github.com/gitferry/bamboo/crypto"
@@ -179,24 +182,30 @@ func (c *Config) Load() {
 		log.Fatal(err)
 	}
 
-	// test
-	// for i := 1; i <= 4; i++ {
-	// 	id := identity.NewNodeID(i)
-	// 	port := strconv.Itoa(3000 + i)
-	// 	addr := "tcp://127.0.0.1:" + port
-	// 	portHttp := strconv.Itoa(9000 + i)
-	// 	addrHttp := "http://127.0.0.1:" + portHttp
-	// 	c.Addrs[id] = addr
-	// 	c.HTTPAddrs[id] = addrHttp
-	// }
+	// load ips
+	ip_file, err := os.Open("ips.txt")
+	if err != nil {
+		fmt.Println(err)
+	}
+	defer ip_file.Close()
+
+	scanner := bufio.NewScanner(ip_file)
+	i := 1
+	for scanner.Scan() {
+		id := identity.NodeID(i)
+		port := strconv.Itoa(3000 + i)
+		addr := "tcp://" + scanner.Text() + ":" + port
+		portHttp := strconv.Itoa(9000 + i)
+		addrHttp := "http://" + scanner.Text() + ":" + portHttp
+		c.Addrs[id] = addr
+		c.HTTPAddrs[id] = addrHttp
+	}
+
+	if err := scanner.Err(); err != nil {
+		fmt.Println(err)
+	}
 
 	c.n = len(c.Addrs)
-	//c.npz = make(map[int]int)
-	//for id := range c.Addrs {
-	//	c.n++
-	//	//c.npz[id.Zone()]++
-	//}
-	//c.z = len(c.npz)
 }
 
 // Save saves configuration to file in JSON format
