@@ -23,7 +23,6 @@ import (
 )
 
 const SILENCE = "silence"
-const FORK = "fork"
 
 type Replica struct {
 	node.Node
@@ -84,10 +83,6 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 func (r *Replica) HandleBlock(block blockchain.Block) {
 	log.Debugf("[%v] received a block from %v, view is %v, id: %x", r.ID(), block.Proposer, block.View, block.ID)
 	r.eventChan <- block
-	//	TODO: rm txn from payload
-	for _, txn := range block.Payload {
-		r.pd.RemoveTxn(txn)
-	}
 }
 
 func (r *Replica) HandleVote(vote blockchain.Vote) {
@@ -106,13 +101,6 @@ func (r *Replica) HandleTmo(tmo pacemaker.TMO) {
 }
 
 func (r *Replica) handleTxn(m message.Transaction) {
-	if !m.HasBroadcast {
-		m.HasBroadcast = true
-		r.Broadcast(m)
-	}
-	if m.NodeID == r.ID() {
-		r.pd.ReceiveTxFromClient(&m)
-	}
 	r.pd.AddTxn(&m)
 	if !r.isStarted.Load() {
 		log.Debugf("[%v] is boosting", r.ID())
@@ -132,21 +120,17 @@ func (r *Replica) handleTxn(m message.Transaction) {
 /* Processors */
 
 func (r *Replica) processCommittedBlock(block *blockchain.Block) {
-	for _, txn := range block.Payload {
-		if r.ID() == txn.NodeID {
-			tx, ok := r.pd.GetAndRmTxByID(txn.ID)
-			if ok && !tx.HasReplied {
-				tx.Reply(message.NewReply(config.GetConfig().PayloadSize))
-				tx.HasReplied = true
-			}
+	if block.Proposer == r.ID() {
+		for _, txn := range block.Payload {
+			txn.Reply(message.NewReply(config.GetConfig().PayloadSize))
 		}
 	}
 	log.Infof("[%v] the block is committed, No. of transactions: %v, view: %v, current view: %v, id: %x", r.ID(), len(block.Payload), block.View, r.pm.GetCurView(), block.ID)
 }
 
 func (r *Replica) processForkedBlock(block *blockchain.Block) {
-	for _, txn := range block.Payload {
-		if r.ID() == txn.NodeID {
+	if block.Proposer == r.ID() {
+		for _, txn := range block.Payload {
 			// collect txn back to mem pool
 			r.pd.CollectTxn(txn)
 		}
@@ -167,12 +151,11 @@ func (r *Replica) proposeBlock(view types.View) {
 	block := r.Safety.MakeProposal(r.pd.GeneratePayload())
 	createEnd := time.Now()
 	createDuration := createEnd.Sub(createStart)
-	log.Infof("[%v] finished creating the block for view: %v, payload size: %v, used: %v microseconds, id: %x, prevID: %x", r.ID(), view, len(block.Payload), createDuration.Microseconds(), block.ID, block.PrevID)
+	log.Debugf("[%v] finished creating the block for view: %v, payload size: %v, used: %v microseconds, id: %x, prevID: %x", r.ID(), view, len(block.Payload), createDuration.Microseconds(), block.ID, block.PrevID)
 	_ = r.Safety.ProcessBlock(block)
 	processDuration := time.Now().Sub(createEnd)
-	log.Infof("[%v] finished processing the block for view: %v, used: %v microseconds, id: %x, prevID: %x", r.ID(), view, processDuration.Microseconds(), block.ID, block.PrevID)
+	log.Debugf("[%v] finished processing the block for view: %v, used: %v microseconds, id: %x, prevID: %x", r.ID(), view, processDuration.Microseconds(), block.ID, block.PrevID)
 	r.Broadcast(block)
-	log.Debugf("[%v] broadcast is done for sending the block", r.ID())
 }
 
 func (r *Replica) ListenLocalEvent() {

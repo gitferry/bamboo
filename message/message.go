@@ -26,14 +26,12 @@ func init() {
 
 // Transaction is client reqeust with http response channel
 type Transaction struct {
-	Command      db.Command
-	Properties   map[string]string
-	Timestamp    time.Time
-	NodeID       identity.NodeID // forward by node
-	ID           string
-	HasBroadcast bool
-	HasReplied   bool
-	C            chan TransactionReply // reply channel created by request receiver
+	Command    db.Command
+	Properties map[string]string
+	Timestamp  time.Time
+	NodeID     identity.NodeID // forward by node
+	ID         string
+	C          chan TransactionReply // reply channel created by request receiver
 }
 
 // TransactionReply replies to current client session

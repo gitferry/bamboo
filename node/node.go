@@ -119,9 +119,6 @@ func (n *node) recv() {
 		switch m := m.(type) {
 		case message.Transaction:
 			m.C = make(chan message.TransactionReply, 1)
-			//go func(r message.Transaction) {
-			//	n.Send(r.NodeID, <-r.C)
-			//}(m)
 			n.TxChan <- m
 			continue
 

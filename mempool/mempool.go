@@ -24,14 +24,3 @@ func (mp *MemPool) addNew(tx *message.Transaction) {
 func (mp *MemPool) addOld(tx *message.Transaction) {
 	mp.Backend.insertFront(tx)
 }
-
-func (mp *MemPool) removeTxn(tx *message.Transaction) {
-	s := mp.size()
-	for i := 0; i < s; i++ {
-		e := mp.front()
-		val, _ := e.Value.(*message.Transaction)
-		if val.ID == tx.ID {
-			mp.remove(e)
-		}
-	}
-}

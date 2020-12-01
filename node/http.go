@@ -50,8 +50,6 @@ func (n *node) handleRoot(w http.ResponseWriter, r *http.Request) {
 	req.C = ppFree.Get().(chan message.TransactionReply)
 	req.NodeID = n.id // TODO does this work when forward twice
 	req.ID = r.RequestURI
-	req.HasBroadcast = false
-	req.HasReplied = false
 	n.TxChan <- req
 
 	reply := <-req.C
