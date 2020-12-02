@@ -192,13 +192,14 @@ func (c *Config) Load() {
 	scanner := bufio.NewScanner(ip_file)
 	i := 1
 	for scanner.Scan() {
-		id := identity.NodeID(i)
-		port := strconv.Itoa(3000 + i)
+		id := identity.NewNodeID(i)
+		port := strconv.Itoa(3734 + i)
 		addr := "tcp://" + scanner.Text() + ":" + port
-		portHttp := strconv.Itoa(9000 + i)
+		portHttp := strconv.Itoa(8069 + i)
 		addrHttp := "http://" + scanner.Text() + ":" + portHttp
 		c.Addrs[id] = addr
 		c.HTTPAddrs[id] = addrHttp
+		i++
 	}
 
 	if err := scanner.Err(); err != nil {

@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
 
+./pkill.sh
+
 start(){
     SERVER_ADDR=(`cat ips.txt`)
     for (( j=1; j<=$1; j++))
     do
-      ssh -t $2@${SERVER_ADDR[j-1]} 'cd ~/bamboo ; ./run.sh $j'
+      ssh -t $2@${SERVER_ADDR[j-1]} "cd /home/${2}/bamboo ; ./run.sh ${j}"
+      echo replica ${j} is launched!
     done
 }
 
