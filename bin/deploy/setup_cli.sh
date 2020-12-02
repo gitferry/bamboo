@@ -29,8 +29,9 @@ distribute(){
     do
        ssh -t $2@${SERVER_ADDR[j-1]} mkdir bamboo
        echo -e "---- upload client ${j}: $2@${SERVER_ADDR[j-1]} \n ----"
-#       scp client ips.txt runClient.sh config.json $2@${SERVER_ADDR[j-1]}:/home/$2/bamboo
-#       ssh -t $2@${SERVER_ADDR[j-1]} chmod 777 /home/$2/bamboo/runClient.sh
+       scp ips.txt client config.json runClient.sh $2@${SERVER_ADDR[j-1]}:/home/$2/bamboo
+       ssh -t $2@${SERVER_ADDR[j-1]} chmod 777 /home/$2/bamboo/runClient.sh
+       wait
     done
 }
 
@@ -44,4 +45,4 @@ if ${FIRST}; then
 fi
 
 # distribute files
-#distribute $MAXPEERNUM $USERNAME
+distribute $MAXPEERNUM $USERNAME

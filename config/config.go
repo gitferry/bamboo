@@ -25,19 +25,20 @@ type Config struct {
 	Policy    string  `json:"policy"`    // leader change policy {consecutive, majority}
 	Threshold float64 `json:"threshold"` // threshold for policy in WPaxos {n consecutive or time interval in ms}
 
-	Thrifty        bool    `json:"thrifty"`          // only send messages to a quorum
-	BufferSize     int     `json:"buffer_size"`      // buffer size for maps
-	ChanBufferSize int     `json:"chan_buffer_size"` // buffer size for channels
-	MultiVersion   bool    `json:"multiversion"`     // create multi-version database
-	Timeout        int     `json:"timeout"`
-	ByzNo          int     `json:"byzNo"`
-	BSize          int     `json:"bsize"`
-	Benchmark      Bconfig `json:"benchmark"` // benchmark configuration
-	Delta          int     `json:"delta"`     // timeout, seconds
-	Pprof          bool    `json:"pprof"`
-	MaxRound       int     `json:"maxRound"`
-	Strategy       string  `json:"strategy"`
-	PayloadSize    int     `json:"payload_size"`
+	Thrifty        bool            `json:"thrifty"`          // only send messages to a quorum
+	BufferSize     int             `json:"buffer_size"`      // buffer size for maps
+	ChanBufferSize int             `json:"chan_buffer_size"` // buffer size for channels
+	MultiVersion   bool            `json:"multiversion"`     // create multi-version database
+	Timeout        int             `json:"timeout"`
+	ByzNo          int             `json:"byzNo"`
+	BSize          int             `json:"bsize"`
+	Benchmark      Bconfig         `json:"benchmark"` // benchmark configuration
+	Delta          int             `json:"delta"`     // timeout, seconds
+	Pprof          bool            `json:"pprof"`
+	MaxRound       int             `json:"maxRound"`
+	Strategy       string          `json:"strategy"`
+	PayloadSize    int             `json:"payload_size"`
+	Master         identity.NodeID `json:"master"`
 
 	hasher string
 	signer string

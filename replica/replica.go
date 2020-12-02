@@ -49,7 +49,11 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 	if isByz {
 		log.Infof("[%v] is Byzantine", r.ID())
 	}
-	r.Election = election.NewRotation(config.GetConfig().N())
+	if config.GetConfig().Master == "0" {
+		r.Election = election.NewRotation(config.GetConfig().N())
+	} else {
+		r.Election = election.NewStatic(config.GetConfig().Master)
+	}
 	r.pd = mempool.NewProducer()
 	r.pm = pacemaker.NewPacemaker(config.GetConfig().N())
 	r.start = make(chan bool)
