@@ -1,7 +1,6 @@
 package node
 
 import (
-	"io"
 	"net/http"
 	"net/url"
 	"sync"
@@ -45,7 +44,7 @@ func (n *node) http() {
 func (n *node) handleRoot(w http.ResponseWriter, r *http.Request) {
 	var req message.Transaction
 	defer r.Body.Close()
-	var err error
+	//var err error
 
 	req.C = ppFree.Get().(chan message.TransactionReply)
 	req.NodeID = n.id // TODO does this work when forward twice
@@ -58,8 +57,8 @@ func (n *node) handleRoot(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, reply.Err.Error(), http.StatusInternalServerError)
 		return
 	}
-	_, err = io.WriteString(w, string(reply.Value))
-	if err != nil {
-		log.Error(err)
-	}
+	//_, err = io.WriteString(w, string(reply.Value))
+	//if err != nil {
+	//	log.Error(err)
+	//}
 }
