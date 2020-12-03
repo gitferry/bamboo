@@ -86,6 +86,11 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 
 func (r *Replica) HandleBlock(block blockchain.Block) {
 	log.Debugf("[%v] received a block from %v, view is %v, id: %x", r.ID(), block.Proposer, block.View, block.ID)
+	if !r.isStarted.Load() {
+		log.Debugf("[%v] is boosting", r.ID())
+		r.isStarted.Store(true)
+		r.start <- true
+	}
 	r.eventChan <- block
 }
 
