@@ -99,6 +99,11 @@ func (r *Replica) HandleVote(vote blockchain.Vote) {
 		log.Debugf("[%v] received a stale vote, view: %v, block id: %x", r.ID(), vote.View, vote.BlockID)
 		return
 	}
+	if !r.isStarted.Load() {
+		log.Debugf("[%v] is boosting", r.ID())
+		r.isStarted.Store(true)
+		r.start <- true
+	}
 
 	log.Debugf("[%v] received a vote from %v, blockID is %x", r.ID(), vote.Voter, vote.BlockID)
 	r.eventChan <- vote

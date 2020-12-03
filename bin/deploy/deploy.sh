@@ -36,7 +36,7 @@ distribute(){
 USERNAME="gaify"
 PASSWD="GaiFY#1"
 MAXPEERNUM=(`wc -l ips.txt | awk '{ print $1 }'`)
-FIRST=true
+FIRST=false
 
 if ${FIRST}; then
     add_ssh_key $MAXPEERNUM $USERNAME $PASSWD

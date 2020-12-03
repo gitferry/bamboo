@@ -29,7 +29,7 @@ distribute(){
     do
        ssh -t $2@${SERVER_ADDR[j-1]} mkdir bamboo
        echo -e "---- upload client ${j}: $2@${SERVER_ADDR[j-1]} \n ----"
-       scp ips.txt client config.json runClient.sh $2@${SERVER_ADDR[j-1]}:/home/$2/bamboo
+       scp ips.txt client config.json runClient.sh collect_throughput.py $2@${SERVER_ADDR[j-1]}:/home/$2/bamboo
        ssh -t $2@${SERVER_ADDR[j-1]} chmod 777 /home/$2/bamboo/runClient.sh
        wait
     done
@@ -38,7 +38,7 @@ distribute(){
 USERNAME="gaify"
 PASSWD="GaiFY#1"
 MAXPEERNUM=(`wc -l ips.txt | awk '{ print $1 }'`)
-FIRST=true
+FIRST=false
 
 if ${FIRST}; then
     add_ssh_key $MAXPEERNUM $USERNAME $PASSWD
