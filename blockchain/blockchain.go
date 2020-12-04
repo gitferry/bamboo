@@ -11,9 +11,10 @@ type BlockChain struct {
 	quorum           *Quorum
 	longestTailBlock *Block
 	// measurement
-	highestComitted       int
-	committedBlocks       int
-	honestCommittedBlocks int
+	highestComitted     int
+	committedBlockNo    int
+	totalBlockIntervals int
+	prunedBlockNo       int
 }
 
 func NewBlockchain(n int) *BlockChain {
@@ -31,20 +32,6 @@ func (bc *BlockChain) AddBlock(block *Block) {
 
 func (bc *BlockChain) AddVote(vote *Vote) (bool, *QC) {
 	return bc.quorum.Add(vote)
-}
-
-func (bc *BlockChain) CalForkingRate() float32 {
-	var forkingRate float32
-	//if bc.Height == 0 {
-	//	return 0
-	//}
-	//total := 0
-	//for i := 1; i <= bc.Height; i++ {
-	//	total += len(bc.Blocks[i])
-	//}
-	//
-	//forkingrate := float32(bc.Height) / float32(total)
-	return forkingRate
 }
 
 func (bc *BlockChain) GetBlockByID(id crypto.Identifier) (*Block, error) {
@@ -77,7 +64,7 @@ func (bc *BlockChain) GetGrandParentBlock(id crypto.Identifier) (*Block, error) 
 }
 
 // CommitBlock prunes blocks and returns committed blocks up to the last committed one and prunedBlocks
-func (bc *BlockChain) CommitBlock(id crypto.Identifier) ([]*Block, []*Block, error) {
+func (bc *BlockChain) CommitBlock(id crypto.Identifier, view types.View) ([]*Block, []*Block, error) {
 	vertex, ok := bc.forrest.GetVertex(id)
 	if !ok {
 		return nil, nil, fmt.Errorf("cannot find the block, id: %x", id)
@@ -91,17 +78,19 @@ func (bc *BlockChain) CommitBlock(id crypto.Identifier) ([]*Block, []*Block, err
 		if ok {
 			delete(bc.quorum.votes, block.ID)
 		}
-		bc.committedBlocks++
+		bc.committedBlockNo++
+		bc.totalBlockIntervals += int(view - block.View)
 		vertex, exists := bc.forrest.GetVertex(block.PrevID)
 		if !exists {
 			break
 		}
 		block = vertex.GetBlock()
 	}
-	forkedBlocks, err := bc.forrest.PruneUpToLevel(uint64(committedView))
+	forkedBlocks, prunedNo, err := bc.forrest.PruneUpToLevel(uint64(committedView))
 	if err != nil {
 		return nil, nil, fmt.Errorf("cannot prune the blockchain to the committed block, id: %w", err)
 	}
+	bc.prunedBlockNo += prunedNo
 
 	return committedBlocks, forkedBlocks, nil
 }
@@ -116,23 +105,19 @@ func (bc *BlockChain) GetChildrenBlocks(id crypto.Identifier) []*Block {
 }
 
 func (bc *BlockChain) GetChainGrowth() float64 {
-	return float64(bc.honestCommittedBlocks) / float64(bc.highestComitted)
+	return float64(bc.committedBlockNo) / float64(bc.prunedBlockNo+1)
 }
 
-func (bc *BlockChain) GetChainQuality() float64 {
-	return float64(bc.honestCommittedBlocks) / float64(bc.committedBlocks)
+func (bc *BlockChain) GetBlockIntervals() float64 {
+	return float64(bc.totalBlockIntervals) / float64(bc.committedBlockNo)
 }
 
 func (bc *BlockChain) GetHighestComitted() int {
 	return bc.highestComitted
 }
 
-func (bc *BlockChain) GetHonestCommittedBlocks() int {
-	return bc.honestCommittedBlocks
-}
-
 func (bc *BlockChain) GetCommittedBlocks() int {
-	return bc.committedBlocks
+	return bc.committedBlockNo
 }
 
 func (bc *BlockChain) GetBlockByView(view types.View) *Block {

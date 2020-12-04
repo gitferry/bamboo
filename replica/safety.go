@@ -13,4 +13,5 @@ type Safety interface {
 	ProcessRemoteTmo(tmo *pacemaker.TMO)
 	ProcessLocalTmo(view types.View)
 	MakeProposal(payload []*message.Transaction) *blockchain.Block
+	GetChainStatus() string
 }

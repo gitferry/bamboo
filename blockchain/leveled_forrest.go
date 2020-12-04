@@ -48,13 +48,14 @@ func NewLevelledForest() *LevelledForest {
 }
 
 // PruneUpToLevel prunes all blocks UP TO but NOT INCLUDING `level`
-func (f *LevelledForest) PruneUpToLevel(level uint64) ([]*Block, error) {
+func (f *LevelledForest) PruneUpToLevel(level uint64) ([]*Block, int, error) {
 	// 1. find committed levels
 	// 2. go through each level and prune, if it is not committed, add it to pruned
+	var prunedBlockNo int
 	forkedBlocks := make([]*Block, 0)
 	committedLevels := make(map[uint64]bool)
 	if level < f.LowestLevel {
-		return nil, fmt.Errorf("new lowest level %d cannot be smaller than previous last retained level %d", level, f.LowestLevel)
+		return nil, prunedBlockNo, fmt.Errorf("new lowest level %d cannot be smaller than previous last retained level %d", level, f.LowestLevel)
 	}
 	for l := level; l >= f.LowestLevel && l > 1; {
 		// assume each level has only one vertex
@@ -74,12 +75,13 @@ func (f *LevelledForest) PruneUpToLevel(level uint64) ([]*Block, error) {
 				log.Debugf("found a forked block, view: %v, id: %x", v.vertex.Level(), v.vertex.VertexID())
 				forkedBlocks = append(forkedBlocks, v.vertex.GetBlock())
 			}
+			prunedBlockNo++
 			delete(f.vertices, v.id)
 		}
 		delete(f.verticesAtLevel, l)
 	}
 	f.LowestLevel = level
-	return forkedBlocks, nil
+	return forkedBlocks, prunedBlockNo, nil
 }
 
 // HasVertex returns true iff full vertex exists

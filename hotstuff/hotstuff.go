@@ -203,31 +203,16 @@ func (hs *HotStuff) processTC(tc *pacemaker.TC) {
 	hs.pm.AdvanceView(tc.View)
 }
 
-//func (hs *HotStuff) preprocessQC(qc *blockchain.QC) {
-//	isThreeChain, _, err := hs.commitRule(qc)
-//	if err != nil {
-//		log.Warningf("[%v] cannot check commit rule", hs.ID())
-//		return
-//	}
-//	if isThreeChain {
-//		hs.pm.AdvanceView(qc.View)
-//		return
-//	}
-//	for i := qc.View; ; i++ {
-//		nextLeader := hs.FindLeaderFor(i + 1)
-//		if !config.Configuration.IsByzantine(nextLeader) {
-//			qc.View = i
-//			log.Debugf("[%v] is going to send a stale qc to %v, view: %v, id: %x", hs.ID(), nextLeader, qc.View, qc.BlockID)
-//			hs.Send(nextLeader, qc)
-//			return
-//		}
-//	}
-//}
-
 func (hs *HotStuff) GetHighQC() *blockchain.QC {
 	hs.mu.Lock()
 	defer hs.mu.Unlock()
 	return hs.highQC
+}
+
+func (hs *HotStuff) GetChainStatus() string {
+	chainGrowthRate := hs.bc.GetChainGrowth()
+	blockIntervals := hs.bc.GetBlockIntervals()
+	return fmt.Sprintf("[%v] The current view is: %v, chain growth rate is: %v, ave block interval is: %v", hs.ID(), hs.pm.GetCurView(), chainGrowthRate, blockIntervals)
 }
 
 func (hs *HotStuff) updateHighQC(qc *blockchain.QC) {
@@ -265,7 +250,7 @@ func (hs *HotStuff) processCertificate(qc *blockchain.QC) {
 	if !ok {
 		return
 	}
-	committedBlocks, forkedBlocks, err := hs.bc.CommitBlock(block.ID)
+	committedBlocks, forkedBlocks, err := hs.bc.CommitBlock(block.ID, hs.pm.GetCurView())
 	if err != nil {
 		log.Errorf("[%v] cannot commit blocks", hs.ID())
 		return

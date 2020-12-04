@@ -1,6 +1,7 @@
 package node
 
 import (
+	"io"
 	"net/http"
 	"net/url"
 	"sync"
@@ -26,6 +27,7 @@ var ppFree = sync.Pool{
 func (n *node) http() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", n.handleRoot)
+	mux.HandleFunc("/query", n.handleQuery)
 
 	// http string should be in form of ":8080"
 	ip, err := url.Parse(config.Configuration.HTTPAddrs[n.id])
@@ -39,6 +41,18 @@ func (n *node) http() {
 	}
 	log.Info("http server starting on ", port)
 	log.Fatal(n.server.ListenAndServe())
+}
+
+func (n *node) handleQuery(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+	var query message.Query
+	query.C = make(chan message.QueryReply)
+	n.TxChan <- query
+	reply := <-query.C
+	_, err := io.WriteString(w, reply.Info)
+	if err != nil {
+		log.Error(err)
+	}
 }
 
 func (n *node) handleRoot(w http.ResponseWriter, r *http.Request) {

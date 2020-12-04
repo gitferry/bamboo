@@ -14,6 +14,8 @@ import (
 func init() {
 	gob.Register(Transaction{})
 	gob.Register(TransactionReply{})
+	gob.Register(Query{})
+	gob.Register(QueryReply{})
 	gob.Register(Read{})
 	gob.Register(ReadReply{})
 	gob.Register(Register{})
@@ -80,8 +82,18 @@ type ReadReply struct {
 	Value     db.Value
 }
 
-func (r ReadReply) String() string {
-	return fmt.Sprintf("ReadReply {cid=%d, val=%x}", r.CommandID, r.Value)
+// Query can be used as a special request that directly read the value of key without go through replication protocol in Replica
+type Query struct {
+	C chan QueryReply
+}
+
+func (r *Query) Reply(reply QueryReply) {
+	r.C <- reply
+}
+
+// QueryReply cid and value of reading key
+type QueryReply struct {
+	Info string
 }
 
 /**************************

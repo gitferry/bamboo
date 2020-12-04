@@ -205,6 +205,12 @@ func (th *Tchs) preprocessQC(qc *blockchain.QC) {
 	}
 }
 
+func (th *Tchs) GetChainStatus() string {
+	chainGrowthRate := th.bc.GetChainGrowth()
+	blockIntervals := th.bc.GetBlockIntervals()
+	return fmt.Sprintf("[%v] The current view is: %v, chain growth rate is: %v, ave block interval is: %v", th.ID(), th.pm.GetCurView(), chainGrowthRate, blockIntervals)
+}
+
 func (th *Tchs) GetHighQC() *blockchain.QC {
 	th.mu.Lock()
 	defer th.mu.Unlock()
@@ -246,7 +252,7 @@ func (th *Tchs) processCertificate(qc *blockchain.QC) {
 	if !ok {
 		return
 	}
-	committedBlocks, forkedBlocks, err := th.bc.CommitBlock(block.ID)
+	committedBlocks, forkedBlocks, err := th.bc.CommitBlock(block.ID, th.pm.GetCurView())
 	if err != nil {
 		log.Errorf("[%v] cannot commit blocks", th.ID())
 		return

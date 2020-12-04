@@ -65,6 +65,7 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 	r.Register(blockchain.Vote{}, r.HandleVote)
 	r.Register(pacemaker.TMO{}, r.HandleTmo)
 	r.Register(message.Transaction{}, r.handleTxn)
+	r.Register(message.Query{}, r.handleQuery)
 	gob.Register(blockchain.Block{})
 	gob.Register(blockchain.Vote{})
 	gob.Register(pacemaker.TC{})
@@ -112,6 +113,11 @@ func (r *Replica) HandleVote(vote blockchain.Vote) {
 func (r *Replica) HandleTmo(tmo pacemaker.TMO) {
 	log.Debugf("[%v] received a timeout from %v for view %v", r.ID(), tmo.NodeID, tmo.View)
 	r.eventChan <- tmo
+}
+
+func (r *Replica) handleQuery(m message.Query) {
+	status := r.Safety.GetChainStatus()
+	m.Reply(message.QueryReply{Info: status})
 }
 
 func (r *Replica) handleTxn(m message.Transaction) {

@@ -208,7 +208,7 @@ func (sl *Streamlet) processCertificate(qc *blockchain.QC) {
 	if !ok {
 		return
 	}
-	committedBlocks, forkedBlocks, err := sl.bc.CommitBlock(block.ID)
+	committedBlocks, forkedBlocks, err := sl.bc.CommitBlock(block.ID, sl.pm.GetCurView())
 	if err != nil {
 		log.Errorf("[%v] cannot commit blocks", sl.ID())
 		return
@@ -267,6 +267,12 @@ func (sl *Streamlet) updateNotarizedChain(qc *blockchain.QC) error {
 	sl.bufferedNotarizedBlock[block.PrevID] = qc
 	log.Debugf("[%v] the parent block is not notarized, buffered for now, view: %v, block id: %x", sl.ID(), qc.View, qc.BlockID)
 	return fmt.Errorf("the block is not extending the notarized chain")
+}
+
+func (sl *Streamlet) GetChainStatus() string {
+	chainGrowthRate := sl.bc.GetChainGrowth()
+	blockIntervals := sl.bc.GetBlockIntervals()
+	return fmt.Sprintf("[%v] The current view is: %v, chain growth rate is: %v, ave block interval is: %v", sl.ID(), sl.pm.GetCurView(), chainGrowthRate, blockIntervals)
 }
 
 func (sl *Streamlet) GetNotarizedHeight() int {
