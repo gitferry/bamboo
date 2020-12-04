@@ -13,7 +13,7 @@
   },
   "policy": "majority",
   "threshold": 3,
-  "byzNo": 0,
+  "byzNo": 1,
   "strategy": "fork",
   "thrifty": false,
   "chan_buffer_size": 10240,
@@ -27,7 +27,7 @@
   "signer": "ECDSA_P256",
   "pprof": true,
   "maxRound": 5000,
-  "master": "4",
+  "master": "0",
   "benchmark": {
     "T": 1000,
     "N": 0,

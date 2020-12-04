@@ -27,7 +27,7 @@ type HotStuff struct {
 	committedBlocks chan *blockchain.Block
 	forkedBlocks    chan *blockchain.Block
 	bufferedQCs     map[crypto.Identifier]*blockchain.QC
-	bufferedBlocks  map[crypto.Identifier]*blockchain.Block
+	bufferedBlocks  map[types.View]*blockchain.Block
 	highQC          *blockchain.QC
 	mu              sync.Mutex
 }
@@ -43,7 +43,7 @@ func NewHotStuff(
 	hs.Election = elec
 	hs.pm = pm
 	hs.bc = blockchain.NewBlockchain(config.GetConfig().N())
-	hs.bufferedBlocks = make(map[crypto.Identifier]*blockchain.Block)
+	hs.bufferedBlocks = make(map[types.View]*blockchain.Block)
 	hs.bufferedQCs = make(map[crypto.Identifier]*blockchain.QC)
 	hs.highQC = &blockchain.QC{View: 0}
 	hs.committedBlocks = committedBlocks
@@ -62,7 +62,7 @@ func (hs *HotStuff) ProcessBlock(block *blockchain.Block) error {
 	}
 	if block.View > curView+1 {
 		//	buffer the block
-		hs.bufferedBlocks[block.PrevID] = block
+		hs.bufferedBlocks[block.View-1] = block
 		log.Debugf("[%v] the block is buffered, id: %x", hs.ID(), block.ID)
 		return nil
 	}
@@ -88,7 +88,7 @@ func (hs *HotStuff) ProcessBlock(block *blockchain.Block) error {
 	qc, ok := hs.bufferedQCs[block.ID]
 	if ok {
 		hs.processCertificate(qc)
-		delete(hs.bufferedBlocks, block.ID)
+		delete(hs.bufferedQCs, block.ID)
 	}
 
 	shouldVote, err := hs.votingRule(block)
@@ -111,10 +111,10 @@ func (hs *HotStuff) ProcessBlock(block *blockchain.Block) error {
 		hs.Send(voteAggregator, vote)
 	}
 
-	b, ok := hs.bufferedBlocks[block.ID]
+	b, ok := hs.bufferedBlocks[block.View]
 	if ok {
 		_ = hs.ProcessBlock(b)
-		delete(hs.bufferedBlocks, block.ID)
+		delete(hs.bufferedBlocks, block.View)
 	}
 	return nil
 }
@@ -306,12 +306,16 @@ func (hs *HotStuff) updatePreferredView(qc *blockchain.QC) error {
 	if qc.View <= 2 {
 		return nil
 	}
-	parentBlock, err := hs.bc.GetParentBlock(qc.BlockID)
+	_, err := hs.bc.GetBlockByID(qc.BlockID)
 	if err != nil {
 		return fmt.Errorf("cannot update preferred view: %w", err)
 	}
-	if parentBlock.View > hs.preferredView {
-		hs.preferredView = parentBlock.View
+	grandParentBlock, err := hs.bc.GetParentBlock(qc.BlockID)
+	if err != nil {
+		return fmt.Errorf("cannot update preferred view: %w", err)
+	}
+	if grandParentBlock.View > hs.preferredView {
+		hs.preferredView = grandParentBlock.View
 	}
 	return nil
 }
