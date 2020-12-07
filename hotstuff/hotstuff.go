@@ -138,8 +138,9 @@ func (hs *HotStuff) ProcessVote(vote *blockchain.Vote) {
 		return
 	}
 	qc.Leader = hs.ID()
-	if hs.IsByz() && config.GetConfig().Strategy == FORK {
-		hs.pm.AdvanceView(qc.View)
+	_, err := hs.bc.GetBlockByID(qc.BlockID)
+	if err != nil {
+		hs.bufferedQCs[qc.BlockID] = qc
 		return
 	}
 	hs.processCertificate(qc)
@@ -234,6 +235,10 @@ func (hs *HotStuff) processCertificate(qc *blockchain.QC) {
 			log.Warningf("[%v] received a quorum with invalid signatures", hs.ID())
 			return
 		}
+	}
+	if hs.IsByz() && config.GetConfig().Strategy == FORK && hs.IsLeader(hs.ID(), qc.View+1) {
+		hs.pm.AdvanceView(qc.View)
+		return
 	}
 	err := hs.updatePreferredView(qc)
 	if err != nil {
