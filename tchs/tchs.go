@@ -185,27 +185,6 @@ func (th *Tchs) processTC(tc *pacemaker.TC) {
 	th.pm.AdvanceView(tc.View)
 }
 
-func (th *Tchs) preprocessQC(qc *blockchain.QC) {
-	isThreeChain, _, err := th.commitRule(qc)
-	if err != nil {
-		log.Warningf("[%v] cannot check commit rule", th.ID())
-		return
-	}
-	if isThreeChain {
-		th.pm.AdvanceView(qc.View)
-		return
-	}
-	for i := qc.View; ; i++ {
-		nextLeader := th.FindLeaderFor(i + 1)
-		if !config.Configuration.IsByzantine(nextLeader) {
-			qc.View = i
-			log.Debugf("[%v] is going to send a stale qc to %v, view: %v, id: %x", th.ID(), nextLeader, qc.View, qc.BlockID)
-			th.Send(nextLeader, qc)
-			return
-		}
-	}
-}
-
 func (th *Tchs) GetChainStatus() string {
 	chainGrowthRate := th.bc.GetChainGrowth()
 	blockIntervals := th.bc.GetBlockIntervals()

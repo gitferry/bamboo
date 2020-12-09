@@ -148,13 +148,7 @@ func (sl *Streamlet) ProcessLocalTmo(view types.View) {
 }
 
 func (sl *Streamlet) MakeProposal(payload []*message.Transaction) *blockchain.Block {
-	var prevID crypto.Identifier
-	if sl.GetNotarizedHeight() == 0 {
-		prevID = crypto.MakeID("Genesis block")
-	} else {
-		tailNotarizedBlock := sl.notarizedChain[sl.GetNotarizedHeight()-1][0]
-		prevID = tailNotarizedBlock.ID
-	}
+	prevID := sl.forkChoice()
 	block := blockchain.MakeBlock(sl.pm.GetCurView(), &blockchain.QC{
 		View:      0,
 		BlockID:   prevID,
@@ -162,6 +156,21 @@ func (sl *Streamlet) MakeProposal(payload []*message.Transaction) *blockchain.Bl
 		Signature: nil,
 	}, prevID, payload, sl.ID())
 	return block
+}
+
+func (sl *Streamlet) forkChoice() crypto.Identifier {
+	var prevID crypto.Identifier
+	if sl.GetNotarizedHeight() == 0 {
+		prevID = crypto.MakeID("Genesis block")
+	} else {
+		tail := 1
+		if sl.IsByz() && config.GetConfig().Strategy == "fork" {
+			tail = 2
+		}
+		tailNotarizedBlock := sl.notarizedChain[sl.GetNotarizedHeight()-tail][0]
+		prevID = tailNotarizedBlock.ID
+	}
+	return prevID
 }
 
 func (sl *Streamlet) processTC(tc *pacemaker.TC) {
@@ -197,7 +206,7 @@ func (sl *Streamlet) processCertificate(qc *blockchain.QC) {
 	err = sl.updateNotarizedChain(qc)
 	if err != nil {
 		// the corresponding block does not exist
-		log.Warningf("[%v] cannot notarize the block, %x: %w", sl.ID(), qc.BlockID, err)
+		log.Debugf("[%v] cannot notarize the block, %x: %w", sl.ID(), qc.BlockID, err)
 		return
 	}
 	sl.pm.AdvanceView(qc.View)

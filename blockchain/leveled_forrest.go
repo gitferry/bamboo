@@ -72,8 +72,10 @@ func (f *LevelledForest) PruneUpToLevel(level uint64) ([]*Block, int, error) {
 		// find fork blocks
 		for _, v := range f.verticesAtLevel[l] { // nil map behaves like empty map when iterating over it
 			if !committedLevels[l] && l > 1 {
-				log.Debugf("found a forked block, view: %v, id: %x", v.vertex.Level(), v.vertex.VertexID())
-				forkedBlocks = append(forkedBlocks, v.vertex.GetBlock())
+				if v.vertex != nil {
+					log.Debugf("found a forked block, view: %v, id: %x", v.vertex.Level(), v.vertex.VertexID())
+					forkedBlocks = append(forkedBlocks, v.vertex.GetBlock())
+				}
 			}
 			prunedBlockNo++
 			delete(f.vertices, v.id)

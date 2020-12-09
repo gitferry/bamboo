@@ -63,8 +63,5 @@ func (p *Pacemaker) GetHighTC() *TC {
 }
 
 func (p *Pacemaker) GetTimerForView() time.Duration {
-	//if p.curView == 0 {
-	//	return 2000 * time.Millisecond
-	//}
 	return time.Duration(config.GetConfig().Timeout) * time.Millisecond
 }
