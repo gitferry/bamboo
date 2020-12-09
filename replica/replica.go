@@ -225,11 +225,6 @@ func (r *Replica) ListenCommittedBlocks() {
 
 // Start starts event loop
 func (r *Replica) Start() {
-	if r.isByz && config.GetConfig().Strategy == SILENCE {
-		// perform silence attack
-		log.Debugf("[%v] is performing silence attack", r.ID())
-		return
-	}
 	go r.Run()
 	<-r.start
 	go r.ListenLocalEvent()

@@ -12,9 +12,9 @@
     "4": "http://127.0.0.1:8073"
   },
   "policy": "majority",
-  "threshold": 3,
+  "threshold": 5,
   "byzNo": 1,
-  "strategy": "fork",
+  "strategy": "silence",
   "thrifty": false,
   "chan_buffer_size": 10240,
   "buffer_size": 10240,
@@ -29,7 +29,7 @@
   "maxRound": 5000,
   "master": "0",
   "benchmark": {
-    "T": 1000,
+    "T": 10,
     "N": 0,
     "K": 1000,
     "W": 0.5,

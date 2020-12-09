@@ -111,7 +111,7 @@ def do_plot():
     # plt.xlabel('Requests (Tx) in log scale')
     plt.tight_layout()
     plt.show()
-    plt.savefig('payload-size.png', format='png', dpi=400)
+#     plt.savefig('payload-size.pdf', format='pdf', dpi=400)
 
 if __name__ == '__main__':
     do_plot()

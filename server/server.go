@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"strconv"
 	"sync"
 
 	"github.com/gitferry/bamboo"
@@ -15,7 +16,6 @@ import (
 var algorithm = flag.String("algorithm", "hotstuff", "BFT consensus algorithm")
 var id = flag.String("id", "", "NodeID of the node")
 var simulation = flag.Bool("sim", false, "simulation mode")
-var isByz = flag.Bool("isByz", false, "this is a Byzantine node")
 
 func initReplica(id identity.NodeID, isByz bool) {
 	log.Infof("node %v starting...", id)
@@ -48,6 +48,11 @@ func main() {
 		wg.Wait()
 	} else {
 		setupDebug()
-		initReplica(identity.NodeID(*id), *isByz)
+		isByz := false
+		i, _ := strconv.Atoi(*id)
+		if i <= config.GetConfig().ByzNo {
+			isByz = true
+		}
+		initReplica(identity.NodeID(*id), isByz)
 	}
 }

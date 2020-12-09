@@ -5,7 +5,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gitferry/bamboo/log"
 	"github.com/gitferry/bamboo/types"
 )
 
@@ -26,7 +25,6 @@ func NewPacemaker(n int) *Pacemaker {
 
 func (p *Pacemaker) ProcessRemoteTmo(tmo *TMO) (bool, *TC) {
 	if tmo.View < p.curView {
-		log.Warningf("stale timeout msg")
 		return false, nil
 	}
 	return p.timeoutController.AddTmo(tmo)

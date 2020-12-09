@@ -116,6 +116,11 @@ func (n *node) txn() {
 func (n *node) recv() {
 	for {
 		m := n.Recv()
+		if n.isByz && config.GetConfig().Strategy == "silence" {
+			// perform silence attack
+			log.Debugf("[%v] is performing silence attack", n.ID())
+			return
+		}
 		switch m := m.(type) {
 		case message.Transaction:
 			m.C = make(chan message.TransactionReply, 1)

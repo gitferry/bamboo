@@ -24,7 +24,7 @@ for file in files:
                      totalLatency += float(latency)
              f.close()
 
-with open(path+'/'+str(fileNo)+".log", 'x') as w_f:
+with open(path+'/'+str(fileNo)+".log", 'w') as w_f:
     w_f.write("Experiment with " + str(fileNo) +" clients:" + "\n")
     for i in range(fileNo):
         w_f.write("["+str(i)+"]"+" throughput: "+str(throughputs[i])+", latency: "+str(latencies[i])+"\n")
