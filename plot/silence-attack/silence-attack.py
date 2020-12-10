@@ -15,7 +15,7 @@ cgr = [
 
 bi = [
     ('HotStuff',[
-        3.0, 3.231, 3.491, 3.859, 4.324, 5.086
+        3.0, 3.557, 4.286, 5.122, 6.676, 9.531
     ], '-o', 'coral'),
     ('2C-HS',[
         2.0, 2.149, 2.395, 2.632, 2.964, 3.383
@@ -73,7 +73,7 @@ def do_plot():
     plt.legend(loc='best', fancybox=True,frameon=False,framealpha=0.8)
     f.text(0.5, 0.04, 'Byz. number', ha='center', va='center')
     plt.subplots_adjust(wspace=0.1)
-    plt.savefig('forking-attack-data.pdf', format='pdf')
+    plt.savefig('silence-attack-data.pdf', format='pdf')
     plt.show()
 
 if __name__ == '__main__':

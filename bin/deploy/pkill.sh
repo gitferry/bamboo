@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 kill_all_servers(){
-    SERVER_ADDR=(`cat ips.txt`)
+    SERVER_ADDR=(`cat public_ips.txt`)
     j=0
     for data in ${SERVER_ADDR[@]}
     do
@@ -11,7 +11,7 @@ kill_all_servers(){
 }
 
 # NOTE!!!
-USERNAME="gaify"
+USERNAME="ubuntu"
 
 # distribute files
 kill_all_servers  $USERNAME

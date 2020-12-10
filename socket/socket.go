@@ -151,6 +151,7 @@ func (s *socket) Broadcast(m interface{}) {
 		}
 		s.Send(id, m)
 	}
+	//log.Debugf("node %s done  broadcasting message %+v", s.id, m)
 }
 
 func (s *socket) Close() {

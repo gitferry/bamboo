@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 
-# Measurements from batch-size.data
-expt = [
+# Measurements from block-size.data
+bsize = [
     ('HS-b100',[
         (15.680,6.21),
         (28.095,6.75),
@@ -81,6 +81,24 @@ expt = [
         (135.536,26.1),
         (132.186,34.8)
     ], '->', 'steelblue')]
+#     ('OHS-b100',[
+#         (9.700,10.194),
+#         (19.799,12.205),
+#         (33.7,11.409),
+#         (38.760,10.0),
+#         (48.00,19.0),
+#         (48.00,42.0),
+#     ], '->', 'darkmagenta'),
+#     ('OHS-b400',[
+#         (17.966,12.14),
+#         (58.966,12.52),
+#         (131.544,13.07),
+#         (141.544,14.07),
+#         (151.544,15.07),
+#         (169.542,18.3),
+#         (172.564,22.4),
+#         (176.649,37.4),
+#     ], '-<', 'darkmagenta')]
 
 
 
@@ -88,28 +106,20 @@ def do_plot():
     f = plt.figure(1, figsize=(7,5))
     plt.clf()
     ax = f.add_subplot(1, 1, 1)
-    for name, entries, style, color in expt:
+    for name, entries, style, color in bsize:
         throughput = []
         latency = []
         for t, l in entries:
-            # batch.append(N*ToverN)
-            # throughput.append(ToverN*(N-t) / latency)
             throughput.append(t)
             latency.append(l)
         ax.plot(throughput, latency, style, color=color, label='%s' % name, markersize=8, alpha=0.8)
-    #ax.set_xscale("log")
-    # ax.set_yscale("log")
-    # plt.ylim([0, 50])
-    #plt.xlim([10**3.8, 10**6.4])
     plt.legend(loc='best', fancybox=True,frameon=False,framealpha=0.8)
     plt.grid(linestyle='--', alpha=0.3)
-    # plt.ylabel('Throughput (Tx per second) in log scale')
     plt.ylabel('Latency (ms)')
     plt.xlabel('Throughput (KTx/s)')
-    # plt.xlabel('Requests (Tx) in log scale')
     plt.tight_layout()
+    plt.savefig('block-size.pdf', format='pdf')
     plt.show()
-#     plt.savefig('batch-size.pdf', format='pdf', dpi=400)
 
 if __name__ == '__main__':
     do_plot()

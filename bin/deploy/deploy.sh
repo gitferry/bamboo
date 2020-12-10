@@ -14,7 +14,7 @@ EOF
 
 # add ssh-key
 add_ssh_key(){
-	SERVER_ADDR=(`cat ips.txt`)
+	SERVER_ADDR=(`cat public_ips.txt`)
     echo "Add your local ssh public key into all nodes"
     for (( j=1; j<=$1; j++ ))
     do
@@ -24,7 +24,7 @@ add_ssh_key(){
 }
 
 distribute(){
-    SERVER_ADDR=(`cat ips.txt`)
+    SERVER_ADDR=(`cat public_ips.txt`)
     for (( j=1; j<=$1; j++))
     do 
        ssh -t $2@${SERVER_ADDR[j-1]} mkdir bamboo
@@ -33,9 +33,9 @@ distribute(){
     done
 }
 
-USERNAME="gaify"
-PASSWD="GaiFY#1"
-MAXPEERNUM=(`wc -l ips.txt | awk '{ print $1 }'`)
+USERNAME="ubuntu"
+PASSWD=""
+MAXPEERNUM=(`wc -l public_ips.txt | awk '{ print $1 }'`)
 
 if ${FIRST}; then
     add_ssh_key $MAXPEERNUM $USERNAME $PASSWD

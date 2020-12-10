@@ -66,7 +66,7 @@ def do_plot():
             latency.append(l)
         ax.plot(throughput, latency, style, label='%s' % name)
     #ax.set_xscale("log")
-    # ax.set_yscale("log")
+#     ax.set_yscale("log")
     # plt.ylim([0, 50])
     #plt.xlim([10**3.8, 10**6.4])
     plt.legend(loc='upper left')

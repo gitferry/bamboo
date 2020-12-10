@@ -12,8 +12,8 @@
     "4": "http://127.0.0.1:8073"
   },
   "policy": "majority",
-  "threshold": 5,
-  "byzNo": 1,
+  "threshold": 43,
+  "byzNo": 0,
   "strategy": "silence",
   "thrifty": false,
   "chan_buffer_size": 128,
@@ -27,7 +27,7 @@
   "signer": "ECDSA_P256",
   "pprof": false,
   "maxRound": 5000,
-  "master": "0",
+  "master": "4",
   "benchmark": {
     "T": 10,
     "N": 0,

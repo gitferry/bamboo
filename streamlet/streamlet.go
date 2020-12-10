@@ -90,6 +90,7 @@ func (sl *Streamlet) ProcessBlock(block *blockchain.Block) error {
 	// vote to the current leader
 	sl.ProcessVote(vote)
 	sl.Broadcast(vote)
+	//log.Debugf("[%v] is done broadcasting the vote, id: %x", sl.ID(), vote.BlockID)
 
 	// process buffers
 	qc, ok := sl.bufferedQCs[block.ID]
@@ -98,7 +99,7 @@ func (sl *Streamlet) ProcessBlock(block *blockchain.Block) error {
 	}
 	b, ok := sl.bufferedBlocks[block.ID]
 	if ok {
-		return sl.ProcessBlock(b)
+		sl.ProcessBlock(b)
 	}
 	return nil
 }
@@ -118,6 +119,7 @@ func (sl *Streamlet) ProcessVote(vote *blockchain.Vote) {
 	}
 	isBuilt, qc := sl.bc.AddVote(vote)
 	if !isBuilt {
+		log.Debugf("[%v] votes are not sufficient to build a qc, view: %v, block id: %x", sl.ID(), vote.View, vote.BlockID)
 		return
 	}
 	// send the QC to the next leader
@@ -234,6 +236,7 @@ func (sl *Streamlet) processCertificate(qc *blockchain.QC) {
 	}()
 	b, ok := sl.bufferedBlocks[qc.BlockID]
 	if ok {
+		log.Debugf("[%v] found a buffered block by qc, qc.BlockID: %x", sl.ID(), qc.BlockID)
 		_ = sl.ProcessBlock(b)
 		delete(sl.bufferedBlocks, qc.BlockID)
 	}

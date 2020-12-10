@@ -118,8 +118,7 @@ func (n *node) recv() {
 		m := n.Recv()
 		if n.isByz && config.GetConfig().Strategy == "silence" {
 			// perform silence attack
-			log.Debugf("[%v] is performing silence attack", n.ID())
-			return
+			continue
 		}
 		switch m := m.(type) {
 		case message.Transaction:
