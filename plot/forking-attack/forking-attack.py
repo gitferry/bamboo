@@ -59,20 +59,22 @@ def do_plot():
         for item in entries:
             cgrs.append(item)
         ax[0].plot(byzNo, cgrs, style, color=color, label='%s' % name, markersize=8, alpha=0.8)
-        ax[0].set_ylabel("chain growth rate")
+        ax[0].set_ylabel("Chain growth rate")
         ax[0].set_ylim([0.4,1.0])
     for name, entries, style, color in bi:
         bis = []
         for item in entries:
             bis.append(item)
         ax[1].plot(byzNo, bis, style, color=color, label='%s' % name, markersize=8, alpha=0.8)
-        ax[1].set_ylabel("block intervals")
+        ax[1].set_ylabel("Block intervals")
         ax[1].yaxis.set_label_position("right")
         ax[1].yaxis.tick_right()
         ax[1].set_ylim([1.0,6.0])
     plt.legend(loc='best', fancybox=True,frameon=False,framealpha=0.8)
     f.text(0.5, 0.04, 'Byz. number', ha='center', va='center')
     plt.subplots_adjust(wspace=0.1)
+    ax[0].grid(linestyle='--', alpha=0.3)
+    ax[1].grid(linestyle='--', alpha=0.3)
     plt.savefig('forking-attack-data.pdf', format='pdf')
     plt.show()
 
