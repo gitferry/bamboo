@@ -5,7 +5,7 @@ cgr = [
     ('HotStuff',[
         1.0, 0.873, 0.766, 0.658, 0.562, 0.476
     ], '-o', 'coral'),
-    ('2C-HS',[
+    ('2CHS',[
         1.0, 0.933, 0.853, 0.789, 0.718, 0.659
     ], '-^', 'darkseagreen'),
     ('Streamlet',[
@@ -17,7 +17,7 @@ bi = [
     ('HotStuff',[
         3.0, 3.231, 3.491, 3.859, 4.324, 5.086
     ], '-o', 'coral'),
-    ('2C-HS',[
+    ('2CHS',[
         2.0, 2.149, 2.395, 2.632, 2.964, 3.383
     ], '-^', 'darkseagreen'),
     ('Streamlet',[
@@ -52,7 +52,7 @@ lat = [
 
 
 def do_plot():
-    f, ax = plt.subplots(1,2, figsize=(8,5))
+    f, ax = plt.subplots(1,2, figsize=(10,5))
     byzNo = [0, 2, 4, 6, 8, 10]
     for name, entries, style, color in cgr:
         cgrs = []
