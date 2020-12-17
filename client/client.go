@@ -19,10 +19,10 @@ func (d *Database) Stop() error {
 	return nil
 }
 
-func (d *Database) Write(k int, v []byte) error {
+func (d *Database) Write(k int, v []byte) (string, error) {
 	key := db.Key(k)
-	err := d.Put(key, v)
-	return err
+	r, err := d.Put(key, v)
+	return r, err
 }
 
 func main() {

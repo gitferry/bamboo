@@ -35,10 +35,10 @@ distribute(){
     done
 }
 
-USERNAME="ubuntu"
-PASSWD=""
+USERNAME="gaify"
+PASSWD="GaiFY#1"
 MAXPEERNUM=(`wc -l clients.txt | awk '{ print $1 }'`)
-FIRST=false
+FIRST=true
 
 if ${FIRST}; then
     add_ssh_key $MAXPEERNUM $USERNAME $PASSWD

@@ -3,6 +3,7 @@ package benchmark
 import (
 	"math"
 	"math/rand"
+	"strconv"
 	"sync"
 	"time"
 
@@ -15,7 +16,7 @@ var count uint64
 // DB is general interface implemented by client to call client library
 type DB interface {
 	Init() error
-	Write(key int, value []byte) error
+	Write(key int, value []byte) (string, error)
 	Stop() error
 }
 
@@ -114,23 +115,24 @@ func (b *Benchmark) Run() {
 }
 
 func (b *Benchmark) worker(keys <-chan int, result chan<- time.Duration) {
-	var s time.Time
-	var e time.Time
-	var v int
-	var err error
+	//var s time.Time
+	//var e time.Time
+	//var v int
+	//var err error
 	for k := range keys {
 		op := new(operation)
-		v = rand.Int()
-		s = time.Now()
+		//v = rand.Int()
+		//s = time.Now()
 		value := make([]byte, config.GetConfig().PayloadSize)
 		rand.Read(value)
-		err = b.db.Write(k, value)
-		e = time.Now()
-		op.input = v
-		op.start = s.Sub(b.startTime).Nanoseconds()
+		r, err := b.db.Write(k, value)
+		res, err := strconv.Atoi(r)
+		//e = time.Now()
+		//op.input = v
+		//op.start = s.Sub(b.startTime).Nanoseconds()
 		if err == nil {
-			op.end = e.Sub(b.startTime).Nanoseconds()
-			result <- e.Sub(s)
+			//op.end = e.Sub(b.startTime).Nanoseconds()
+			result <- time.Duration(res)
 		} else {
 			op.end = math.MaxInt64
 			log.Error(err)

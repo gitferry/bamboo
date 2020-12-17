@@ -1,7 +1,6 @@
 package message
 
 import (
-	"crypto/rand"
 	"encoding/gob"
 	"fmt"
 	"time"
@@ -50,15 +49,13 @@ type TransactionReply struct {
 	Command    db.Command
 	Value      db.Value
 	Properties map[string]string
-	Timestamp  int64
+	Delay      time.Duration
 	Err        error
 }
 
-func NewReply(size int) TransactionReply {
-	payload := make([]byte, size)
-	rand.Read(payload)
+func NewReply(delay time.Duration) TransactionReply {
 	return TransactionReply{
-		Value: payload,
+		Delay: delay,
 	}
 }
 

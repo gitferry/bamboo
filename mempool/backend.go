@@ -5,6 +5,7 @@ import (
 	"github.com/gitferry/bamboo/log"
 	"github.com/gitferry/bamboo/message"
 	"sync"
+	"time"
 )
 
 type Backend struct {
@@ -73,6 +74,7 @@ func (b *Backend) some(n int) []*message.Transaction {
 			log.Warning("not enough tx to batch, only has %v", len(batch))
 			break
 		}
+		val.Timestamp = time.Now()
 		batch = append(batch, val)
 		b.remove(ele)
 	}

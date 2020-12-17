@@ -1,14 +1,14 @@
 package node
 
 import (
-	"io"
-	"net/http"
-	"net/url"
-	"sync"
-
 	"github.com/gitferry/bamboo/config"
 	"github.com/gitferry/bamboo/log"
 	"github.com/gitferry/bamboo/message"
+	"io"
+	"net/http"
+	"net/url"
+	"strconv"
+	"sync"
 )
 
 // http request header names
@@ -58,20 +58,22 @@ func (n *node) handleQuery(w http.ResponseWriter, r *http.Request) {
 func (n *node) handleRoot(w http.ResponseWriter, r *http.Request) {
 	var req message.Transaction
 	defer r.Body.Close()
-	//var err error
 
 	req.C = ppFree.Get().(chan message.TransactionReply)
-	req.NodeID = n.id // TODO does this work when forward twice
+	req.NodeID = n.id
 	req.ID = r.RequestURI
 	n.TxChan <- req
 
 	reply := <-req.C
 
+	log.Debugf("[%v] tx %v delay is %v", n.id, req.ID, strconv.Itoa(int(reply.Delay.Nanoseconds())))
+
 	if reply.Err != nil {
 		http.Error(w, reply.Err.Error(), http.StatusInternalServerError)
 		return
 	}
-	//_, err = io.WriteString(w, string(reply.Value))
+	w.Header().Set(HTTPCommandID, strconv.Itoa(int(reply.Delay.Nanoseconds())))
+	//_, err := io.WriteString(w, string(reply.Delay.Nanoseconds()))
 	//if err != nil {
 	//	log.Error(err)
 	//}

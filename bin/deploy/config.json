@@ -12,7 +12,7 @@
     "4": "http://127.0.0.1:8073"
   },
   "policy": "majority",
-  "threshold": 43,
+  "threshold": 3,
   "byzNo": 0,
   "strategy": "silence",
   "thrifty": false,
@@ -27,7 +27,7 @@
   "signer": "ECDSA_P256",
   "pprof": false,
   "maxRound": 5000,
-  "master": "4",
+  "master": "0",
   "benchmark": {
     "T": 10,
     "N": 0,

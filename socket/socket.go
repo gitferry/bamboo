@@ -1,6 +1,7 @@
 package socket
 
 import (
+	"github.com/gitferry/bamboo/config"
 	"math/rand"
 	"sync"
 	"time"
@@ -104,13 +105,22 @@ func (s *socket) Send(to identity.NodeID, m interface{}) {
 		s.lock.Unlock()
 	}
 
-	if delay, ok := s.slow[to]; ok && delay > 0 {
-		timer := time.NewTimer(time.Duration(delay) * time.Millisecond)
+	// add simulated transmission delay
+	if config.GetConfig().Delay != 0 {
+		delay := config.GetConfig().Delay
+		err := config.GetConfig().DErr
+		rand.Seed(time.Now().UnixNano())
+		max := delay + err
+		min := delay - err
+		randDelay := time.Duration(rand.Intn(max-min+1)+min) * time.Millisecond
+		timer := time.NewTimer(randDelay)
+		log.Debugf("added delay is %v", randDelay)
 		go func() {
 			<-timer.C
 			t.Send(m)
 		}()
 		return
+
 	}
 
 	t.Send(m)

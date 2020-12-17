@@ -142,7 +142,8 @@ func (r *Replica) handleTxn(m message.Transaction) {
 func (r *Replica) processCommittedBlock(block *blockchain.Block) {
 	if block.Proposer == r.ID() {
 		for _, txn := range block.Payload {
-			txn.Reply(message.NewReply(config.GetConfig().PayloadSize))
+			delay := time.Now().Sub(txn.Timestamp)
+			txn.Reply(message.NewReply(delay))
 		}
 	}
 	log.Infof("[%v] the block is committed, No. of transactions: %v, view: %v, current view: %v, id: %x", r.ID(), len(block.Payload), block.View, r.pm.GetCurView(), block.ID)

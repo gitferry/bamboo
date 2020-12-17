@@ -22,8 +22,8 @@ import (
 
 // Client interface provides get and put for key value store
 type Client interface {
-	Get(db.Key) (db.Value, error)
-	Put(db.Key, db.Value) error
+	Get(db.Key) (string, error)
+	Put(db.Key, db.Value) (string, error)
 }
 
 // AdminClient interface provides fault injection opeartion
@@ -67,7 +67,7 @@ func NewHTTPClient() *HTTPClient {
 
 // Get gets value of given key (use REST)
 // Default implementation of Client interface
-func (c *HTTPClient) Get(key db.Key) (db.Value, error) {
+func (c *HTTPClient) Get(key db.Key) (string, error) {
 	c.CID++
 	v, _, err := c.RESTGet(key)
 	return v, err
@@ -75,10 +75,10 @@ func (c *HTTPClient) Get(key db.Key) (db.Value, error) {
 
 // Put puts new key value pair and return previous value (use REST)
 // Default implementation of Client interface
-func (c *HTTPClient) Put(key db.Key, value db.Value) error {
+func (c *HTTPClient) Put(key db.Key, value db.Value) (string, error) {
 	c.CID++
-	_, _, err := c.RESTPut(key, value)
-	return err
+	r, _, err := c.RESTPut(key, value)
+	return r, err
 }
 
 func (c *HTTPClient) GetURL(key db.Key) (identity.NodeID, string) {
@@ -92,7 +92,8 @@ func (c *HTTPClient) GetURL(key db.Key) (identity.NodeID, string) {
 
 // rest accesses server's REST API with url = http://ip:port/key
 // if value == nil, it's a read
-func (c *HTTPClient) rest(key db.Key, value db.Value) (db.Value, map[string]string, error) {
+func (c *HTTPClient) rest(key db.Key, value db.Value) (string, map[string]string, error) {
+	results := ""
 	// get url
 	_, url := c.GetURL(key)
 
@@ -105,7 +106,7 @@ func (c *HTTPClient) rest(key db.Key, value db.Value) (db.Value, map[string]stri
 	req, err := http.NewRequest(method, url, body)
 	if err != nil {
 		log.Error(err)
-		return nil, nil, err
+		return results, nil, err
 	}
 	req.Header.Set(node.HTTPClientID, string(c.ID))
 	req.Header.Set(node.HTTPCommandID, strconv.Itoa(c.CID))
@@ -114,10 +115,9 @@ func (c *HTTPClient) rest(key db.Key, value db.Value) (db.Value, map[string]stri
 	rep, err := c.Client.Do(req)
 	if err != nil {
 		log.Error(err)
-		return nil, nil, err
+		return results, nil, err
 	}
 	defer rep.Body.Close()
-	//log.Debugf("key=%v value=%x", key, value)
 
 	//get headers
 	metadata := make(map[string]string)
@@ -129,31 +129,26 @@ func (c *HTTPClient) rest(key db.Key, value db.Value) (db.Value, map[string]stri
 		//b, err := ioutil.ReadAll(rep.Body)
 		//if err != nil {
 		//	log.Error(err)
-		//	return nil, metadata, err
-		//	//return nil, nil, nil
+		//	return results, metadata, err
 		//}
-		//if value == nil {
-		//	log.Debugf("node=%v type=%s key=%v value=%x", id, method, key, db.Value(b))
-		//} else {
-		//	log.Debugf("node=%v type=%s key=%v value=%x", id, method, key, value)
-		//}
-		//return db.Value(b), metadata, nil
-		return nil, nil, nil
+		results = metadata[node.HTTPCommandID]
+		//log.Debugf("key=%v latency=%x", key, results)
+		return results, metadata, nil
 	}
 
 	// http call failed
 	dump, _ := httputil.DumpResponse(rep, true)
 	log.Debugf("%q", dump)
-	return nil, metadata, errors.New(rep.Status)
+	return results, metadata, errors.New(rep.Status)
 }
 
 // RESTGet issues a http call to node and return value and headers
-func (c *HTTPClient) RESTGet(key db.Key) (db.Value, map[string]string, error) {
+func (c *HTTPClient) RESTGet(key db.Key) (string, map[string]string, error) {
 	return c.rest(key, nil)
 }
 
 // RESTPut puts new value as http.request body and return previous value
-func (c *HTTPClient) RESTPut(key db.Key, value db.Value) (db.Value, map[string]string, error) {
+func (c *HTTPClient) RESTPut(key db.Key, value db.Value) (string, map[string]string, error) {
 	return c.rest(key, value)
 }
 
@@ -193,13 +188,13 @@ func (c *HTTPClient) JSONPut(key db.Key, value db.Value) (db.Value, error) {
 }
 
 // QuorumGet concurrently read values from majority nodes
-func (c *HTTPClient) QuorumGet(key db.Key) ([]db.Value, []map[string]string) {
+func (c *HTTPClient) QuorumGet(key db.Key) ([]string, []map[string]string) {
 	return c.MultiGet(c.N/2+1, key)
 }
 
 // MultiGet concurrently read values from n nodes
-func (c *HTTPClient) MultiGet(n int, key db.Key) ([]db.Value, []map[string]string) {
-	valueC := make(chan db.Value)
+func (c *HTTPClient) MultiGet(n int, key db.Key) ([]string, []map[string]string) {
+	valueC := make(chan string)
 	metaC := make(chan map[string]string)
 	i := 0
 	for id := range c.HTTP {
@@ -218,7 +213,7 @@ func (c *HTTPClient) MultiGet(n int, key db.Key) ([]db.Value, []map[string]strin
 		}
 	}
 
-	values := make([]db.Value, 0)
+	values := make([]string, 0)
 	metas := make([]map[string]string, 0)
 	for ; i > 0; i-- {
 		values = append(values, <-valueC)
