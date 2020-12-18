@@ -1,5 +1,16 @@
 import matplotlib.pyplot as plt
 
+SMALL_SIZE = 8
+MEDIUM_SIZE = 10
+BIGGER_SIZE = 16
+
+plt.rc('font', size=BIGGER_SIZE)          # controls default text sizes
+plt.rc('axes', titlesize=BIGGER_SIZE)     # fontsize of the axes title
+plt.rc('axes', labelsize=BIGGER_SIZE)    # fontsize of the x and y labels
+plt.rc('xtick', labelsize=BIGGER_SIZE)    # fontsize of the tick labels
+plt.rc('ytick', labelsize=BIGGER_SIZE)    # fontsize of the tick labels
+plt.rc('legend', fontsize=BIGGER_SIZE)    # legend fontsize
+
 # Measurements from payload-size.data
 psize = [
     ('HS-p0',[
@@ -87,7 +98,7 @@ psize = [
 
 
 def do_plot():
-    f = plt.figure(1, figsize=(7,5))
+    f = plt.figure(1, figsize=(8,6))
     plt.clf()
     ax = f.add_subplot(1, 1, 1)
     for name, entries, style, color in psize:

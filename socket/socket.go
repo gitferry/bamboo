@@ -114,7 +114,6 @@ func (s *socket) Send(to identity.NodeID, m interface{}) {
 		min := delay - err
 		randDelay := time.Duration(rand.Intn(max-min+1)+min) * time.Millisecond
 		timer := time.NewTimer(randDelay)
-		log.Debugf("added delay is %v", randDelay)
 		go func() {
 			<-timer.C
 			t.Send(m)

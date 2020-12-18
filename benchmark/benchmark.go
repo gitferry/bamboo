@@ -127,12 +127,14 @@ func (b *Benchmark) worker(keys <-chan int, result chan<- time.Duration) {
 		rand.Read(value)
 		r, err := b.db.Write(k, value)
 		res, err := strconv.Atoi(r)
+		//log.Debugf("latency is %v", time.Duration(res)*time.Nanosecond)
 		//e = time.Now()
 		//op.input = v
 		//op.start = s.Sub(b.startTime).Nanoseconds()
 		if err == nil {
 			//op.end = e.Sub(b.startTime).Nanoseconds()
-			result <- time.Duration(res)
+			//result <- e.Sub(s)
+			result <- time.Duration(res) * time.Nanosecond
 		} else {
 			op.end = math.MaxInt64
 			log.Error(err)

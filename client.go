@@ -132,7 +132,7 @@ func (c *HTTPClient) rest(key db.Key, value db.Value) (string, map[string]string
 		//	return results, metadata, err
 		//}
 		results = metadata[node.HTTPCommandID]
-		//log.Debugf("key=%v latency=%x", key, results)
+		//log.Debugf("key=%v latency=%v", key, results)
 		return results, metadata, nil
 	}
 

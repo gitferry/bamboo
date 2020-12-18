@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"strconv"
 	"sync"
+	"time"
 )
 
 // http request header names
@@ -61,6 +62,7 @@ func (n *node) handleRoot(w http.ResponseWriter, r *http.Request) {
 
 	req.C = ppFree.Get().(chan message.TransactionReply)
 	req.NodeID = n.id
+	req.Timestamp = time.Now()
 	req.ID = r.RequestURI
 	n.TxChan <- req
 

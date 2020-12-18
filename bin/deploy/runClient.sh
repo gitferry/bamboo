@@ -4,8 +4,6 @@ N=1
 
 PID_FILE=client.pid
 
-PID=$(cat "${PID_FILE}");
-
 if [ -z "${PID}" ]; then
     echo "Process id for clients is written to location: {$PID_FILE}"
     int=1

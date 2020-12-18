@@ -21,9 +21,9 @@
   "signer": "ECDSA_P256",
   "pprof": false,
   "maxRound": 5000,
-  "master": "4",
-  "delay": 5,
-  "derr": 1,
+  "master": "0",
+  "delay": 0,
+  "derr": 2,
   "benchmark": {
     "T": 10,
     "N": 0,
