@@ -26,3 +26,7 @@ func (pd *Producer) AddTxn(txn *message.Transaction) {
 func (pd *Producer) CollectTxn(txn *message.Transaction) {
 	pd.mempool.addOld(txn)
 }
+
+func (pd *Producer) TotalReceivedTxNo() int64 {
+	return pd.mempool.totalReceived
+}

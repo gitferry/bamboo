@@ -8,8 +8,9 @@ import (
 )
 
 type Backend struct {
-	txns *list.List
-	mu   sync.Mutex
+	txns          *list.List
+	totalReceived int64
+	mu            sync.Mutex
 }
 
 func NewBackend() *Backend {
@@ -24,6 +25,7 @@ func (b *Backend) insertBack(txn *message.Transaction) {
 	}
 	b.mu.Lock()
 	defer b.mu.Unlock()
+	b.totalReceived++
 	b.txns.PushBack(txn)
 }
 
@@ -33,6 +35,7 @@ func (b *Backend) insertFront(txn *message.Transaction) {
 	}
 	b.mu.Lock()
 	defer b.mu.Unlock()
+	b.totalReceived++
 	b.txns.PushFront(txn)
 }
 

@@ -2,6 +2,7 @@ package replica
 
 import (
 	"encoding/gob"
+	"fmt"
 	"time"
 
 	"go.uber.org/atomic"
@@ -28,18 +29,22 @@ type Replica struct {
 	node.Node
 	Safety
 	election.Election
-	pd              *mempool.Producer
-	pm              *pacemaker.Pacemaker
-	start           chan bool
-	isStarted       atomic.Bool
-	isByz           bool
-	timer           *time.Timer
-	committedBlocks chan *blockchain.Block
-	forkedBlocks    chan *blockchain.Block
-	eventChan       chan interface{}
-	hasher          crypto.Hasher
-	signer          string
-	lastViewTime    time.Time
+	pd                   *mempool.Producer
+	pm                   *pacemaker.Pacemaker
+	start                chan bool
+	isStarted            atomic.Bool
+	isByz                bool
+	timer                *time.Timer
+	committedBlocks      chan *blockchain.Block
+	forkedBlocks         chan *blockchain.Block
+	eventChan            chan interface{}
+	hasher               crypto.Hasher
+	signer               string
+	lastViewTime         time.Time
+	startTime            time.Time
+	totalCreateDuration  time.Duration
+	totalProcessDuration time.Duration
+	proposedNo           int
 }
 
 // NewReplica creates a new replica instance
@@ -116,13 +121,17 @@ func (r *Replica) HandleTmo(tmo pacemaker.TMO) {
 }
 
 func (r *Replica) handleQuery(m message.Query) {
-	status := r.Safety.GetChainStatus()
+	aveCreateDuration := float64(r.totalCreateDuration.Milliseconds()) / float64(r.proposedNo)
+	aveProcessDuration := float64(r.totalProcessDuration.Milliseconds()) / float64(r.proposedNo)
+	requestRate := float64(r.pd.TotalReceivedTxNo()) / time.Now().Sub(r.startTime).Seconds()
+	status := fmt.Sprintf("chain status is: %s\nAve. creation time is %f ms.\nAve. processing time is %f ms.\nRequest rate is %f txs/s", r.Safety.GetChainStatus(), aveCreateDuration, aveProcessDuration, requestRate)
 	m.Reply(message.QueryReply{Info: status})
 }
 
 func (r *Replica) handleTxn(m message.Transaction) {
 	r.pd.AddTxn(&m)
 	if !r.isStarted.Load() {
+		r.startTime = time.Now()
 		log.Debugf("[%v] is boosting", r.ID())
 		r.isStarted.Store(true)
 		r.start <- true
@@ -172,10 +181,13 @@ func (r *Replica) proposeBlock(view types.View) {
 	block := r.Safety.MakeProposal(r.pd.GeneratePayload())
 	createEnd := time.Now()
 	createDuration := createEnd.Sub(createStart)
-	log.Debugf("[%v] finished creating the block for view: %v, payload size: %v, used: %v microseconds, id: %x, prevID: %x", r.ID(), view, len(block.Payload), createDuration.Microseconds(), block.ID, block.PrevID)
+	r.totalCreateDuration += createDuration
+	//log.Debugf("[%v] finished creating the block for view: %v, payload size: %v, used: %v microseconds, id: %x, prevID: %x", r.ID(), view, len(block.Payload), createDuration.Microseconds(), block.ID, block.PrevID)
 	_ = r.Safety.ProcessBlock(block)
 	processDuration := time.Now().Sub(createEnd)
-	log.Debugf("[%v] finished processing the block for view: %v, used: %v microseconds, id: %x, prevID: %x", r.ID(), view, processDuration.Microseconds(), block.ID, block.PrevID)
+	r.totalProcessDuration += processDuration
+	r.proposedNo++
+	//log.Debugf("[%v] finished processing the block for view: %v, used: %v microseconds, id: %x, prevID: %x", r.ID(), view, processDuration.Microseconds(), block.ID, block.PrevID)
 	r.Broadcast(block)
 }
 
