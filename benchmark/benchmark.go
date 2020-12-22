@@ -1,7 +1,6 @@
 package benchmark
 
 import (
-	"math/rand"
 	"sync"
 	"time"
 
@@ -113,31 +112,31 @@ func (b *Benchmark) Run() {
 }
 
 func (b *Benchmark) worker(keys <-chan int, result chan<- time.Duration) {
-	var s time.Time
-	var e time.Time
+	//var s time.Time
+	//var e time.Time
 	//var v int
 	//var err error
 	for k := range keys {
-		op := new(operation)
+		//op := new(operation)
 		//v = rand.Int()
-		s = time.Now()
+		//s = time.Now()
 		value := make([]byte, config.GetConfig().PayloadSize)
-		rand.Read(value)
+		//rand.Read(value)
 		_, _ = b.db.Write(k, value)
 		//res, err := strconv.Atoi(r)
 		//log.Debugf("latency is %v", time.Duration(res)*time.Nanosecond)
-		e = time.Now()
+		//e = time.Now()
 		//op.input = v
 		//op.start = s.Sub(b.startTime).Nanoseconds()
 		//if err == nil {
 		//op.end = e.Sub(b.startTime).Nanoseconds()
-		result <- e.Sub(s)
+		//result <- e.Sub(s)
 		//result <- time.Duration(res) * time.Nanosecond
 		//} else {
-		//	op.end = math.MaxInt64
-		//	log.Error(err)
+		//op.end = math.MaxInt64
+		//log.Error(err)
 		//}
-		b.History.AddOperation(k, op)
+		//b.History.AddOperation(k, op)
 	}
 }
 

@@ -45,6 +45,8 @@ type Replica struct {
 	totalCreateDuration  time.Duration
 	totalProcessDuration time.Duration
 	totalDelay           time.Duration
+	totalRoundTime       time.Duration
+	roundNo              int
 	totalCommittedTx     int
 	proposedNo           int
 }
@@ -153,14 +155,14 @@ func (r *Replica) handleTxn(m message.Transaction) {
 /* Processors */
 
 func (r *Replica) processCommittedBlock(block *blockchain.Block) {
-	if block.Proposer == r.ID() {
-		for _, txn := range block.Payload {
-			delay := time.Now().Sub(txn.Timestamp)
-			txn.Reply(message.NewReply(delay))
-			r.totalDelay += delay
-			r.totalCommittedTx++
-		}
+	//if block.Proposer == r.ID() {
+	for _, txn := range block.Payload {
+		delay := time.Now().Sub(txn.Timestamp)
+		//txn.Reply(message.NewReply(delay))
+		r.totalDelay += delay
+		r.totalCommittedTx++
 	}
+	//}
 	log.Infof("[%v] the block is committed, No. of transactions: %v, view: %v, current view: %v, id: %x", r.ID(), len(block.Payload), block.View, r.pm.GetCurView(), block.ID)
 }
 
@@ -200,7 +202,7 @@ func (r *Replica) proposeBlock(view types.View) {
 func (r *Replica) ListenLocalEvent() {
 	r.lastViewTime = time.Now()
 	r.timer = time.NewTimer(r.pm.GetTimerForView())
-	roundTimeMeasure := make([]time.Duration, 0, 5000)
+	//roundTimeMeasure := make([]time.Duration, 0, 5000)
 	for {
 		r.timer.Reset(r.pm.GetTimerForView())
 		currentLeader := r.FindLeaderFor(r.pm.GetCurView())
@@ -214,16 +216,17 @@ func (r *Replica) ListenLocalEvent() {
 				// measure round time
 				now := time.Now()
 				lasts := now.Sub(r.lastViewTime)
-				if view >= 10 && int(view) < config.GetConfig().MaxRound {
-					roundTimeMeasure = append(roundTimeMeasure, lasts)
+				if view >= 10 && int(view) {
+					r.totalRoundTime += lasts
+					r.roundNo++
 				}
-				if int(view) == config.GetConfig().MaxRound {
-					var sumRoundTime time.Duration
-					for _, t := range roundTimeMeasure {
-						sumRoundTime = sumRoundTime + t
-					}
-					log.Infof("[%v] the average view duration is %v microseconds, measured %v views", r.ID(), float64(sumRoundTime.Microseconds())/float64(len(roundTimeMeasure)))
-				}
+				//if int(view) == config.GetConfig().MaxRound {
+				//	var sumRoundTime time.Duration
+				//	for _, t := range roundTimeMeasure {
+				//		sumRoundTime = sumRoundTime + t
+				//	}
+				//	log.Infof("[%v] the average view duration is %v microseconds, measured %v views", r.ID(), float64(sumRoundTime.Microseconds())/float64(len(roundTimeMeasure)))
+				//}
 				r.lastViewTime = now
 				//log.Infof("[%v] the last view lasts %v milliseconds, current view: %v", r.ID(), lasts.Milliseconds(), view)
 				r.eventChan <- view

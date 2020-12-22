@@ -71,14 +71,14 @@ func (n *node) handleRoot(w http.ResponseWriter, r *http.Request) {
 	}
 	n.TxChan <- req
 
-	reply := <-req.C
+	//reply := <-req.C
 	//
 	//log.Debugf("[%v] tx %v delay is %v", n.id, req.ID, strconv.Itoa(int(reply.Delay.Nanoseconds())))
 
-	if reply.Err != nil {
-		http.Error(w, reply.Err.Error(), http.StatusInternalServerError)
-		return
-	}
+	//if reply.Err != nil {
+	//	http.Error(w, reply.Err.Error(), http.StatusInternalServerError)
+	//	return
+	//}
 	//w.Header().Set(HTTPCommandID, strconv.Itoa(int(reply.Delay.Nanoseconds())))
 	//_, err := io.WriteString(w, string(reply.Delay.Nanoseconds()))
 	//if err != nil {

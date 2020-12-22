@@ -40,14 +40,20 @@ func (b *Backend) insertFront(txn *message.Transaction) {
 }
 
 func (b *Backend) size() int {
+	//b.mu.Lock()
+	//defer b.mu.Unlock()
 	return b.txns.Len()
 }
 
 func (b *Backend) front() *list.Element {
+	//b.mu.Lock()
+	//defer b.mu.Unlock()
 	return b.txns.Front()
 }
 
 func (b *Backend) remove(ele *list.Element) {
+	//b.mu.Lock()
+	//defer b.mu.Unlock()
 	if ele == nil {
 		return
 	}
@@ -60,13 +66,17 @@ func (b *Backend) some(n int) []*message.Transaction {
 	defer b.mu.Unlock()
 	// trying to get ful size
 	for i := 0; i < 1; i++ {
+		//if n == 0 {
+		//	batchSize = b.size()
+		//	break
+		//}
 		batchSize = b.size()
 		log.Debugf("has %v remaining tx in the mempool", batchSize)
 		if batchSize >= n {
 			batchSize = n
 			break
 		}
-		//time.Sleep(3 * time.Millisecond)
+		//time.Sleep(1 * time.Millisecond)
 	}
 	batch := make([]*message.Transaction, 0, batchSize)
 	for i := 0; i < batchSize; i++ {
