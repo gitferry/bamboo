@@ -44,6 +44,8 @@ type Replica struct {
 	startTime            time.Time
 	totalCreateDuration  time.Duration
 	totalProcessDuration time.Duration
+	totalDelay           time.Duration
+	totalCommittedTx     int
 	proposedNo           int
 }
 
@@ -97,6 +99,7 @@ func (r *Replica) HandleBlock(block blockchain.Block) {
 		r.isStarted.Store(true)
 		r.start <- true
 	}
+	log.Debugf("The block is printed as %v", block)
 	r.eventChan <- block
 }
 
@@ -124,7 +127,9 @@ func (r *Replica) handleQuery(m message.Query) {
 	aveCreateDuration := float64(r.totalCreateDuration.Milliseconds()) / float64(r.proposedNo)
 	aveProcessDuration := float64(r.totalProcessDuration.Milliseconds()) / float64(r.proposedNo)
 	requestRate := float64(r.pd.TotalReceivedTxNo()) / time.Now().Sub(r.startTime).Seconds()
-	status := fmt.Sprintf("chain status is: %s\nAve. creation time is %f ms.\nAve. processing time is %f ms.\nRequest rate is %f txs/s", r.Safety.GetChainStatus(), aveCreateDuration, aveProcessDuration, requestRate)
+	latency := float64(r.totalDelay.Milliseconds()) / float64(r.totalCommittedTx)
+	throughput := float64(r.totalCommittedTx) / time.Now().Sub(r.startTime).Seconds()
+	status := fmt.Sprintf("chain status is: %s\nAve. creation time is %f ms.\nAve. processing time is %f ms.\nRequest rate is %f txs/s.\nLatency is %f ms.\nThroughput is %f txs/s.", r.Safety.GetChainStatus(), aveCreateDuration, aveProcessDuration, requestRate, latency, throughput)
 	m.Reply(message.QueryReply{Info: status})
 }
 
@@ -153,6 +158,8 @@ func (r *Replica) processCommittedBlock(block *blockchain.Block) {
 		for _, txn := range block.Payload {
 			delay := time.Now().Sub(txn.Timestamp)
 			txn.Reply(message.NewReply(delay))
+			r.totalDelay += delay
+			r.totalCommittedTx++
 		}
 	}
 	log.Infof("[%v] the block is committed, No. of transactions: %v, view: %v, current view: %v, id: %x", r.ID(), len(block.Payload), block.View, r.pm.GetCurView(), block.ID)

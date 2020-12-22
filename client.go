@@ -111,6 +111,7 @@ func (c *HTTPClient) rest(key db.Key, value db.Value) (string, map[string]string
 	req.Header.Set(node.HTTPClientID, string(c.ID))
 	req.Header.Set(node.HTTPCommandID, strconv.Itoa(c.CID))
 	req.Header.Set("Connection", "keep-alive")
+	//log.Debugf("The payload is %x",)
 
 	rep, err := c.Client.Do(req)
 	if err != nil {

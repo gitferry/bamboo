@@ -2,12 +2,13 @@ package node
 
 import (
 	"github.com/gitferry/bamboo/config"
+	"github.com/gitferry/bamboo/db"
 	"github.com/gitferry/bamboo/log"
 	"github.com/gitferry/bamboo/message"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"net/url"
-	"strconv"
 	"sync"
 	"time"
 )
@@ -64,17 +65,22 @@ func (n *node) handleRoot(w http.ResponseWriter, r *http.Request) {
 	req.NodeID = n.id
 	req.Timestamp = time.Now()
 	req.ID = r.RequestURI
+	v, _ := ioutil.ReadAll(r.Body)
+	req.Command = db.Command{
+		Value: v,
+	}
+	log.Debugf("The payload is %x", v)
 	n.TxChan <- req
 
 	reply := <-req.C
-
-	log.Debugf("[%v] tx %v delay is %v", n.id, req.ID, strconv.Itoa(int(reply.Delay.Nanoseconds())))
+	//
+	//log.Debugf("[%v] tx %v delay is %v", n.id, req.ID, strconv.Itoa(int(reply.Delay.Nanoseconds())))
 
 	if reply.Err != nil {
 		http.Error(w, reply.Err.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set(HTTPCommandID, strconv.Itoa(int(reply.Delay.Nanoseconds())))
+	//w.Header().Set(HTTPCommandID, strconv.Itoa(int(reply.Delay.Nanoseconds())))
 	//_, err := io.WriteString(w, string(reply.Delay.Nanoseconds()))
 	//if err != nil {
 	//	log.Error(err)
