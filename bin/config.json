@@ -21,7 +21,7 @@
   "signer": "ECDSA_P256",
   "pprof": false,
   "maxRound": 5000,
-  "master": "4",
+  "master": "0",
   "delay": 0,
   "derr": 0,
   "benchmark": {
@@ -29,7 +29,7 @@
     "N": 0,
     "K": 1000,
     "W": 0.5,
-    "Throttle": 100,
+    "Throttle": 500,
     "Concurrency": 10,
     "Distribution": "uniform",
     "LinearizabilityCheck": false,
