@@ -69,7 +69,6 @@ func (n *node) handleRoot(w http.ResponseWriter, r *http.Request) {
 	req.Command = db.Command{
 		Value: v,
 	}
-	log.Debugf("The payload is %x", v)
 	n.TxChan <- req
 
 	reply := <-req.C

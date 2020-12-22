@@ -99,7 +99,6 @@ func (r *Replica) HandleBlock(block blockchain.Block) {
 		r.isStarted.Store(true)
 		r.start <- true
 	}
-	log.Debugf("The block is printed as %v", block)
 	r.eventChan <- block
 }
 
@@ -141,7 +140,7 @@ func (r *Replica) handleTxn(m message.Transaction) {
 		r.isStarted.Store(true)
 		r.start <- true
 		// wait for others to get started
-		time.Sleep(100 * time.Millisecond)
+		//time.Sleep(100 * time.Millisecond)
 	}
 
 	// kick-off the protocol
