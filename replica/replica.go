@@ -110,9 +110,6 @@ func (r *Replica) HandleBlock(block blockchain.Block) {
 		r.isStarted.Store(true)
 		r.start <- true
 	}
-	for _, tx := range block.Payload {
-		r.pd.AddToBloom(tx.ID)
-	}
 	r.eventChan <- block
 }
 

@@ -209,13 +209,13 @@ func (c *HTTPClient) JSONPut(key db.Key, value db.Value) (db.Value, error) {
 func (c *HTTPClient) AllPut(key db.Key, value db.Value) error {
 	var wait sync.WaitGroup
 	var err error
-	for _, ip := range c.HTTP {
+	for id, ip := range c.HTTP {
 		wait.Add(1)
-		go func(ip string) {
-			url := ip + "/" + strconv.Itoa(int(key))
+		go func(id int, ip string) {
+			url := ip + "/" + strconv.Itoa(int(key)+id)
 			err = c.rest(url, value)
 			wait.Done()
-		}(ip)
+		}(id.Node(), ip)
 	}
 	wait.Wait()
 	return err

@@ -173,3 +173,162 @@ Latency is 368.448151 ms.
 Throughput is 124632.815718 txs/s.
 
 
+
+
+// data 3
+
+Ave. block size is 4.456704014246494.
+Ave. trans. delay is 0.3262434150322756 ms.
+Ave. creation time is 0.098687 ms.
+Ave. processing time is 0.23270265256909664 ms.
+Ave. vote time is 0.41789246022956755 ms.
+Request rate is 499.427509 txs/s.
+Ave. round time is 2.248804 ms.
+Latency is 9.117743 ms.
+Throughput is 1999.159320 txs/s.
+
+Ave. block size is 43.14986282578875.
+Ave. trans. delay is 0.589521813678796 ms.
+Ave. creation time is 0.106424 ms.
+Ave. processing time is 0.2341896950818735 ms.
+Ave. vote time is 0.39579207181743087 ms.
+Request rate is 5000.397176 txs/s.
+Ave. round time is 2.157289 ms.
+Latency is 8.624164 ms.
+Throughput is 19997.323358 txs/s.
+
+Ave. block size is 80.0507637916083.
+Ave. trans. delay is 0.38457775603682126 ms.
+Ave. creation time is 0.124208 ms.
+Ave. processing time is 0.2295505711665138 ms.
+Ave. vote time is 0.39862917716726753 ms.
+Request rate is 9871.841173 txs/s.
+Ave. round time is 2.027166 ms.
+Latency is 8.952066 ms.
+Throughput is 39486.657183 txs/s.
+
+Ave. block size is 131.90754053227286.
+Ave. trans. delay is 0.5109230416273675 ms.
+Ave. creation time is 0.147446 ms.
+Ave. processing time is 0.23663129719912054 ms.
+Ave. vote time is 0.4065207507956095 ms.
+Request rate is 14996.995896 txs/s.
+Ave. round time is 2.198872 ms.
+Latency is 9.432690 ms.
+Throughput is 59982.775470 txs/s.
+
+// bsize = 100
+
+Client = 1
+Ave. block size is 4.496648705480352.
+Ave. trans. delay is 0.30958952118105754 ms.
+Ave. creation time is 0.100145 ms.
+Ave. processing time is 0.2329149691155211 ms.
+Ave. vote time is 0.41863095925199123 ms.
+Request rate is 500.347282 txs/s.
+Ave. round time is 2.246805 ms.
+Latency is 9.227932 ms.
+Throughput is 2000.219302 txs/s.
+
+Client = 5
+Ave. block size is 20.242961530195572.
+Ave. trans. delay is 0.32730398653246895 ms.
+Ave. creation time is 0.099828 ms.
+Ave. processing time is 0.22562793821356616 ms.
+Ave. vote time is 0.4021069463387104 ms.
+Request rate is 2500.346245 txs/s.
+Ave. round time is 2.024015 ms.
+Latency is 7.934319 ms.
+Throughput is 9999.354353 txs/s.
+
+Client = 10
+Ave. block size is 40.36252780753069.
+Ave. trans. delay is 0.4234318356585741 ms.
+Ave. creation time is 0.105051 ms.
+Ave. processing time is 0.23127149889802057 ms.
+Ave. vote time is 0.3930087764290192 ms.
+Request rate is 5000.154352 txs/s.
+Ave. round time is 2.018044 ms.
+Latency is 9.217949 ms.
+Throughput is 19997.830974 txs/s.
+
+Client = 15
+Ave. block size is 58.674084124830394.
+Ave. trans. delay is 0.37335303162782285 ms.
+Ave. creation time is 0.110719 ms.
+Ave. processing time is 0.22274484973202777 ms.
+Ave. vote time is 0.39031485546737077 ms.
+Request rate is 7499.925059 txs/s.
+Ave. round time is 1.955836 ms.
+Latency is 9.234126 ms.
+Throughput is 29996.381939 txs/s.
+
+Client = 17
+Ave. block size is 67.78721991701245.
+Ave. trans. delay is 0.3768152020579205 ms.
+Ave. creation time is 0.116763 ms.
+Ave. processing time is 0.22625147812376822 ms.
+Ave. vote time is 0.39434797891036905 ms.
+Request rate is 8499.381127 txs/s.
+Ave. round time is 1.993859 ms.
+Latency is 9.214852 ms.
+Throughput is 33994.007729 txs/s.
+
+Client = 18
+Ave. block size is 71.99171842650104.
+Ave. trans. delay is 0.3675282174580912 ms.
+Ave. creation time is 0.121018 ms.
+Ave. processing time is 0.22812729579910507 ms.
+Ave. vote time is 0.39631430186546074 ms.
+Request rate is 8999.766999 txs/s.
+Ave. round time is 1.999800 ms.
+Latency is 9.773670 ms.
+Throughput is 35996.362889 txs/s.
+
+Client = 20
+Ave. block size is 78.90906102051552.
+Ave. trans. delay is 0.35775654232236004 ms.
+Ave. creation time is 0.121055 ms.
+Ave. processing time is 0.22740946525734387 ms.
+Ave. vote time is 0.3956830528096892 ms.
+Request rate is 9779.619784 txs/s.
+Ave. round time is 2.017096 ms.
+Latency is 10.874295 ms.
+Throughput is 39117.582601 txs/s.
+
+Client = 21
+Ave. block size is 84.94531448404301.
+Ave. trans. delay is 0.33175315330568017 ms.
+Ave. creation time is 0.122915 ms.
+Ave. processing time is 0.2262385981249074 ms.
+Ave. vote time is 0.39134897676455177 ms.
+Request rate is 10498.949730 txs/s.
+Ave. round time is 2.022687 ms.
+Latency is 12.508154 ms.
+Throughput is 41990.713969 txs/s.
+
+Client = 23
+Ave. block size is 94.46567184612225.
+Ave. trans. delay is 0.4061237993109585 ms.
+Ave. creation time is 0.130673 ms.
+Ave. processing time is 0.2354632259830932 ms.
+Ave. vote time is 0.40096182397223984 ms.
+Request rate is 11250.910515 txs/s.
+Ave. round time is 2.098977 ms.
+Latency is 170.685360 ms.
+Throughput is 45992.655545 txs/s.
+
+Client = 25
+Ave. block size is 100.
+Ave. trans. delay is 0.42068290947892584 ms.
+Ave. creation time is 0.141123 ms.
+Ave. processing time is 0.2371536229950982 ms.
+Ave. vote time is 0.40286985741531195 ms.
+Request rate is 12497.860314 txs/s.
+Ave. round time is 2.138884 ms.
+Latency is 2421.068090 ms.
+Throughput is 46746.718520 txs/s.
+
+
+
+

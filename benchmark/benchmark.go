@@ -145,8 +145,8 @@ func (b *Benchmark) next() int {
 	var key int
 	switch b.Distribution {
 	case "uniform":
-		count++
 		key = int(count)
+		count += uint64(config.GetConfig().N() - config.GetConfig().ByzNo)
 	default:
 		log.Fatalf("unknown distribution %s", b.Distribution)
 	}

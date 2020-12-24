@@ -32,6 +32,7 @@ type Config struct {
 	Timeout        int             `json:"timeout"`
 	ByzNo          int             `json:"byzNo"`
 	BSize          int             `json:"bsize"`
+	Fixed          bool            `json:"fixed"`
 	Benchmark      Bconfig         `json:"benchmark"` // benchmark configuration
 	Delta          int             `json:"delta"`     // timeout, seconds
 	Pprof          bool            `json:"pprof"`
