@@ -2,11 +2,9 @@ package node
 
 import (
 	"github.com/gitferry/bamboo/config"
-	"github.com/gitferry/bamboo/db"
 	"github.com/gitferry/bamboo/log"
 	"github.com/gitferry/bamboo/message"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"sync"
@@ -65,10 +63,6 @@ func (n *node) handleRoot(w http.ResponseWriter, r *http.Request) {
 	req.NodeID = n.id
 	req.Timestamp = time.Now()
 	req.ID = r.RequestURI
-	v, _ := ioutil.ReadAll(r.Body)
-	req.Command = db.Command{
-		Value: v,
-	}
 	n.TxChan <- req
 
 	//reply := <-req.C

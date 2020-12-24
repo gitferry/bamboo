@@ -241,14 +241,14 @@ func (th *Tchs) processCertificate(qc *blockchain.QC) {
 		log.Errorf("[%v] cannot commit blocks", th.ID())
 		return
 	}
-	go func() {
-		for _, cBlock := range committedBlocks {
-			th.committedBlocks <- cBlock
-		}
-		for _, fBlock := range forkedBlocks {
-			th.forkedBlocks <- fBlock
-		}
-	}()
+	//go func() {
+	for _, cBlock := range committedBlocks {
+		th.committedBlocks <- cBlock
+	}
+	for _, fBlock := range forkedBlocks {
+		th.forkedBlocks <- fBlock
+	}
+	//}()
 }
 
 func (th *Tchs) votingRule(block *blockchain.Block) (bool, error) {

@@ -1,0 +1,55 @@
+Ave. creation time is 0.098360 ms.
+Ave. processing time is 0.59225152187116 ms.
+Ave. vote time is 0.16747066190454102 ms.
+Request rate is 500.946540 txs/s.
+Ave round time is 1.847982 ms.
+Latency is 12.107151 ms.
+Throughput is 2000.193992 txs/s.
+
+Ave. creation time is 0.095788 ms.
+Ave. processing time is 0.5562330844229953 ms.
+Ave. vote time is 0.15681354869060687 ms.
+Request rate is 1510.556331 txs/s.
+Ave round time is 1.662482 ms.
+Latency is 10.954885 ms.
+Throughput is 5999.291261 txs/s.
+
+Ave. creation time is 0.104091 ms.
+Ave. processing time is 0.5603110582363694 ms.
+Ave. vote time is 0.16 ms.
+Request rate is 3024.297884 txs/s.
+Ave round time is 1.676697 ms.
+Latency is 11.629942 ms.
+Throughput is 11995.833566 txs/s.
+
+Ave. creation time is 0.120409 ms.
+Ave. processing time is 0.5799348869088417 ms.
+Ave. vote time is 0.1678825418674008 ms.
+Request rate is 6008.806991 txs/s.
+Ave round time is 1.801348 ms.
+Latency is 12.053823 ms.
+Throughput is 23992.121797 txs/s.
+
+Ave. creation time is 0.140181 ms.
+Ave. processing time is 0.6075075236457438 ms.
+Ave. vote time is 0.18222813949493213 ms.
+Request rate is 12001.046890 txs/s.
+Ave round time is 1.963376 ms.
+Latency is 12.796053 ms.
+Throughput is 47968.304952 txs/s.
+
+Ave. creation time is 0.174096 ms.
+Ave. processing time is 0.640489247643108 ms.
+Ave. vote time is 0.19434784738208355 ms.
+Request rate is 20028.119897 txs/s.
+Ave round time is 2.251125 ms.
+Latency is 16.822024 ms.
+Throughput is 79832.714667 txs/s.
+
+Ave. creation time is 0.223309 ms.
+Ave. processing time is 0.6675659472422062 ms.
+Ave. vote time is 0.20236328952946164 ms.
+Request rate is 27780.106611 txs/s.
+Ave round time is 2.626232 ms.
+Latency is 29.033644 ms.
+Throughput is 110904.921192 txs/s.

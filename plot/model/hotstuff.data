@@ -1,0 +1,63 @@
+Ave. creation time is 0.096035 ms.
+Ave. processing time is 0.5841767194109353 ms.
+Ave. vote time is 0.16539943755858766 ms.
+Request rate is 504.211728 txs/s.
+Ave round time is 1.870406 ms.
+Latency is 15.030438 ms.
+Throughput is 2000.513923 txs/s.
+
+Ave. creation time is 0.096041 ms.
+Ave. processing time is 0.5603365476967997 ms.
+Ave. vote time is 0.15689313166377386 ms.
+Request rate is 1500.065697 txs/s.
+Ave round time is 1.667986 ms.
+Latency is 13.268236 ms.
+Throughput is 5998.880813 txs/s.
+
+Ave. creation time is 0.104791 ms.
+Ave. processing time is 0.5533009899691864 ms.
+Ave. vote time is 0.1568187744458931 ms.
+Request rate is 3013.722409 txs/s.
+Ave round time is 1.679801 ms.
+Latency is 13.091082 ms.
+Throughput is 11997.830303 txs/s.
+
+Ave. creation time is 0.118173 ms.
+Ave. processing time is 0.5748434470262882 ms.
+Ave. vote time is 0.16824043050055842 ms.
+Request rate is 6039.517164 txs/s.
+Ave round time is 1.786452 ms.
+Latency is 14.603470 ms.
+Throughput is 23994.819146 txs/s.
+
+Ave. creation time is 0.145439 ms.
+Ave. processing time is 0.6129857388135533 ms.
+Ave. vote time is 0.1832233316409996 ms.
+Request rate is 12072.993702 txs/s.
+Ave round time is 1.987140 ms.
+Latency is 16.501386 ms.
+Throughput is 47961.875071 txs/s.
+
+Ave. creation time is 0.179242 ms.
+Ave. processing time is 0.6524012608937512 ms.
+Ave. vote time is 0.1975431997178794 ms.
+Request rate is 19795.825764 txs/s.
+Ave round time is 2.253959 ms.
+Latency is 18.974194 ms.
+Throughput is 78882.392512 txs/s.
+
+Ave. creation time is 0.202404 ms.
+Ave. processing time is 0.6605553341304636 ms.
+Ave. vote time is 0.19981524905848078 ms.
+Request rate is 23801.388567 txs/s.
+Ave round time is 2.416545 ms.
+Latency is 23.594258 ms.
+Throughput is 94582.059925 txs/s.
+
+Ave. creation time is 0.234214 ms.
+Ave. processing time is 0.6795275590551181 ms.
+Ave. vote time is 0.20527881040892193 ms.
+Request rate is 27845.729007 txs/s.
+Ave round time is 2.721538 ms.
+Latency is 50.775845 ms.
+Throughput is 110802.577082 txs/s.

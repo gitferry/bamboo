@@ -224,16 +224,16 @@ func (sl *Streamlet) processCertificate(qc *blockchain.QC) {
 		log.Errorf("[%v] cannot commit blocks", sl.ID())
 		return
 	}
-	go func() {
-		for _, cBlock := range committedBlocks {
-			sl.committedBlocks <- cBlock
-			log.Debugf("[%v] is going to commit block, view: %v, id: %x", sl.ID(), cBlock.View, cBlock.ID)
-		}
-		for _, fBlock := range forkedBlocks {
-			sl.forkedBlocks <- fBlock
-			log.Debugf("[%v] is going to collect forked block, view: %v, id: %x", sl.ID(), fBlock.View, fBlock.ID)
-		}
-	}()
+	//go func() {
+	for _, cBlock := range committedBlocks {
+		sl.committedBlocks <- cBlock
+		log.Debugf("[%v] is going to commit block, view: %v, id: %x", sl.ID(), cBlock.View, cBlock.ID)
+	}
+	for _, fBlock := range forkedBlocks {
+		sl.forkedBlocks <- fBlock
+		log.Debugf("[%v] is going to collect forked block, view: %v, id: %x", sl.ID(), fBlock.View, fBlock.ID)
+	}
+	//}()
 	b, ok := sl.bufferedBlocks[qc.BlockID]
 	if ok {
 		log.Debugf("[%v] found a buffered block by qc, qc.BlockID: %x", sl.ID(), qc.BlockID)

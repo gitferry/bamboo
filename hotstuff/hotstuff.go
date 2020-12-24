@@ -3,6 +3,7 @@ package hotstuff
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/gitferry/bamboo/blockchain"
 	"github.com/gitferry/bamboo/config"
@@ -72,7 +73,10 @@ func (hs *HotStuff) ProcessBlock(block *blockchain.Block) error {
 		return fmt.Errorf("the block should contain a QC")
 	}
 	if block.Proposer != hs.ID() {
+		s := time.Now()
 		hs.processCertificate(block.QC)
+		duration := time.Now().Sub(s)
+		log.Debugf("[%v] spent %v in processing the QC for view: %v", hs.ID(), duration, block.QC.View)
 	}
 	curView = hs.pm.GetCurView()
 	if block.View < curView {
@@ -260,14 +264,14 @@ func (hs *HotStuff) processCertificate(qc *blockchain.QC) {
 		log.Errorf("[%v] cannot commit blocks", hs.ID())
 		return
 	}
-	go func() {
-		for _, cBlock := range committedBlocks {
-			hs.committedBlocks <- cBlock
-		}
-		for _, fBlock := range forkedBlocks {
-			hs.forkedBlocks <- fBlock
-		}
-	}()
+	//go func() {
+	for _, cBlock := range committedBlocks {
+		hs.committedBlocks <- cBlock
+	}
+	for _, fBlock := range forkedBlocks {
+		hs.forkedBlocks <- fBlock
+	}
+	//}()
 }
 
 func (hs *HotStuff) votingRule(block *blockchain.Block) (bool, error) {
