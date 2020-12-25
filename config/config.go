@@ -42,6 +42,7 @@ type Config struct {
 	Master         identity.NodeID `json:"master"`
 	Delay          int             `json:"delay"` // transmission delay in ms
 	DErr           int             `json:"derr"`  // the err taken into delays
+	MemSize        int             `json:"memsize"`
 
 	hasher string
 	signer string

@@ -32,6 +32,9 @@ func (b *Backend) insertBack(txn *message.Transaction) {
 	}
 	b.mu.Lock()
 	defer b.mu.Unlock()
+	if b.size() > config.GetConfig().MemSize {
+		return
+	}
 	b.totalReceived++
 	b.txns.PushBack(txn)
 	//b.cond.Broadcast()

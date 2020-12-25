@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+./pkill.sh
 
 start(){
     SERVER_ADDR=(`cat public_ips.txt`)
