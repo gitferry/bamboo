@@ -35,13 +35,13 @@ thru = [
         [24.795, 24.914]
     ], '-o', 'coral'),
     ('2CHS',[
-        [49.14, 49.1],
-        [43.564, 43.625],
-        [38.465, 38.617],
-        [33.537, 33.791],
-        [29.099, 29.195],
-        [24.795, 24.914]
-    ], '-^', 'coral'),
+        [50.90, 50.99],
+        [48.28, 48.32],
+        [45.04, 45.23],
+        [42.79, 42.90],
+        [39.9, 40.1],
+        [37.0, 37.2]
+    ], '-^', 'darkseagreen'),
     ('Streamlet',[
         [49.14, 49.1],
         [43.564, 43.625],
@@ -49,7 +49,7 @@ thru = [
         [33.537, 33.791],
         [29.099, 29.195],
         [24.795, 24.914]
-    ], '-s', 'coral')
+    ], '-s', 'steelblue')
     ]
 
 lat = [
@@ -62,13 +62,13 @@ lat = [
         [738, 753]
     ], '-o', 'coral'),
     ('2CHS',[
-        [213, 222],
-        [270, 276],
-        [330, 335],
-        [376, 397],
-        [495, 517],
-        [738, 753]
-    ], '-^', 'coral'),
+        [216, 220],
+        [249, 255],
+        [267, 274],
+        [293, 299],
+        [324, 331],
+        [361, 384]
+    ], '-^', 'darkseagreen'),
     ('Streamlet',[
         [213, 222],
         [270, 276],
@@ -76,55 +76,57 @@ lat = [
         [376, 397],
         [495, 517],
         [738, 753]
-    ], '-s', 'coral')
+    ], '-s', 'steelblue')
     ]
 
-
-
 def do_plot():
-    f, ax = plt.subplots(2,2, figsize=(10,5))
+    f, ax = plt.subplots(2,2, figsize=(7,5))
     byzNo = [0, 2, 4, 6, 8, 10]
     for name, entries, style, color in cgr:
         cgrs = []
         for item in entries:
             cgrs.append(item)
-        ax[0][0].plot(byzNo, cgrs, style, color=color, label='%s' % name, markersize=8, alpha=0.8)
-        ax[0][0].set_ylabel("Chain growth rate")
-        ax[0][0].set_ylim([0.4,1.0])
+        ax[1][0].plot(byzNo, cgrs, style, color=color, label='%s' % name, markersize=8, alpha=0.8)
+        ax[1][0].set_ylabel("Chain growth rate")
+        ax[1][0].set_ylim([0,1.0])
+        ax[1][0].legend(loc='best', fancybox=True,frameon=False,framealpha=0.8)
     for name, entries, style, color in bi:
         bis = []
         for item in entries:
             bis.append(item)
-        ax[1][0].plot(byzNo, bis, style, color=color, label='%s' % name, markersize=8, alpha=0.8)
-        ax[1][0].set_ylabel("Block intervals")
-        ax[1][0].yaxis.set_label_position("right")
-        ax[1][0].yaxis.tick_right()
-        ax[1][0].set_ylim([1.0,6.0])
+        ax[1][1].plot(byzNo, bis, style, color=color, label='%s' % name, markersize=8, alpha=0.8)
+        ax[1][1].set_ylabel("Block intervals")
+        ax[1][1].yaxis.set_label_position("right")
+        ax[1][1].yaxis.tick_right()
+        ax[1][1].set_ylim([0,6.0])
     for name, entries, style, color in thru:
-        thru = []
+        throughput = []
         errs = []
         for item in entries:
-            thru.append((item[0]+item[1])/2.0)
+            throughput.append((item[0]+item[1])/2.0)
             errs.append(abs(item[0]-item[1]))
-        ax[0][1].errorbar(byzNo, thru, yerr=errs, fmt=style, mec=color, color=color, mfc='none', label='%s'%name, markersize=6)
-        ax[0][1].set_ylabel("Throughput (KTx/s)")
-        ax[0][1].legend(loc='best', fancybox=True,frameon=False,framealpha=0.8)
-        ax[0][1].set_xticks(xticks)
-        ax[0][1].set_ylim([0,140])
-        ax[0][1].set_xticklabels(xticks_label)
+        ax[0][0].errorbar(byzNo, throughput, yerr=errs, fmt=style, mec=color, color=color, mfc='none', label='%s'%name, markersize=6)
+        ax[0][0].set_ylabel("Throughput (KTx/s)")
+        ax[0][0].legend(loc='best', fancybox=True,frameon=False,framealpha=0.8)
+#         a0[00[1].set_xticks(xticks)
+        ax[0][0].set_ylim([0,60])
+#         a1[00[1].set_xticklabels(xticks_label)
     for name, entries, style, color in lat:
-        lat = []
+        latency = []
         errs = []
         for item in entries:
-            lat.append((item[0]+item[1])/2.0)
+            latency.append((item[0]+item[1])/2.0)
             errs.append(abs(item[0]-item[1]))
-        ax[1][1].errorbar(byzNo, thru, yerr=errs, fmt=style, mec=color, color=color, mfc='none', label='%s'%name, markersize=6)
-        ax[1][1].set_ylabel("Throughput (KTx/s)")
-        ax[1][1].legend(loc='best', fancybox=True,frameon=False,framealpha=0.8)
-        ax[1][1].set_xticks(xticks)
-        ax[1][1].set_ylim([0,140])
-        ax[1][1].set_xticklabels(xticks_label)
-    plt.legend(loc='best', fancybox=True,frameon=False,framealpha=0.8)
+        ax[0][1].errorbar(byzNo, latency, yerr=errs, fmt=style, mec=color, color=color, mfc='none', label='%s'%name, markersize=6)
+        ax[0][1].set_ylabel("Latency (ms)")
+#         ax[0][1].legend(loc='best', fancybox=True,frameon=False,framealpha=0.8)
+        ax[0][1].yaxis.set_label_position("right")
+        ax[0][1].yaxis.tick_right()
+#         a0[1][1].set_xticks(xticks)
+        ax[0][1].set_xlim([0,10])
+#         ax[0][1].set_ylim([100,1000])
+#         ax[1][1].set_xticklabels(xticks_label)
+#     plt.legend(loc='best', fancybox=True,frameon=False,framealpha=0.8)
     f.text(0.5, 0.04, 'Byz. number', ha='center', va='center')
     plt.subplots_adjust(wspace=0.1)
     ax[0][0].grid(linestyle='--', alpha=0.3)
