@@ -36,8 +36,8 @@ distribute(){
     done
 }
 
-USERNAME="gaify"
-PASSWD="GaiFY#1"
+USERNAME="ubuntu"
+PASSWD="4f6bZDRsQFuZ"
 MAXPEERNUM=(`wc -l clients.txt | awk '{ print $1 }'`)
 FIRST=true
 

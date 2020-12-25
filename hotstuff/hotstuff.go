@@ -2,9 +2,6 @@ package hotstuff
 
 import (
 	"fmt"
-	"sync"
-	"time"
-
 	"github.com/gitferry/bamboo/blockchain"
 	"github.com/gitferry/bamboo/config"
 	"github.com/gitferry/bamboo/crypto"
@@ -14,6 +11,7 @@ import (
 	"github.com/gitferry/bamboo/node"
 	"github.com/gitferry/bamboo/pacemaker"
 	"github.com/gitferry/bamboo/types"
+	"sync"
 )
 
 const FORK = "fork"
@@ -73,10 +71,10 @@ func (hs *HotStuff) ProcessBlock(block *blockchain.Block) error {
 		return fmt.Errorf("the block should contain a QC")
 	}
 	if block.Proposer != hs.ID() {
-		s := time.Now()
+		//s := time.Now()
 		hs.processCertificate(block.QC)
-		duration := time.Now().Sub(s)
-		log.Debugf("[%v] spent %v in processing the QC for view: %v", hs.ID(), duration, block.QC.View)
+		//duration := time.Now().Sub(s)
+		//log.Debugf("[%v] spent %v in processing the QC for view: %v", hs.ID(), duration, block.QC.View)
 	}
 	curView = hs.pm.GetCurView()
 	if block.View < curView {

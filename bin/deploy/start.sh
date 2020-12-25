@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-./pkill.sh
 
 start(){
     SERVER_ADDR=(`cat public_ips.txt`)
@@ -11,7 +10,7 @@ start(){
     done
 }
 
-USERNAME="gaify"
+USERNAME="ubuntu"
 MAXPEERNUM=(`wc -l public_ips.txt | awk '{ print $1 }'`)
 
 # update config.json to replicas
