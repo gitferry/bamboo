@@ -226,10 +226,10 @@ func (r *Replica) ListenLocalEvent() {
 	//roundTimeMeasure := make([]time.Duration, 0, 5000)
 	for {
 		r.timer.Reset(r.pm.GetTimerForView())
-		currentLeader := r.FindLeaderFor(r.pm.GetCurView())
-		if config.GetConfig().IsByzantine(currentLeader) && config.GetConfig().Strategy == "silence" {
-			r.pm.AdvanceView(r.pm.GetCurView())
-		}
+		//currentLeader := r.FindLeaderFor(r.pm.GetCurView())
+		//if config.GetConfig().IsByzantine(currentLeader) && config.GetConfig().Strategy == "silence" {
+		//	r.pm.AdvanceView(r.pm.GetCurView())
+		//}
 	L:
 		for {
 			select {
