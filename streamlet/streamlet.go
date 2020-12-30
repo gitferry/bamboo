@@ -24,6 +24,8 @@ type Streamlet struct {
 	bufferedNotarizedBlock map[crypto.Identifier]*blockchain.QC
 	committedBlocks        chan *blockchain.Block
 	forkedBlocks           chan *blockchain.Block
+	echoedBlock            map[crypto.Identifier]struct{}
+	echoedVote             map[crypto.Identifier]struct{}
 }
 
 // NewStreamlet creates a new Streamlet instance
@@ -44,6 +46,8 @@ func NewStreamlet(
 	sl.bufferedQCs = make(map[crypto.Identifier]*blockchain.QC)
 	sl.bufferedNotarizedBlock = make(map[crypto.Identifier]*blockchain.QC)
 	sl.notarizedChain = make([][]*blockchain.Block, 0)
+	sl.echoedBlock = make(map[crypto.Identifier]struct{})
+	sl.echoedVote = make(map[crypto.Identifier]struct{})
 	sl.pm.AdvanceView(0)
 	return sl
 }
@@ -77,6 +81,11 @@ func (sl *Streamlet) ProcessBlock(block *blockchain.Block) error {
 		if !blockIsVerified {
 			log.Warningf("[%v] received a block with an invalid signature", sl.ID())
 		}
+	}
+	_, exists := sl.echoedBlock[block.ID]
+	if !exists {
+		sl.echoedBlock[block.ID] = struct{}{}
+		sl.Broadcast(block)
 	}
 	sl.bc.AddBlock(block)
 	shouldVote := sl.votingRule(block)
@@ -116,6 +125,11 @@ func (sl *Streamlet) ProcessVote(vote *blockchain.Vote) {
 			log.Warningf("[%v] received a vote with invalid signature. vote id: %x", sl.ID(), vote.BlockID)
 			return
 		}
+	}
+	_, exists := sl.echoedBlock[vote.BlockID]
+	if !exists {
+		sl.echoedBlock[vote.BlockID] = struct{}{}
+		sl.Broadcast(vote)
 	}
 	isBuilt, qc := sl.bc.AddVote(vote)
 	if !isBuilt {
@@ -227,6 +241,8 @@ func (sl *Streamlet) processCertificate(qc *blockchain.QC) {
 	//go func() {
 	for _, cBlock := range committedBlocks {
 		sl.committedBlocks <- cBlock
+		delete(sl.echoedBlock, cBlock.ID)
+		delete(sl.echoedVote, cBlock.ID)
 		log.Debugf("[%v] is going to commit block, view: %v, id: %x", sl.ID(), cBlock.View, cBlock.ID)
 	}
 	for _, fBlock := range forkedBlocks {

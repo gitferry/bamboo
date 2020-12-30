@@ -9,7 +9,7 @@ cgr = [
         1.0, 0.933, 0.853, 0.789, 0.718, 0.659
     ], '-^', 'darkseagreen'),
     ('Streamlet',[
-        1.0, 0.9375, 0.875, 0.812, 0.75, 0.6875
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.0
     ], '-s', 'steelblue')
     ]
 
@@ -21,7 +21,7 @@ bi = [
         2.0, 2.149, 2.395, 2.632, 2.964, 3.383
     ], '-^', 'darkseagreen'),
     ('Streamlet',[
-        2.0, 2.29, 2.662, 3.153, 3.820, 5.688
+        2.0, 2.0, 2.0, 2.0, 2.0, 2.0
     ], '-s', 'steelblue')
     ]
 
@@ -80,7 +80,7 @@ lat = [
     ]
 
 def do_plot():
-    f, ax = plt.subplots(2,2, figsize=(7,5))
+    f, ax = plt.subplots(2,2, figsize=(8,6))
     byzNo = [0, 2, 4, 6, 8, 10]
     for name, entries, style, color in cgr:
         cgrs = []
@@ -98,7 +98,7 @@ def do_plot():
         ax[1][1].set_ylabel("Block intervals")
         ax[1][1].yaxis.set_label_position("right")
         ax[1][1].yaxis.tick_right()
-        ax[1][1].set_ylim([0,6.0])
+        ax[1][1].set_ylim([0,10.0])
     for name, entries, style, color in thru:
         throughput = []
         errs = []
@@ -110,6 +110,8 @@ def do_plot():
         ax[0][0].legend(loc='best', fancybox=True,frameon=False,framealpha=0.8)
 #         a0[00[1].set_xticks(xticks)
         ax[0][0].set_ylim([0,60])
+        ax[0][0].set_xticklabels(("", "", "", "", "", ""))
+        ax[0][0].set_xlim([0,10])
 #         a1[00[1].set_xticklabels(xticks_label)
     for name, entries, style, color in lat:
         latency = []
@@ -122,6 +124,7 @@ def do_plot():
 #         ax[0][1].legend(loc='best', fancybox=True,frameon=False,framealpha=0.8)
         ax[0][1].yaxis.set_label_position("right")
         ax[0][1].yaxis.tick_right()
+        ax[0][1].set_xticklabels(("", "", "", "", "", ""))
 #         a0[1][1].set_xticks(xticks)
         ax[0][1].set_xlim([0,10])
 #         ax[0][1].set_ylim([100,1000])
@@ -129,6 +132,7 @@ def do_plot():
 #     plt.legend(loc='best', fancybox=True,frameon=False,framealpha=0.8)
     f.text(0.5, 0.04, 'Byz. number', ha='center', va='center')
     plt.subplots_adjust(wspace=0.1)
+    plt.subplots_adjust(hspace=0.1)
     ax[0][0].grid(linestyle='--', alpha=0.3)
     ax[1][0].grid(linestyle='--', alpha=0.3)
     ax[0][1].grid(linestyle='--', alpha=0.3)

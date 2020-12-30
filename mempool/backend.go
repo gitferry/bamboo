@@ -94,7 +94,6 @@ func (b *Backend) some(n int) []*message.Transaction {
 			batchSize = n
 			break
 		}
-		//b.cond.Wait()
 	}
 	batch := make([]*message.Transaction, 0, batchSize)
 	for i := 0; i < batchSize; i++ {

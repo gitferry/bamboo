@@ -34,7 +34,7 @@ thru = [
         [13.4, 13.5],
         [9.9, 10.0]
     ], '-o', 'coral'),
-    ('2C-HS',[
+    ('2CHS',[
         [50.90, 50.99],
         [36.0, 36.5],
         [25.6, 25.9],
@@ -80,7 +80,7 @@ lat = [
     ]
 
 def do_plot():
-    f, ax = plt.subplots(2,2, figsize=(7,5))
+    f, ax = plt.subplots(2,2, figsize=(8,6))
     byzNo = [0, 2, 4, 6, 8, 10]
     for name, entries, style, color in cgr:
         cgrs = []
@@ -110,6 +110,8 @@ def do_plot():
         ax[0][0].legend(loc='best', fancybox=True,frameon=False,framealpha=0.8)
 #         a0[00[1].set_xticks(xticks)
         ax[0][0].set_ylim([0,60])
+        ax[0][0].set_xticklabels(("", "", "", "", "", ""))
+        ax[0][0].set_xlim([0,10])
 #         a1[00[1].set_xticklabels(xticks_label)
     for name, entries, style, color in lat:
         latency = []
@@ -122,6 +124,7 @@ def do_plot():
 #         ax[0][1].legend(loc='best', fancybox=True,frameon=False,framealpha=0.8)
         ax[0][1].yaxis.set_label_position("right")
         ax[0][1].yaxis.tick_right()
+        ax[0][1].set_xticklabels(("", "", "", "", "", ""))
 #         a0[1][1].set_xticks(xticks)
         ax[0][1].set_xlim([0,10])
 #         ax[0][1].set_ylim([100,1000])
@@ -129,11 +132,12 @@ def do_plot():
 #     plt.legend(loc='best', fancybox=True,frameon=False,framealpha=0.8)
     f.text(0.5, 0.04, 'Byz. number', ha='center', va='center')
     plt.subplots_adjust(wspace=0.1)
+    plt.subplots_adjust(hspace=0.1)
     ax[0][0].grid(linestyle='--', alpha=0.3)
     ax[1][0].grid(linestyle='--', alpha=0.3)
     ax[0][1].grid(linestyle='--', alpha=0.3)
     ax[1][1].grid(linestyle='--', alpha=0.3)
-    plt.savefig('forking-attack-data.pdf', format='pdf')
+    plt.savefig('silence-attack-data.pdf', format='pdf')
     plt.show()
 
 if __name__ == '__main__':

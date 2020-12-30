@@ -5,6 +5,7 @@ import (
 	"github.com/gitferry/bamboo/log"
 	"github.com/gitferry/bamboo/message"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"sync"
@@ -59,6 +60,9 @@ func (n *node) handleRoot(w http.ResponseWriter, r *http.Request) {
 	var req message.Transaction
 	defer r.Body.Close()
 
+	v, _ := ioutil.ReadAll(r.Body)
+	//log.Debugf("[%v] payload is %x", n.id, v)
+	req.Command.Value = v
 	req.C = ppFree.Get().(chan message.TransactionReply)
 	req.NodeID = n.id
 	req.Timestamp = time.Now()

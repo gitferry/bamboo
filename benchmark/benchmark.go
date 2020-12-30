@@ -1,6 +1,7 @@
 package benchmark
 
 import (
+	"math/rand"
 	"sync"
 	"time"
 
@@ -121,6 +122,7 @@ func (b *Benchmark) worker(keys <-chan int, result chan<- time.Duration) {
 		//v = rand.Int()
 		//s = time.Now()
 		value := make([]byte, config.GetConfig().PayloadSize)
+		rand.Read(value)
 		//rand.Read(value)
 		_ = b.db.Write(k, value)
 		//res, err := strconv.Atoi(r)
