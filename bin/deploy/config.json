@@ -13,7 +13,7 @@
   "chan_buffer_size": 10240,
   "buffer_size": 10240,
   "multiversion": false,
-  "timeout": 200,
+  "timeout": 20000,
   "bsize": 400,
   "memsize": 10000,
   "fixed": false,
@@ -27,7 +27,7 @@
   "delay": 0,
   "derr": 0,
   "benchmark": {
-    "T": 120,
+    "T": 300,
     "N": 0,
     "K": 1000,
     "W": 0.5,

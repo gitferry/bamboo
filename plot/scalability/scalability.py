@@ -8,8 +8,8 @@ import matplotlib.pyplot as plt
 
 def do_plot():
     f, ax = plt.subplots(2,1, figsize=(6,5))
-    replicaNo = [4, 8, 16, 32]
-    xticks = [0,4, 8, 16, 32, 40]
+    replicaNo = [4, 8, 16, 32, 64]
+    xticks = [0,4, 8, 16, 32, 64, 70]
     xticks_label = ["","4", "8", "16", "32", "64", ""]
     thru = [
     ('HotStuff',[
@@ -17,21 +17,21 @@ def do_plot():
         [133.5, 133.8],
         [94.95, 95],
         [55.9, 55.1],
-#         [21.741, 20.710]
+        [30.4, 30.5],
     ], '-o', 'coral'),
     ('2CHS',[
         [154.3, 154.5],
         [133.4, 133.7],
         [94.5, 94.9],
         [55.6, 55.8],
-#         [26.917, 27.486]
+        [30.4, 30.5],
     ], '-^', 'darkseagreen'),
     ('Streamlet',[
         [79.8, 80.0],
         [70.3, 70.4],
         [32.2, 32.8],
         [14.1, 14.2],
-#         [22.331, 23.164]
+        [2.2, 2.4],
     ], '-s', 'steelblue')
     ]
     for name, entries, style, color in thru:
@@ -55,18 +55,21 @@ def do_plot():
         [18.4, 18.9],
         [52.2, 54.5],
         [206, 211],
+        [733, 850],
     ], '-o', 'coral'),
     ('2C-HS',[
         [6.6, 6.7],
         [18.7, 19.1],
         [49.4, 50.5],
         [201, 206],
+        [723, 840],
     ], '-^', 'darkseagreen'),
     ('Streamlet',[
         [7.6, 7.8],
         [26.1, 26.2],
         [103, 120],
         [597, 630],
+        [5093, 5502],
     ], '-s', 'steelblue')
     ]
     for name, entries, style, color in lat:
@@ -85,7 +88,7 @@ def do_plot():
     ax[0].grid(linestyle='--', alpha=0.3)
     ax[1].grid(linestyle='--', alpha=0.3)
     f.text(0.5, 0.04, 'Number of Nodes', ha='center', va='center')
-    plt.subplots_adjust(hspace=0.1)
+#     plt.subplots_adjust(hspace=0.1)
     plt.savefig('scalability.pdf', format='pdf')
     plt.show()
 
