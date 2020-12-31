@@ -13,24 +13,24 @@ def do_plot():
     xticks_label = ["","4", "8", "16", "32", "64", ""]
     thru = [
     ('HotStuff',[
-        [119.2815, 118.939],
-        [90.721, 83.114],
-        [65.721, 68.168],
-        [39.309, 36.254],
+        [153.2, 153.3],
+        [133.5, 133.8],
+        [94.95, 95],
+        [55.9, 55.1],
 #         [21.741, 20.710]
     ], '-o', 'coral'),
     ('2CHS',[
-        [119.565, 115.069],
-        [108.572, 109.417],
-        [80.644, 79.838],
-        [49.601, 52.035],
+        [154.3, 154.5],
+        [133.4, 133.7],
+        [94.5, 94.9],
+        [55.6, 55.8],
 #         [26.917, 27.486]
     ], '-^', 'darkseagreen'),
     ('Streamlet',[
-        [122.572, 114.046],
-        [114.186, 117.320],
-        [66.533, 69.830],
-        [40.558, 42.116],
+        [79.8, 80.0],
+        [70.3, 70.4],
+        [32.2, 32.8],
+        [14.1, 14.2],
 #         [22.331, 23.164]
     ], '-s', 'steelblue')
     ]
@@ -43,9 +43,10 @@ def do_plot():
         ax[0].errorbar(replicaNo, thru, yerr=errs, fmt=style, mec=color, color=color, mfc='none', label='%s'%name, markersize=6)
 #         ax[0].errorbar(replicaNo, thru, yerr=errs, marker='s', mfc='red', mec='green', ms=20, mew=4)
         ax[0].set_ylabel("Throughput (KTx/s)")
+#         ax[0].set_yscale('log')
         ax[0].legend(loc='best', fancybox=True,frameon=False,framealpha=0.8)
         ax[0].set_xticks(xticks)
-        ax[0].set_ylim([0,140])
+        ax[0].set_ylim([0,200])
         ax[0].set_xticklabels(xticks_label)
         ax[0].set_xticklabels(("", "", "", "", "", ""))
     lat = [
@@ -62,10 +63,10 @@ def do_plot():
         [201, 206],
     ], '-^', 'darkseagreen'),
     ('Streamlet',[
-        [6.4, 6.6],
-        [18.15, 18.7],
-        [47.3, 50.1],
-        [193, 197],
+        [7.6, 7.8],
+        [26.1, 26.2],
+        [103, 120],
+        [597, 630],
     ], '-s', 'steelblue')
     ]
     for name, entries, style, color in lat:
@@ -78,8 +79,9 @@ def do_plot():
         ax[1].set_ylabel("Latency (ms)")
         ax[1].set_xticks(replicaNo)
         ax[1].set_xticks(xticks)
-        ax[1].set_ylim([0,220])
+        ax[1].set_ylim([0,1000])
         ax[1].set_xticklabels(xticks_label)
+        ax[1].set_yscale('log')
     ax[0].grid(linestyle='--', alpha=0.3)
     ax[1].grid(linestyle='--', alpha=0.3)
     f.text(0.5, 0.04, 'Number of Nodes', ha='center', va='center')
