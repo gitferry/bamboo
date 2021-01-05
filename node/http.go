@@ -6,6 +6,7 @@ import (
 	"github.com/gitferry/bamboo/message"
 	"io"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"sync"
@@ -29,6 +30,8 @@ func (n *node) http() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", n.handleRoot)
 	mux.HandleFunc("/query", n.handleQuery)
+	mux.HandleFunc("/slow", n.handleSlow)
+	mux.HandleFunc("/flaky", n.handleFlaky)
 
 	// http string should be in form of ":8080"
 	ip, err := url.Parse(config.Configuration.HTTPAddrs[n.id])
@@ -82,4 +85,26 @@ func (n *node) handleRoot(w http.ResponseWriter, r *http.Request) {
 	//if err != nil {
 	//	log.Error(err)
 	//}
+}
+
+func (n *node) handleSlow(w http.ResponseWriter, r *http.Request) {
+	//t, err := strconv.Atoi(r.URL.Query().Get("t"))
+	//if err != nil {
+	//	log.Error(err)
+	//	http.Error(w, "invalide time", http.StatusBadRequest)
+	//	return
+	//}
+	//d, err := strconv.Atoi(r.URL.Query().Get("d"))
+	//if err != nil {
+	//	log.Error(err)
+	//	http.Error(w, "invalide time", http.StatusBadRequest)
+	//	return
+	//}
+	for id, _ := range config.GetConfig().HTTPAddrs {
+		n.Socket.Slow(id, rand.Intn(1000), 10)
+	}
+}
+
+func (n *node) handleFlaky(w http.ResponseWriter, r *http.Request) {
+
 }
