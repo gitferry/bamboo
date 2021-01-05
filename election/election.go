@@ -23,6 +23,25 @@ func NewRotation(peerNo int) *rotation {
 	}
 }
 
+//func (r *rotation) IsLeader(id identity.NodeID, view types.View) bool {
+//	if view <= 1 {
+//		if id.Node() < r.peerNo {
+//			return false
+//		}
+//		return true
+//	}
+//
+//	return uint64(view)%uint64(r.peerNo) == uint64(id.Node()-1)
+//}
+//
+//func (r *rotation) FindLeaderFor(view types.View) identity.NodeID {
+//	if view <= 1 {
+//		return identity.NewNodeID(r.peerNo)
+//	}
+//	id := uint64(view)%uint64(r.peerNo) + 1
+//	return identity.NewNodeID(int(id))
+//}
+//
 func (r *rotation) IsLeader(id identity.NodeID, view types.View) bool {
 	if view <= 3 {
 		if id.Node() < r.peerNo {

@@ -2,7 +2,6 @@ package node
 
 import (
 	"github.com/gitferry/bamboo/config"
-	"github.com/gitferry/bamboo/db"
 	"github.com/gitferry/bamboo/log"
 	"github.com/gitferry/bamboo/message"
 	"io"
@@ -61,24 +60,23 @@ func (n *node) handleRoot(w http.ResponseWriter, r *http.Request) {
 	var req message.Transaction
 	defer r.Body.Close()
 
+	v, _ := ioutil.ReadAll(r.Body)
+	//log.Debugf("[%v] payload is %x", n.id, v)
+	req.Command.Value = v
 	req.C = ppFree.Get().(chan message.TransactionReply)
 	req.NodeID = n.id
 	req.Timestamp = time.Now()
 	req.ID = r.RequestURI
-	v, _ := ioutil.ReadAll(r.Body)
-	req.Command = db.Command{
-		Value: v,
-	}
 	n.TxChan <- req
 
-	reply := <-req.C
+	//reply := <-req.C
 	//
 	//log.Debugf("[%v] tx %v delay is %v", n.id, req.ID, strconv.Itoa(int(reply.Delay.Nanoseconds())))
 
-	if reply.Err != nil {
-		http.Error(w, reply.Err.Error(), http.StatusInternalServerError)
-		return
-	}
+	//if reply.Err != nil {
+	//	http.Error(w, reply.Err.Error(), http.StatusInternalServerError)
+	//	return
+	//}
 	//w.Header().Set(HTTPCommandID, strconv.Itoa(int(reply.Delay.Nanoseconds())))
 	//_, err := io.WriteString(w, string(reply.Delay.Nanoseconds()))
 	//if err != nil {

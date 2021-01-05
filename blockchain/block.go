@@ -11,13 +11,14 @@ import (
 
 type Block struct {
 	types.View
-	QC       *QC
-	Proposer identity.NodeID
-	Payload  []*message.Transaction
-	PrevID   crypto.Identifier
-	Sig      crypto.Signature
-	ID       crypto.Identifier
-	Ts       time.Duration
+	QC        *QC
+	Proposer  identity.NodeID
+	Timestamp time.Time
+	Payload   []*message.Transaction
+	PrevID    crypto.Identifier
+	Sig       crypto.Signature
+	ID        crypto.Identifier
+	Ts        time.Duration
 }
 
 type rawBlock struct {

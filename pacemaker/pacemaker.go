@@ -18,7 +18,7 @@ type Pacemaker struct {
 
 func NewPacemaker(n int) *Pacemaker {
 	pm := new(Pacemaker)
-	pm.newViewChan = make(chan types.View)
+	pm.newViewChan = make(chan types.View, 100)
 	pm.timeoutController = NewTimeoutController(n)
 	return pm
 }
@@ -37,9 +37,9 @@ func (p *Pacemaker) AdvanceView(view types.View) {
 		return
 	}
 	p.curView = view + 1
-	go func() {
-		p.newViewChan <- view + 1 // reset timer for the next view
-	}()
+	//go func() {
+	p.newViewChan <- view + 1 // reset timer for the next view
+	//}()
 }
 
 func (p *Pacemaker) EnteringViewEvent() chan types.View {

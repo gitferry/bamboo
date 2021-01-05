@@ -6,12 +6,12 @@ start(){
     for (( j=1; j<=$1; j++))
     do
       ssh -t $2@${SERVER_ADDR[j-1]} "cd /home/${2}/bamboo ; nohup ./run.sh ${j}"
-      sleep 0.5
+      sleep 0.1
       echo replica ${j} is launched!
     done
 }
 
-USERNAME="gaify"
+USERNAME="ubuntu"
 MAXPEERNUM=(`wc -l public_ips.txt | awk '{ print $1 }'`)
 
 # update config.json to replicas

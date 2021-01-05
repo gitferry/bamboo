@@ -32,6 +32,7 @@ type Config struct {
 	Timeout        int             `json:"timeout"`
 	ByzNo          int             `json:"byzNo"`
 	BSize          int             `json:"bsize"`
+	Fixed          bool            `json:"fixed"`
 	Benchmark      Bconfig         `json:"benchmark"` // benchmark configuration
 	Delta          int             `json:"delta"`     // timeout, seconds
 	Pprof          bool            `json:"pprof"`
@@ -41,6 +42,7 @@ type Config struct {
 	Master         identity.NodeID `json:"master"`
 	Delay          int             `json:"delay"` // transmission delay in ms
 	DErr           int             `json:"derr"`  // the err taken into delays
+	MemSize        int             `json:"memsize"`
 
 	hasher string
 	signer string

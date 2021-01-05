@@ -48,8 +48,8 @@ func NewTransport(addr string) Transport {
 
 	transport := &transport{
 		uri:   uri,
-		send:  make(chan interface{}, 1024),
-		recv:  make(chan interface{}, 1024),
+		send:  make(chan interface{}, 10240),
+		recv:  make(chan interface{}, 10240),
 		close: make(chan struct{}),
 	}
 

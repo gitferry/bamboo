@@ -6,10 +6,8 @@ import (
 	"errors"
 	"io"
 	"io/ioutil"
-	"math/rand"
 	"net/http"
 	"net/http/httputil"
-	"reflect"
 	"strconv"
 	"sync"
 
@@ -23,7 +21,7 @@ import (
 // Client interface provides get and put for key value store
 type Client interface {
 	Get(db.Key) (string, error)
-	Put(db.Key, db.Value) (string, error)
+	Put(db.Key, db.Value) error
 }
 
 // AdminClient interface provides fault injection opeartion
@@ -69,44 +67,42 @@ func NewHTTPClient() *HTTPClient {
 // Default implementation of Client interface
 func (c *HTTPClient) Get(key db.Key) (string, error) {
 	c.CID++
-	v, _, err := c.RESTGet(key)
-	return v, err
+	//v, _, err := c.RESTGet(key)
+	//return v, err
+	return "", nil
 }
 
 // Put puts new key value pair and return previous value (use REST)
 // Default implementation of Client interface
-func (c *HTTPClient) Put(key db.Key, value db.Value) (string, error) {
+func (c *HTTPClient) Put(key db.Key, value db.Value) error {
 	c.CID++
-	r, _, err := c.RESTPut(key, value)
-	return r, err
+	return c.RESTPut(key, value)
 }
 
-func (c *HTTPClient) GetURL(key db.Key) (identity.NodeID, string) {
-	replicaID := config.GetConfig().Master
-	if replicaID == "0" {
-		keys := reflect.ValueOf(c.HTTP).MapKeys()
-		replicaID = keys[rand.Intn(len(keys))].Interface().(identity.NodeID)
-	}
-	return replicaID, c.HTTP[replicaID] + "/" + strconv.Itoa(int(key))
-}
+//func (c *HTTPClient) GetURL(key db.Key) (identity.NodeID, string) {
+//	replicaID := config.GetConfig().Master
+//	if replicaID == "0" {
+//		keys := reflect.ValueOf(c.HTTP).MapKeys()
+//		replicaID = keys[rand.Intn(len(keys))].Interface().(identity.NodeID)
+//	}
+//	return replicaID, c.HTTP[replicaID] + "/" + strconv.Itoa(int(key))
+//}
 
 // rest accesses server's REST API with url = http://ip:port/key
 // if value == nil, it's a read
-func (c *HTTPClient) rest(key db.Key, value db.Value) (string, map[string]string, error) {
-	results := ""
-	// get url
-	_, url := c.GetURL(key)
-
+func (c *HTTPClient) rest(url string, value db.Value) error {
 	method := http.MethodGet
 	var body io.Reader
 	if value != nil {
 		method = http.MethodPut
 		body = bytes.NewBuffer(value)
 	}
+	//v, _ := ioutil.ReadAll(body)
+	//log.Debugf("payload is %x", v)
 	req, err := http.NewRequest(method, url, body)
 	if err != nil {
 		log.Error(err)
-		return results, nil, err
+		return err
 	}
 	req.Header.Set(node.HTTPClientID, string(c.ID))
 	req.Header.Set(node.HTTPCommandID, strconv.Itoa(c.CID))
@@ -116,41 +112,28 @@ func (c *HTTPClient) rest(key db.Key, value db.Value) (string, map[string]string
 	rep, err := c.Client.Do(req)
 	if err != nil {
 		log.Error(err)
-		return results, nil, err
+		return err
 	}
 	defer rep.Body.Close()
 
-	//get headers
-	metadata := make(map[string]string)
-	for k := range rep.Header {
-		metadata[k] = rep.Header.Get(k)
-	}
-
 	if rep.StatusCode == http.StatusOK {
-		//b, err := ioutil.ReadAll(rep.Body)
-		//if err != nil {
-		//	log.Error(err)
-		//	return results, metadata, err
-		//}
-		results = metadata[node.HTTPCommandID]
-		//log.Debugf("key=%v latency=%v", key, results)
-		return results, metadata, nil
+		return nil
 	}
 
 	// http call failed
 	dump, _ := httputil.DumpResponse(rep, true)
 	log.Debugf("%q", dump)
-	return results, metadata, errors.New(rep.Status)
+	return errors.New(rep.Status)
 }
 
 // RESTGet issues a http call to node and return value and headers
-func (c *HTTPClient) RESTGet(key db.Key) (string, map[string]string, error) {
-	return c.rest(key, nil)
-}
+//func (c *HTTPClient) RESTGet(key db.Key) (string, error) {
+//	return c.rest(key, nil)
+//}
 
 // RESTPut puts new value as http.request body and return previous value
-func (c *HTTPClient) RESTPut(key db.Key, value db.Value) (string, map[string]string, error) {
-	return c.rest(key, value)
+func (c *HTTPClient) RESTPut(key db.Key, value db.Value) error {
+	return c.AllPut(key, value)
 }
 
 func (c *HTTPClient) json(id identity.NodeID, key db.Key, value db.Value) (db.Value, error) {
@@ -188,58 +171,56 @@ func (c *HTTPClient) JSONPut(key db.Key, value db.Value) (db.Value, error) {
 	return c.json(c.ID, key, value)
 }
 
-// QuorumGet concurrently read values from majority nodes
-func (c *HTTPClient) QuorumGet(key db.Key) ([]string, []map[string]string) {
-	return c.MultiGet(c.N/2+1, key)
-}
+//// QuorumGet concurrently read values from majority nodes
+//func (c *HTTPClient) QuorumGet(key db.Key) ([]string, []map[string]string) {
+//	return c.MultiGet(c.N/2+1, key)
+//}
 
 // MultiGet concurrently read values from n nodes
-func (c *HTTPClient) MultiGet(n int, key db.Key) ([]string, []map[string]string) {
-	valueC := make(chan string)
-	metaC := make(chan map[string]string)
-	i := 0
-	for id := range c.HTTP {
-		go func(id identity.NodeID) {
-			v, meta, err := c.rest(key, nil)
-			if err != nil {
-				log.Error(err)
-				return
-			}
-			valueC <- v
-			metaC <- meta
-		}(id)
-		i++
-		if i >= n {
-			break
-		}
-	}
-
-	values := make([]string, 0)
-	metas := make([]map[string]string, 0)
-	for ; i > 0; i-- {
-		values = append(values, <-valueC)
-		metas = append(metas, <-metaC)
-	}
-	return values, metas
-}
+//func (c *HTTPClient) MultiGet(n int, key db.Key) ([]string, []map[string]string) {
+//	valueC := make(chan string)
+//	metaC := make(chan map[string]string)
+//	i := 0
+//	for id := range c.HTTP {
+//		go func(id identity.NodeID) {
+//			v, meta, err := c.rest(key, nil)
+//			if err != nil {
+//				log.Error(err)
+//				return
+//			}
+//			valueC <- v
+//			metaC <- meta
+//		}(id)
+//		i++
+//		if i >= n {
+//			break
+//		}
+//	}
+//
+//	values := make([]string, 0)
+//	metas := make([]map[string]string, 0)
+//	for ; i > 0; i-- {
+//		values = append(values, <-valueC)
+//		metas = append(metas, <-metaC)
+//	}
+//	return values, metas
+//}
 
 // QuorumPut concurrently write values to majority of nodes
 // TODO get headers
-func (c *HTTPClient) QuorumPut(key db.Key, value db.Value) {
+func (c *HTTPClient) AllPut(key db.Key, value db.Value) error {
 	var wait sync.WaitGroup
-	i := 0
-	for id := range c.HTTP {
-		i++
-		if i > c.N/2 {
-			break
-		}
+	var err error
+	for id, ip := range c.HTTP {
 		wait.Add(1)
-		go func(id identity.NodeID) {
-			c.rest(key, value)
+		go func(id int, ip string) {
+			url := ip + "/" + strconv.Itoa(int(key)+id)
+			err = c.rest(url, value)
 			wait.Done()
-		}(id)
+		}(id.Node(), ip)
 	}
 	wait.Wait()
+	return err
 }
 
 // Consensus collects /history/key from every node and compare their values

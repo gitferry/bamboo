@@ -45,8 +45,18 @@ type Replica struct {
 	totalCreateDuration  time.Duration
 	totalProcessDuration time.Duration
 	totalDelay           time.Duration
+	totalRoundTime       time.Duration
+	totalVoteTime        time.Duration
+	totalTransDelay      time.Duration
+	totalBlockSize       int
+	receivedNo           int
+	roundNo              int
+	voteNo               int
 	totalCommittedTx     int
+	latencyNo            int
 	proposedNo           int
+	processedNo          int
+	committedNo          int
 }
 
 // NewReplica creates a new replica instance
@@ -65,8 +75,8 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 	r.pm = pacemaker.NewPacemaker(config.GetConfig().N())
 	r.start = make(chan bool)
 	r.eventChan = make(chan interface{})
-	r.committedBlocks = make(chan *blockchain.Block)
-	r.forkedBlocks = make(chan *blockchain.Block)
+	r.committedBlocks = make(chan *blockchain.Block, 100)
+	r.forkedBlocks = make(chan *blockchain.Block, 100)
 	r.isByz = isByz
 	r.Register(blockchain.Block{}, r.HandleBlock)
 	r.Register(blockchain.Vote{}, r.HandleVote)
@@ -94,6 +104,8 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 
 func (r *Replica) HandleBlock(block blockchain.Block) {
 	log.Debugf("[%v] received a block from %v, view is %v, id: %x", r.ID(), block.Proposer, block.View, block.ID)
+	r.totalTransDelay += time.Now().Sub(block.Timestamp)
+	r.receivedNo++
 	if !r.isStarted.Load() {
 		log.Debugf("[%v] is boosting", r.ID())
 		r.isStarted.Store(true)
@@ -124,11 +136,16 @@ func (r *Replica) HandleTmo(tmo pacemaker.TMO) {
 
 func (r *Replica) handleQuery(m message.Query) {
 	aveCreateDuration := float64(r.totalCreateDuration.Milliseconds()) / float64(r.proposedNo)
-	aveProcessDuration := float64(r.totalProcessDuration.Milliseconds()) / float64(r.proposedNo)
+	aveProcessTime := float64(r.totalProcessDuration.Milliseconds()) / float64(r.processedNo)
+	aveVoteProcessTime := float64(r.totalVoteTime.Milliseconds()) / float64(r.voteNo)
+	aveBlockSize := float64(r.totalBlockSize) / float64(r.proposedNo)
+	aveTransDelay := float64(r.totalTransDelay.Milliseconds()) / float64(r.receivedNo)
 	requestRate := float64(r.pd.TotalReceivedTxNo()) / time.Now().Sub(r.startTime).Seconds()
-	latency := float64(r.totalDelay.Milliseconds()) / float64(r.totalCommittedTx)
+	committedRate := float64(r.committedNo) / time.Now().Sub(r.startTime).Seconds()
+	aveRoundTime := float64(r.totalRoundTime.Milliseconds()) / float64(r.roundNo)
+	latency := float64(r.totalDelay.Milliseconds()) / float64(r.latencyNo)
 	throughput := float64(r.totalCommittedTx) / time.Now().Sub(r.startTime).Seconds()
-	status := fmt.Sprintf("chain status is: %s\nAve. creation time is %f ms.\nAve. processing time is %f ms.\nRequest rate is %f txs/s.\nLatency is %f ms.\nThroughput is %f txs/s.", r.Safety.GetChainStatus(), aveCreateDuration, aveProcessDuration, requestRate, latency, throughput)
+	status := fmt.Sprintf("chain status is: %s\nCommitted rate is %v.\nAve. block size is %v.\nAve. trans. delay is %v ms.\nAve. creation time is %f ms.\nAve. processing time is %v ms.\nAve. vote time is %v ms.\nRequest rate is %f txs/s.\nAve. round time is %f ms.\nLatency is %f ms.\nThroughput is %f txs/s.\n", r.Safety.GetChainStatus(), committedRate, aveBlockSize, aveTransDelay, aveCreateDuration, aveProcessTime, aveVoteProcessTime, requestRate, aveRoundTime, latency, throughput)
 	m.Reply(message.QueryReply{Info: status})
 }
 
@@ -156,11 +173,12 @@ func (r *Replica) processCommittedBlock(block *blockchain.Block) {
 	if block.Proposer == r.ID() {
 		for _, txn := range block.Payload {
 			delay := time.Now().Sub(txn.Timestamp)
-			txn.Reply(message.NewReply(delay))
 			r.totalDelay += delay
-			r.totalCommittedTx++
+			r.latencyNo++
 		}
 	}
+	r.committedNo++
+	r.totalCommittedTx += len(block.Payload)
 	log.Infof("[%v] the block is committed, No. of transactions: %v, view: %v, current view: %v, id: %x", r.ID(), len(block.Payload), block.View, r.pm.GetCurView(), block.ID)
 }
 
@@ -185,28 +203,33 @@ func (r *Replica) processNewView(newView types.View) {
 func (r *Replica) proposeBlock(view types.View) {
 	createStart := time.Now()
 	block := r.Safety.MakeProposal(r.pd.GeneratePayload())
+	r.totalBlockSize += len(block.Payload)
 	createEnd := time.Now()
 	createDuration := createEnd.Sub(createStart)
+	//log.Debugf("[%v] spent %v to create the block for view: %v", r.ID(), createDuration, block.View)
+	block.Timestamp = time.Now()
+	r.Broadcast(block)
 	r.totalCreateDuration += createDuration
+	r.proposedNo++
 	//log.Debugf("[%v] finished creating the block for view: %v, payload size: %v, used: %v microseconds, id: %x, prevID: %x", r.ID(), view, len(block.Payload), createDuration.Microseconds(), block.ID, block.PrevID)
 	_ = r.Safety.ProcessBlock(block)
-	processDuration := time.Now().Sub(createEnd)
-	r.totalProcessDuration += processDuration
-	r.proposedNo++
+	processedDuration := time.Now().Sub(createEnd)
+	r.totalProcessDuration += processedDuration
+	r.processedNo++
+	//log.Debugf("[%v] spent %v to process the block for view: %v", r.ID(), processedDuration, block.View)
 	//log.Debugf("[%v] finished processing the block for view: %v, used: %v microseconds, id: %x, prevID: %x", r.ID(), view, processDuration.Microseconds(), block.ID, block.PrevID)
-	r.Broadcast(block)
 }
 
 func (r *Replica) ListenLocalEvent() {
 	r.lastViewTime = time.Now()
 	r.timer = time.NewTimer(r.pm.GetTimerForView())
-	roundTimeMeasure := make([]time.Duration, 0, 5000)
+	//roundTimeMeasure := make([]time.Duration, 0, 5000)
 	for {
 		r.timer.Reset(r.pm.GetTimerForView())
-		currentLeader := r.FindLeaderFor(r.pm.GetCurView())
-		if config.GetConfig().IsByzantine(currentLeader) && config.GetConfig().Strategy == "silence" {
-			r.pm.AdvanceView(r.pm.GetCurView())
-		}
+		//currentLeader := r.FindLeaderFor(r.pm.GetCurView())
+		//if config.GetConfig().IsByzantine(currentLeader) && config.GetConfig().Strategy == "silence" {
+		//	r.pm.AdvanceView(r.pm.GetCurView())
+		//}
 	L:
 		for {
 			select {
@@ -214,16 +237,18 @@ func (r *Replica) ListenLocalEvent() {
 				// measure round time
 				now := time.Now()
 				lasts := now.Sub(r.lastViewTime)
-				if view >= 10 && int(view) < config.GetConfig().MaxRound {
-					roundTimeMeasure = append(roundTimeMeasure, lasts)
-				}
-				if int(view) == config.GetConfig().MaxRound {
-					var sumRoundTime time.Duration
-					for _, t := range roundTimeMeasure {
-						sumRoundTime = sumRoundTime + t
-					}
-					log.Infof("[%v] the average view duration is %v microseconds, measured %v views", r.ID(), float64(sumRoundTime.Microseconds())/float64(len(roundTimeMeasure)))
-				}
+				//if view >= 10 {
+				//log.Debugf("[%v] spent %v in the last view %v", r.ID(), lasts, r.pm.GetCurView()-1)
+				r.totalRoundTime += lasts
+				r.roundNo++
+				//}
+				//if int(view) == config.GetConfig().MaxRound {
+				//	var sumRoundTime time.Duration
+				//	for _, t := range roundTimeMeasure {
+				//		sumRoundTime = sumRoundTime + t
+				//	}
+				//	log.Infof("[%v] the average view duration is %v microseconds, measured %v views", r.ID(), float64(sumRoundTime.Microseconds())/float64(len(roundTimeMeasure)))
+				//}
 				r.lastViewTime = now
 				//log.Infof("[%v] the last view lasts %v milliseconds, current view: %v", r.ID(), lasts.Milliseconds(), view)
 				r.eventChan <- view
@@ -258,9 +283,19 @@ func (r *Replica) Start() {
 		case types.View:
 			r.processNewView(v)
 		case blockchain.Block:
+			startProcessTime := time.Now()
 			_ = r.Safety.ProcessBlock(&v)
+			r.processedNo++
+			processingDuration := time.Now().Sub(startProcessTime)
+			r.totalProcessDuration += processingDuration
+			//log.Debugf("[%v] spent %v to process the block for view: %v", r.ID(), processingDuration, v.View)
 		case blockchain.Vote:
+			startProcessTime := time.Now()
 			r.Safety.ProcessVote(&v)
+			r.voteNo++
+			processingDuration := time.Now().Sub(startProcessTime)
+			r.totalVoteTime += processingDuration
+			//log.Debugf("[%v] spent %v to process the vote for view: %v", r.ID(), processingDuration, v.View)
 		case pacemaker.TMO:
 			r.Safety.ProcessRemoteTmo(&v)
 		}
