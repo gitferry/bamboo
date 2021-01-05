@@ -38,10 +38,12 @@ type Replica struct {
 	committedBlocks      chan *blockchain.Block
 	forkedBlocks         chan *blockchain.Block
 	eventChan            chan interface{}
+	thrus                string
 	hasher               crypto.Hasher
 	signer               string
 	lastViewTime         time.Time
 	startTime            time.Time
+	tmpTime              time.Time
 	totalCreateDuration  time.Duration
 	totalProcessDuration time.Duration
 	totalDelay           time.Duration
@@ -135,17 +137,20 @@ func (r *Replica) HandleTmo(tmo pacemaker.TMO) {
 }
 
 func (r *Replica) handleQuery(m message.Query) {
-	aveCreateDuration := float64(r.totalCreateDuration.Milliseconds()) / float64(r.proposedNo)
-	aveProcessTime := float64(r.totalProcessDuration.Milliseconds()) / float64(r.processedNo)
-	aveVoteProcessTime := float64(r.totalVoteTime.Milliseconds()) / float64(r.voteNo)
+	//aveCreateDuration := float64(r.totalCreateDuration.Milliseconds()) / float64(r.proposedNo)
+	//aveProcessTime := float64(r.totalProcessDuration.Milliseconds()) / float64(r.processedNo)
+	//aveVoteProcessTime := float64(r.totalVoteTime.Milliseconds()) / float64(r.voteNo)
 	aveBlockSize := float64(r.totalBlockSize) / float64(r.proposedNo)
-	aveTransDelay := float64(r.totalTransDelay.Milliseconds()) / float64(r.receivedNo)
-	requestRate := float64(r.pd.TotalReceivedTxNo()) / time.Now().Sub(r.startTime).Seconds()
-	committedRate := float64(r.committedNo) / time.Now().Sub(r.startTime).Seconds()
-	aveRoundTime := float64(r.totalRoundTime.Milliseconds()) / float64(r.roundNo)
+	//aveTransDelay := float64(r.totalTransDelay.Milliseconds()) / float64(r.receivedNo)
+	//requestRate := float64(r.pd.TotalReceivedTxNo()) / time.Now().Sub(r.startTime).Seconds()
+	//committedRate := float64(r.committedNo) / time.Now().Sub(r.startTime).Seconds()
+	//aveRoundTime := float64(r.totalRoundTime.Milliseconds()) / float64(r.roundNo)
 	latency := float64(r.totalDelay.Milliseconds()) / float64(r.latencyNo)
-	throughput := float64(r.totalCommittedTx) / time.Now().Sub(r.startTime).Seconds()
-	status := fmt.Sprintf("chain status is: %s\nCommitted rate is %v.\nAve. block size is %v.\nAve. trans. delay is %v ms.\nAve. creation time is %f ms.\nAve. processing time is %v ms.\nAve. vote time is %v ms.\nRequest rate is %f txs/s.\nAve. round time is %f ms.\nLatency is %f ms.\nThroughput is %f txs/s.\n", r.Safety.GetChainStatus(), committedRate, aveBlockSize, aveTransDelay, aveCreateDuration, aveProcessTime, aveVoteProcessTime, requestRate, aveRoundTime, latency, throughput)
+	r.thrus += fmt.Sprintf("Time: %v s. Throughput: %v txs/s\n", time.Now().Sub(r.startTime).Seconds(), float64(r.totalCommittedTx)/time.Now().Sub(r.tmpTime).Seconds())
+	r.totalCommittedTx = 0
+	r.tmpTime = time.Now()
+	//status := fmt.Sprintf("chain status is: %s\nCommitted rate is %v.\nAve. block size is %v.\nAve. trans. delay is %v ms.\nAve. creation time is %f ms.\nAve. processing time is %v ms.\nAve. vote time is %v ms.\nRequest rate is %f txs/s.\nAve. round time is %f ms.\nLatency is %f ms.\nThroughput is %f txs/s.\n", r.Safety.GetChainStatus(), committedRate, aveBlockSize, aveTransDelay, aveCreateDuration, aveProcessTime, aveVoteProcessTime, requestRate, aveRoundTime, latency, throughput)
+	status := fmt.Sprintf("chain status is: %s\nAve. block size is %v.\nLatency is %f ms.\nThroughput is: \n%v", r.Safety.GetChainStatus(), aveBlockSize, latency, r.thrus)
 	m.Reply(message.QueryReply{Info: status})
 }
 
@@ -153,6 +158,7 @@ func (r *Replica) handleTxn(m message.Transaction) {
 	r.pd.AddTxn(&m)
 	if !r.isStarted.Load() {
 		r.startTime = time.Now()
+		r.tmpTime = time.Now()
 		log.Debugf("[%v] is boosting", r.ID())
 		r.isStarted.Store(true)
 		r.start <- true
