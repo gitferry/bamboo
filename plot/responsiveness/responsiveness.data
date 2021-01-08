@@ -1,0 +1,194 @@
+// HotStuff-t50
+chain status is: [1] The current view is: 8612, chain growth rate is: 0.942235086836144, ave block interval is: 3.724055028716442
+Ave. block size is 295.28965839962564.
+Latency is 481.412564 ms.
+Throughput is:
+Time: 4.19519264 s. Throughput: 95070.9657702039 txs/s
+Time: 5.329234328 s. Throughput: 98324.4415869727 txs/s
+Time: 6.523390089 s. Throughput: 99560.3665771664 txs/s
+Time: 7.579192999 s. Throughput: 98824.623471204 txs/s
+Time: 8.782630505 s. Throughput: 98411.32596623266 txs/s
+Time: 9.87444113 s. Throughput: 99446.73229611218 txs/s
+Time: 10.902492108 s. Throughput: 97400.5523819051 txs/s
+Time: 11.995557966 s. Throughput: 96024.80139527135 txs/s
+Time: 13.009540477 s. Throughput: 96671.49210164955 txs/s
+Time: 26.275358671 s. Throughput: 50661.747306767786 txs/s
+Time: 27.209606047 s. Throughput: 0 txs/s
+Time: 28.3621664 s. Throughput: 0 txs/s
+Time: 29.397796948 s. Throughput: 0 txs/s
+Time: 30.288976804 s. Throughput: 0 txs/s
+Time: 31.296413568 s. Throughput: 0 txs/s
+Time: 32.249940928 s. Throughput: 10737.902749938816 txs/s
+Time: 33.230045603 s. Throughput: 4897.5033860267085 txs/s
+Time: 34.788037816 s. Throughput: 13094.114953182541 txs/s
+Time: 36.014193172 s. Throughput: 12752.142837100979 txs/s
+Time: 37.250266844 s. Throughput: 14860.861873842796 txs/s
+Time: 39.006664655 s. Throughput: 9964.188384693503 txs/s
+Time: 40.462814038 s. Throughput: 8100.85521894641 txs/s
+Time: 41.872939659 s. Throughput: 4052.858996833717 txs/s
+Time: 43.160596632 s. Throughput: 7491.972045579887 txs/s
+Time: 44.439101638 s. Throughput: 10971.498108930859 txs/s
+Time: 46.011613177 s. Throughput: 10817.779211867137 txs/s
+Time: 47.527861161 s. Throughput: 15731.765495809788 txs/s
+Time: 48.638199464 s. Throughput: 8282.239148385515 txs/s
+Time: 49.839094435 s. Throughput: 11956.201978956276 txs/s
+Time: 51.033519118 s. Throughput: 4363.634119255514 txs/s
+Time: 52.494820911 s. Throughput: 8721.046488351285 txs/s
+Time: 54.31321946 s. Throughput: 7715.622901105161 txs/s
+Time: 55.689779624 s. Throughput: 10379.566621841512 txs/s
+Time: 57.0992396 s. Throughput: 10394.820055483578 txs/s
+
+// tchs - t50
+chain status is: [1] The current view is: 5520, chain growth rate is: 0.9963377854373116, ave block interval is: 2.0121081081081083
+Ave. block size is 304.1765169424744.
+Latency is 18.986174 ms.
+Throughput is:
+Time: 1.7366538889999998 s. Throughput: 90898.95694690675 txs/s
+Time: 2.745255014 s. Throughput: 95654.37689185223 txs/s
+Time: 3.97446981 s. Throughput: 95877.4409621537 txs/s
+Time: 4.77118895 s. Throughput: 93347.70849468817 txs/s
+Time: 5.728643506 s. Throughput: 100714.7023518433 txs/s
+Time: 6.684740907 s. Throughput: 97210.72798608353 txs/s
+Time: 7.729516744 s. Throughput: 103371.87914882119 txs/s
+Time: 8.732690137 s. Throughput: 98724.89870704475 txs/s
+Time: 9.705580356 s. Throughput: 96410.86879165632 txs/s
+Time: 10.831414508 s. Throughput: 99071.62865961435 txs/s
+Time: 20.183590029 s. Throughput: 32904.69005682917 txs/s
+Time: 21.17333348 s. Throughput: 0 txs/s
+Time: 22.265893376 s. Throughput: 0 txs/s
+Time: 23.270202673 s. Throughput: 0 txs/s
+Time: 24.470245269 s. Throughput: 0 txs/s
+Time: 25.345721493 s. Throughput: 0 txs/s
+Time: 26.52225978 s. Throughput: 0 txs/s
+Time: 28.251630336 s. Throughput: 0 txs/s
+Time: 29.232494376 s. Throughput: 0 txs/s
+Time: 30.193498068 s. Throughput: 0 txs/s
+Time: 31.153767704 s. Throughput: 0 txs/s
+Time: 31.951012656 s. Throughput: 0 txs/s
+Time: 32.858305612 s. Throughput: 0 txs/s
+Time: 33.857466264 s. Throughput: 0 txs/s
+Time: 34.813596962 s. Throughput: 0 txs/s
+Time: 35.453139441 s. Throughput: 0 txs/s
+Time: 36.354434292 s. Throughput: 0 txs/s
+
+// streamlet - t50
+chain status is: [1] The current view is: 2592, chain growth rate is: 0.9971898835808912, ave block interval is: 2.011674718196457
+Ave. block size is 328.2690513219285.
+Latency is 25.925894 ms.
+Throughput is:
+Time: 1.6272861509999998 s. Throughput: 72569.91346884014 txs/s
+Time: 2.576482483 s. Throughput: 76752.1668906888 txs/s
+Time: 3.549717532 s. Throughput: 71941.48380095874 txs/s
+Time: 4.386876747 s. Throughput: 78468.29936968414 txs/s
+Time: 5.200667834 s. Throughput: 72385.43254831558 txs/s
+Time: 6.131724594 s. Throughput: 69973.12352388963 txs/s
+Time: 7.105353953 s. Throughput: 71332.1134347076 txs/s
+Time: 7.9754639019999995 s. Throughput: 62685.197351285504 txs/s
+Time: 8.90125992 s. Throughput: 57894.72700104263 txs/s
+Time: 9.897996398 s. Throughput: 80553.8215793932 txs/s
+Time: 16.797334304 s. Throughput: 13039.970793120756 txs/s
+Time: 17.738141088 s. Throughput: 0 txs/s
+Time: 18.656382379 s. Throughput: 0 txs/s
+Time: 19.565350327 s. Throughput: 0 txs/s
+Time: 20.622593037 s. Throughput: 0 txs/s
+Time: 21.577846517 s. Throughput: 0 txs/s
+Time: 22.561536623 s. Throughput: 0 txs/s
+Time: 23.569558976 s. Throughput: 0 txs/s
+Time: 24.56215978 s. Throughput: 0 txs/s
+Time: 25.703910881 s. Throughput: 0 txs/s
+Time: 26.662436257 s. Throughput: 0 txs/s
+Time: 27.518605662 s. Throughput: 0 txs/s
+Time: 28.481075529 s. Throughput: 0 txs/s
+Time: 29.719498634 s. Throughput: 0 txs/s
+
+// streamlet - t200
+chain status is: [1] The current view is: 3208, chain growth rate is: 0.9970712658639765, ave block interval is: 2.239229765013055
+Ave. block size is 325.9695044472681.
+Latency is 118.158217 ms.
+Throughput is:
+Time: 1.5531543110000001 s. Throughput: 66320.5189620592 txs/s
+Time: 2.736518935 s. Throughput: 73605.21116376779 txs/s
+Time: 3.731010352 s. Throughput: 68444.71248808908 txs/s
+Time: 4.828814956 s. Throughput: 72445.77717103809 txs/s
+Time: 5.976612134 s. Throughput: 63716.59868938581 txs/s
+Time: 6.921370226 s. Throughput: 59042.69251664558 txs/s
+Time: 7.828990541 s. Throughput: 77795.29525900456 txs/s
+Time: 8.751292328 s. Throughput: 76482.4228458825 txs/s
+Time: 9.727254237 s. Throughput: 66780.13230097742 txs/s
+Time: 10.680491234 s. Throughput: 70207.16280765568 txs/s
+Time: 17.572113782 s. Throughput: 18853.124194577635 txs/s
+Time: 18.386770309 s. Throughput: 0 txs/s
+Time: 19.260162831 s. Throughput: 2747.952761166922 txs/s
+Time: 20.322925089 s. Throughput: 0 txs/s
+Time: 21.38619251 s. Throughput: 2633.4287875400987 txs/s
+Time: 22.316066031 s. Throughput: 0 txs/s
+Time: 23.352147891 s. Throughput: 1544.297414633015 txs/s
+Time: 24.342901911 s. Throughput: 1211.2099344698483 txs/s
+Time: 25.447302327 s. Throughput: 2778.023918423744 txs/s
+Time: 26.720275491 s. Throughput: 4337.15931457451 txs/s
+Time: 27.710671055 s. Throughput: 2838.316267977808 txs/s
+Time: 28.978315146 s. Throughput: 3475.0126082608426 txs/s
+Time: 30.334372818 s. Throughput: 5924.584420711627 txs/s
+Time: 31.541205386 s. Throughput: 5603.9964364880225 txs/s
+Time: 32.88804768 s. Throughput: 6130.7135365599515 txs/s
+Time: 34.056193823 s. Throughput: 2179.5424866893154 txs/s
+Time: 35.379824721 s. Throughput: 6628.788521967547 txs/s
+Time: 36.757118697 s. Throughput: 1816.6382288240216 txs/s
+Time: 38.037035446 s. Throughput: 4736.284440235692 txs/s
+Time: 39.334532965 s. Throughput: 2853.975438767529 txs/s
+Time: 40.772443279 s. Throughput: 6611.033822543508 txs/s
+Time: 42.122604417 s. Throughput: 0 txs/s
+Time: 43.524994293 s. Throughput: 9468.226606463095 txs/s
+Time: 44.63774969 s. Throughput: 2916.218215362559 txs/s
+Time: 46.015834467 s. Throughput: 5094.070143373555 txs/s
+Time: 47.386614961 s. Throughput: 2717.5268496230588 txs/s
+Time: 48.638346793 s. Throughput: 2496.566210850079 txs/s
+Time: 49.971866911 s. Throughput: 7421.811858860152 txs/s
+
+// tchs - t200
+chain status is: [1] The current view is: 6383, chain growth rate is: 0.9824273279684678, ave block interval is: 2.1181878970244066
+Ave. block size is 296.0862396956246.
+Latency is 203.912680 ms.
+Throughput is:
+Time: 4.241988515 s. Throughput: 95488.23792464734 txs/s
+Time: 6.08053371 s. Throughput: 99988.82832307077 txs/s
+Time: 7.08192623 s. Throughput: 99651.25754751124 txs/s
+Time: 8.148827499 s. Throughput: 99161.59147634693 txs/s
+Time: 9.377799922 s. Throughput: 100120.14849076643 txs/s
+Time: 10.666387771 s. Throughput: 98108.14422711743 txs/s
+Time: 12.011956892 s. Throughput: 96982.86511739265 txs/s
+Time: 13.110706947 s. Throughput: 101741.40470707013 txs/s
+Time: 14.271680393 s. Throughput: 96490.99117419243 txs/s
+Time: 15.685979429 s. Throughput: 96013.62767756819 txs/s
+Time: 22.672698284 s. Throughput: 18608.75504920531 txs/s
+Time: 24.153600316 s. Throughput: 0 txs/s
+Time: 25.234594368 s. Throughput: 0 txs/s
+Time: 26.588594167 s. Throughput: 3249.6766824658735 txs/s
+Time: 28.00786984 s. Throughput: 845.5116629188282 txs/s
+Time: 29.058776402 s. Throughput: 380.6275845469403 txs/s
+Time: 30.189456283 s. Throughput: 1768.8705647970723 txs/s
+Time: 31.41981148 s. Throughput: 2813.0439124745863 txs/s
+Time: 32.746349645 s. Throughput: 3188.8732032931903 txs/s
+Time: 34.138086872 s. Throughput: 1754.6618305676534 txs/s
+Time: 35.535005757 s. Throughput: 922.7559610532613 txs/s
+Time: 36.78339408 s. Throughput: 2563.3437917466317 txs/s
+Time: 37.956408579 s. Throughput: 2728.0406172306816 txs/s
+Time: 39.124337288 s. Throughput: 4480.663795143127 txs/s
+Time: 40.382946138 s. Throughput: 0 txs/s
+Time: 41.734710946 s. Throughput: 0 txs/s
+Time: 42.94653251 s. Throughput: 0 txs/s
+Time: 44.320525415 s. Throughput: 1871.2111304360099 txs/s
+Time: 45.539642029 s. Throughput: 4525.45687612412 txs/s
+Time: 46.840581128 s. Throughput: 4629.774896393509 txs/s
+Time: 48.085900732 s. Throughput: 3033.7881075926966 txs/s
+Time: 49.468735855 s. Throughput: 2353.1565414682045 txs/s
+Time: 50.597753461 s. Throughput: 1384.4022426756546 txs/s
+Time: 51.800828302 s. Throughput: 3657.3440874444104 txs/s
+Time: 53.113904295 s. Throughput: 6672.96557959988 txs/s
+Time: 54.392451416 s. Throughput: 5451.563522536015 txs/s
+Time: 55.622271497 s. Throughput: 0 txs/s
+Time: 56.87127672 s. Throughput: 0 txs/s
+Time: 58.267837609 s. Throughput: 859.2634210645106 txs/s
+Time: 59.388027011 s. Throughput: 0 txs/s
+Time: 60.803204103 s. Throughput: 4683.569269619222 txs/s
+Time: 62.336647869 s. Throughput: 2662.0066759462443 txs/s

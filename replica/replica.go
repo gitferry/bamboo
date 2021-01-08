@@ -105,7 +105,7 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 /* Message Handlers */
 
 func (r *Replica) HandleBlock(block blockchain.Block) {
-	log.Debugf("[%v] received a block from %v, view is %v, id: %x", r.ID(), block.Proposer, block.View, block.ID)
+	log.Debugf("[%v] received a block from %v, view is %v, id: %x, prevID: %x", r.ID(), block.Proposer, block.View, block.ID, block.PrevID)
 	r.totalTransDelay += time.Now().Sub(block.Timestamp)
 	r.receivedNo++
 	if !r.isStarted.Load() {
@@ -261,6 +261,7 @@ func (r *Replica) ListenLocalEvent() {
 				break L
 			case <-r.timer.C:
 				r.Safety.ProcessLocalTmo(r.pm.GetCurView())
+				break L
 			}
 		}
 	}

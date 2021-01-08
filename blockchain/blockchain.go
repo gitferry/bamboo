@@ -24,6 +24,10 @@ func NewBlockchain(n int) *BlockChain {
 	return bc
 }
 
+func (bc *BlockChain) Exists(id crypto.Identifier) bool {
+	return bc.forrest.HasVertex(id)
+}
+
 func (bc *BlockChain) AddBlock(block *Block) {
 	blockContainer := &BlockContainer{block}
 	// TODO: add checks

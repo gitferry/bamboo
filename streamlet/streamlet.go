@@ -61,6 +61,9 @@ func NewStreamlet(
 // 6. if the view of the block is higher than the the current view, buffer the block
 // and process it when entering that view
 func (sl *Streamlet) ProcessBlock(block *blockchain.Block) error {
+	if sl.bc.Exists(block.ID) {
+		return nil
+	}
 	log.Debugf("[%v] is processing block, view: %v, id: %x", sl.ID(), block.View, block.ID)
 	curView := sl.pm.GetCurView()
 	if block.View < curView {

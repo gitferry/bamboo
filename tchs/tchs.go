@@ -27,7 +27,7 @@ type Tchs struct {
 	committedBlocks chan *blockchain.Block
 	forkedBlocks    chan *blockchain.Block
 	bufferedQCs     map[crypto.Identifier]*blockchain.QC
-	bufferedBlocks  map[crypto.Identifier]*blockchain.Block
+	bufferedBlocks  map[types.View]*blockchain.Block
 	highQC          *blockchain.QC
 	mu              sync.Mutex
 }
@@ -43,7 +43,7 @@ func NewTchs(
 	th.Election = elec
 	th.pm = pm
 	th.bc = blockchain.NewBlockchain(config.GetConfig().N())
-	th.bufferedBlocks = make(map[crypto.Identifier]*blockchain.Block)
+	th.bufferedBlocks = make(map[types.View]*blockchain.Block)
 	th.bufferedQCs = make(map[crypto.Identifier]*blockchain.QC)
 	th.highQC = &blockchain.QC{View: 0}
 	th.committedBlocks = committedBlocks
@@ -54,24 +54,26 @@ func NewTchs(
 func (th *Tchs) ProcessBlock(block *blockchain.Block) error {
 	log.Debugf("[%v] is processing block, view: %v, id: %x", th.ID(), block.View, block.ID)
 	curView := th.pm.GetCurView()
-	if block.View > curView+1 {
-		//	buffer the block
-		th.bufferedBlocks[block.PrevID] = block
-		log.Debugf("[%v] the block is buffered, id: %x", th.ID(), block.ID)
-		return nil
-	}
 	if block.Proposer != th.ID() {
 		blockIsVerified, _ := crypto.PubVerify(block.Sig, crypto.IDToByte(block.ID), block.Proposer)
 		if !blockIsVerified {
 			log.Warningf("[%v] received a block with an invalid signature", th.ID())
 		}
 	}
+	if block.View > curView+1 {
+		//	buffer the block
+		th.bufferedBlocks[block.View-1] = block
+		log.Debugf("[%v] the block is buffered, view: %v, current view is: %v, id: %x", th.ID(), block.View, curView, block.ID)
+		return nil
+	}
 	if block.QC != nil {
 		th.updateHighQC(block.QC)
 	} else {
 		return fmt.Errorf("the block should contain a QC")
 	}
-	th.processCertificate(block.QC)
+	if block.Proposer != th.ID() {
+		th.processCertificate(block.QC)
+	}
 	curView = th.pm.GetCurView()
 	if block.View < curView {
 		log.Warningf("[%v] received a stale proposal from %v, block view: %v, current view: %v, block id: %x", th.ID(), block.Proposer, block.View, curView, block.ID)
@@ -108,15 +110,41 @@ func (th *Tchs) ProcessBlock(block *blockchain.Block) error {
 	}
 	log.Debugf("[%v] vote is sent, id: %x", th.ID(), vote.BlockID)
 
-	b, ok := th.bufferedBlocks[block.ID]
+	b, ok := th.bufferedBlocks[block.View]
 	if ok {
 		return th.ProcessBlock(b)
+	}
+
+	qc = block.QC
+	if qc == nil {
+		return nil
+	}
+
+	if qc.View < 2 {
+		return nil
+	}
+	if qc.View+1 != block.View {
+		return nil
+	}
+	ok, b, _ = th.commitRule(block)
+	if !ok {
+		return nil
+	}
+	committedBlocks, forkedBlocks, err := th.bc.CommitBlock(b.ID, th.pm.GetCurView())
+	if err != nil {
+		return fmt.Errorf("[%v] cannot commit blocks", th.ID())
+	}
+	for _, cBlock := range committedBlocks {
+		th.committedBlocks <- cBlock
+	}
+	for _, fBlock := range forkedBlocks {
+		th.forkedBlocks <- fBlock
 	}
 	return nil
 }
 
 func (th *Tchs) ProcessVote(vote *blockchain.Vote) {
-	log.Debugf("[%v] is processing the vote, block id: %x", th.ID(), vote.BlockID)
+	log.Debugf("[%v] is processing the vote from %v, block id: %x", th.ID(), vote.Voter, vote.BlockID)
 	if th.ID() != vote.Voter {
 		voteIsVerified, err := crypto.PubVerify(vote.Signature, crypto.IDToByte(vote.BlockID), vote.Voter)
 		if err != nil {
@@ -144,7 +172,11 @@ func (th *Tchs) ProcessVote(vote *blockchain.Vote) {
 
 func (th *Tchs) ProcessRemoteTmo(tmo *pacemaker.TMO) {
 	log.Debugf("[%v] is processing tmo from %v", th.ID(), tmo.NodeID)
-	th.updateHighQC(tmo.HighQC)
+	if tmo.View < th.pm.GetCurView() {
+		return
+	}
+	//th.updateHighQC(tmo.HighQC)
+	//th.processCertificate(tmo.HighQC)
 	isBuilt, tc := th.pm.ProcessRemoteTmo(tmo)
 	if !isBuilt {
 		log.Debugf("[%v] not enough tc for %v", th.ID(), tmo.View)
@@ -155,6 +187,7 @@ func (th *Tchs) ProcessRemoteTmo(tmo *pacemaker.TMO) {
 }
 
 func (th *Tchs) ProcessLocalTmo(view types.View) {
+	th.pm.AdvanceView(view + 1)
 	tmo := &pacemaker.TMO{
 		View:   view + 1,
 		NodeID: th.ID(),
@@ -173,7 +206,7 @@ func (th *Tchs) MakeProposal(payload []*message.Transaction) *blockchain.Block {
 
 func (th *Tchs) forkChoice() *blockchain.QC {
 	choice := th.GetHighQC()
-	choice.View = th.pm.GetCurView() - 1
+	//choice.View = th.pm.GetCurView() - 1
 	return choice
 }
 
@@ -229,46 +262,30 @@ func (th *Tchs) processCertificate(qc *blockchain.QC) {
 	}
 	th.pm.AdvanceView(qc.View)
 	th.updateHighQC(qc)
-	if qc.View < 2 {
-		return
-	}
-	ok, block, _ := th.commitRule(qc)
-	if !ok {
-		return
-	}
-	committedBlocks, forkedBlocks, err := th.bc.CommitBlock(block.ID, th.pm.GetCurView())
-	if err != nil {
-		log.Errorf("[%v] cannot commit blocks", th.ID())
-		return
-	}
-	//go func() {
-	for _, cBlock := range committedBlocks {
-		th.committedBlocks <- cBlock
-	}
-	for _, fBlock := range forkedBlocks {
-		th.forkedBlocks <- fBlock
-	}
-	//}()
 }
 
 func (th *Tchs) votingRule(block *blockchain.Block) (bool, error) {
 	if block.View <= 2 {
 		return true, nil
 	}
-	//parentBlock, err := th.bc.GetParentBlock(block.ID)
-	//if err != nil {
-	//	return false, fmt.Errorf("cannot vote for block: %w", err)
-	//}
-	//if (block.View <= th.lastVotedView) || (parentBlock.View < th.preferredView) {
-	//	return false, nil
-	//}
-	if block.View <= th.lastVotedView {
+	parentBlock, err := th.bc.GetParentBlock(block.ID)
+	if err != nil {
+		return false, fmt.Errorf("cannot vote for block: %w", err)
+	}
+	if (block.View <= th.lastVotedView) || (parentBlock.View < th.preferredView) {
+		if parentBlock.View < th.preferredView {
+			log.Debugf("[%v] parent block view is: %v and preferred view is: %v", th.ID(), parentBlock.View, th.preferredView)
+		}
 		return false, nil
 	}
+	//if block.View <= th.lastVotedView {
+	//	return false, nil
+	//}
 	return true, nil
 }
 
-func (th *Tchs) commitRule(qc *blockchain.QC) (bool, *blockchain.Block, error) {
+func (th *Tchs) commitRule(block *blockchain.Block) (bool, *blockchain.Block, error) {
+	qc := block.QC
 	parentBlock, err := th.bc.GetParentBlock(qc.BlockID)
 	if err != nil {
 		return false, nil, fmt.Errorf("cannot commit any block: %w", err)
@@ -296,6 +313,7 @@ func (th *Tchs) updatePreferredView(qc *blockchain.QC) error {
 		return fmt.Errorf("cannot update preferred view: %w", err)
 	}
 	if qc.View > th.preferredView {
+		log.Debugf("[%v] preferred view has been updated to %v", th.ID(), qc.View)
 		th.preferredView = qc.View
 	}
 	return nil

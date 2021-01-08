@@ -33,9 +33,9 @@ distribute(){
     done
 }
 
-USERNAME="ubuntu"
-PASSWD=""
-FIRST=false
+USERNAME="gaify"
+PASSWD="GaiFY#1"
+FIRST=true
 MAXPEERNUM=(`wc -l public_ips.txt | awk '{ print $1 }'`)
 
 if ${FIRST}; then

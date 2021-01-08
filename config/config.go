@@ -43,6 +43,8 @@ type Config struct {
 	Delay          int             `json:"delay"` // transmission delay in ms
 	DErr           int             `json:"derr"`  // the err taken into delays
 	MemSize        int             `json:"memsize"`
+	Slow           int             `json:"slow"`
+	Crash          int             `json:"crash"`
 
 	hasher string
 	signer string

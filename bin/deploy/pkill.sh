@@ -11,7 +11,7 @@ kill_all_servers(){
 }
 
 # NOTE!!!
-USERNAME="ubuntu"
+USERNAME="gaify"
 
 # distribute files
 kill_all_servers  $USERNAME

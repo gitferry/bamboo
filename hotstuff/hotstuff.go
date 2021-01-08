@@ -150,7 +150,8 @@ func (hs *HotStuff) ProcessVote(vote *blockchain.Vote) {
 
 func (hs *HotStuff) ProcessRemoteTmo(tmo *pacemaker.TMO) {
 	log.Debugf("[%v] is processing tmo from %v", hs.ID(), tmo.NodeID)
-	hs.updateHighQC(tmo.HighQC)
+	//hs.updateHighQC(tmo.HighQC)
+	//hs.processCertificate(tmo.HighQC)
 	isBuilt, tc := hs.pm.ProcessRemoteTmo(tmo)
 	if !isBuilt {
 		log.Debugf("[%v] not enough tc for %v", hs.ID(), tmo.View)
@@ -161,6 +162,7 @@ func (hs *HotStuff) ProcessRemoteTmo(tmo *pacemaker.TMO) {
 }
 
 func (hs *HotStuff) ProcessLocalTmo(view types.View) {
+	hs.pm.AdvanceView(view)
 	tmo := &pacemaker.TMO{
 		View:   view + 1,
 		NodeID: hs.ID(),
