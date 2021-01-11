@@ -26,7 +26,7 @@
   "master": "0",
   "delay": 0,
   "derr": 0,
-  "slow": 200,
+  "slow": 100,
   "crash": 20000,
   "benchmark": {
     "T": 1200,
