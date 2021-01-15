@@ -9,7 +9,6 @@ import (
 
 	"github.com/gitferry/bamboo/blockchain"
 	"github.com/gitferry/bamboo/config"
-	"github.com/gitferry/bamboo/crypto"
 	"github.com/gitferry/bamboo/election"
 	"github.com/gitferry/bamboo/hotstuff"
 	"github.com/gitferry/bamboo/identity"
@@ -23,24 +22,22 @@ import (
 	"github.com/gitferry/bamboo/types"
 )
 
-const SILENCE = "silence"
-
 type Replica struct {
 	node.Node
 	Safety
 	election.Election
-	pd                   *mempool.Producer
-	pm                   *pacemaker.Pacemaker
-	start                chan bool
-	isStarted            atomic.Bool
-	isByz                bool
-	timer                *time.Timer
-	committedBlocks      chan *blockchain.Block
-	forkedBlocks         chan *blockchain.Block
-	eventChan            chan interface{}
+	pd              *mempool.Producer
+	pm              *pacemaker.Pacemaker
+	start           chan bool // signal to start the node
+	isStarted       atomic.Bool
+	isByz           bool
+	timer           *time.Timer // timeout for each view
+	committedBlocks chan *blockchain.Block
+	forkedBlocks    chan *blockchain.Block
+	eventChan       chan interface{}
+
+	/* for monitoring node statistics */
 	thrus                string
-	hasher               crypto.Hasher
-	signer               string
 	lastViewTime         time.Time
 	startTime            time.Time
 	tmpTime              time.Time
@@ -49,7 +46,6 @@ type Replica struct {
 	totalDelay           time.Duration
 	totalRoundTime       time.Duration
 	totalVoteTime        time.Duration
-	totalTransDelay      time.Duration
 	totalBlockSize       int
 	receivedNo           int
 	roundNo              int
@@ -73,13 +69,13 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 	} else {
 		r.Election = election.NewStatic(config.GetConfig().Master)
 	}
+	r.isByz = isByz
 	r.pd = mempool.NewProducer()
 	r.pm = pacemaker.NewPacemaker(config.GetConfig().N())
 	r.start = make(chan bool)
 	r.eventChan = make(chan interface{})
 	r.committedBlocks = make(chan *blockchain.Block, 100)
 	r.forkedBlocks = make(chan *blockchain.Block, 100)
-	r.isByz = isByz
 	r.Register(blockchain.Block{}, r.HandleBlock)
 	r.Register(blockchain.Vote{}, r.HandleVote)
 	r.Register(pacemaker.TMO{}, r.HandleTmo)
@@ -89,6 +85,8 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 	gob.Register(blockchain.Vote{})
 	gob.Register(pacemaker.TC{})
 	gob.Register(pacemaker.TMO{})
+
+	// Is there a better way to reduce the number of parameters?
 	switch alg {
 	case "hotstuff":
 		r.Safety = hotstuff.NewHotStuff(r.Node, r.pm, r.Election, r.committedBlocks, r.forkedBlocks)
@@ -105,43 +103,35 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 /* Message Handlers */
 
 func (r *Replica) HandleBlock(block blockchain.Block) {
-	log.Debugf("[%v] received a block from %v, view is %v, id: %x, prevID: %x", r.ID(), block.Proposer, block.View, block.ID, block.PrevID)
-	r.totalTransDelay += time.Now().Sub(block.Timestamp)
 	r.receivedNo++
-	if !r.isStarted.Load() {
-		log.Debugf("[%v] is boosting", r.ID())
-		r.isStarted.Store(true)
-		r.start <- true
-	}
+	r.startSignal()
+	log.Debugf("[%v] received a block from %v, view is %v, id: %x, prevID: %x", r.ID(), block.Proposer, block.View, block.ID, block.PrevID)
 	r.eventChan <- block
 }
 
 func (r *Replica) HandleVote(vote blockchain.Vote) {
 	if vote.View < r.pm.GetCurView() {
-		log.Debugf("[%v] received a stale vote, view: %v, block id: %x", r.ID(), vote.View, vote.BlockID)
 		return
 	}
-	if !r.isStarted.Load() {
-		log.Debugf("[%v] is boosting", r.ID())
-		r.isStarted.Store(true)
-		r.start <- true
-	}
-
-	log.Debugf("[%v] received a vote from %v, blockID is %x", r.ID(), vote.Voter, vote.BlockID)
+	r.startSignal()
+	log.Debugf("[%v] received a vote frm %v, blockID is %x", r.ID(), vote.Voter, vote.BlockID)
 	r.eventChan <- vote
 }
 
 func (r *Replica) HandleTmo(tmo pacemaker.TMO) {
+	if tmo.View < r.pm.GetCurView() {
+		return
+	}
 	log.Debugf("[%v] received a timeout from %v for view %v", r.ID(), tmo.NodeID, tmo.View)
 	r.eventChan <- tmo
 }
 
+// handleQuery replies a query with the statistics of the node
 func (r *Replica) handleQuery(m message.Query) {
 	//aveCreateDuration := float64(r.totalCreateDuration.Milliseconds()) / float64(r.proposedNo)
 	//aveProcessTime := float64(r.totalProcessDuration.Milliseconds()) / float64(r.processedNo)
 	//aveVoteProcessTime := float64(r.totalVoteTime.Milliseconds()) / float64(r.voteNo)
 	aveBlockSize := float64(r.totalBlockSize) / float64(r.proposedNo)
-	//aveTransDelay := float64(r.totalTransDelay.Milliseconds()) / float64(r.receivedNo)
 	//requestRate := float64(r.pd.TotalReceivedTxNo()) / time.Now().Sub(r.startTime).Seconds()
 	//committedRate := float64(r.committedNo) / time.Now().Sub(r.startTime).Seconds()
 	//aveRoundTime := float64(r.totalRoundTime.Milliseconds()) / float64(r.roundNo)
@@ -156,17 +146,8 @@ func (r *Replica) handleQuery(m message.Query) {
 
 func (r *Replica) handleTxn(m message.Transaction) {
 	r.pd.AddTxn(&m)
-	if !r.isStarted.Load() {
-		r.startTime = time.Now()
-		r.tmpTime = time.Now()
-		log.Debugf("[%v] is boosting", r.ID())
-		r.isStarted.Store(true)
-		r.start <- true
-		// wait for others to get started
-		//time.Sleep(100 * time.Millisecond)
-	}
-
-	// kick-off the protocol
+	r.startSignal()
+	// the first leader kicks off the protocol
 	if r.pm.GetCurView() == 0 && r.IsLeader(r.ID(), 1) {
 		log.Debugf("[%v] is going to kick off the protocol", r.ID())
 		r.pm.AdvanceView(0)
@@ -178,6 +159,7 @@ func (r *Replica) handleTxn(m message.Transaction) {
 func (r *Replica) processCommittedBlock(block *blockchain.Block) {
 	if block.Proposer == r.ID() {
 		for _, txn := range block.Payload {
+			// only record the delay of transactions from the local memory pool
 			delay := time.Now().Sub(txn.Timestamp)
 			r.totalDelay += delay
 			r.latencyNo++
@@ -208,34 +190,26 @@ func (r *Replica) processNewView(newView types.View) {
 
 func (r *Replica) proposeBlock(view types.View) {
 	createStart := time.Now()
-	block := r.Safety.MakeProposal(r.pd.GeneratePayload())
+	block := r.Safety.MakeProposal(view, r.pd.GeneratePayload())
 	r.totalBlockSize += len(block.Payload)
 	createEnd := time.Now()
 	createDuration := createEnd.Sub(createStart)
-	//log.Debugf("[%v] spent %v to create the block for view: %v", r.ID(), createDuration, block.View)
 	block.Timestamp = time.Now()
-	r.Broadcast(block)
 	r.totalCreateDuration += createDuration
 	r.proposedNo++
-	//log.Debugf("[%v] finished creating the block for view: %v, payload size: %v, used: %v microseconds, id: %x, prevID: %x", r.ID(), view, len(block.Payload), createDuration.Microseconds(), block.ID, block.PrevID)
+	r.Broadcast(block)
 	_ = r.Safety.ProcessBlock(block)
 	processedDuration := time.Now().Sub(createEnd)
 	r.totalProcessDuration += processedDuration
 	r.processedNo++
-	//log.Debugf("[%v] spent %v to process the block for view: %v", r.ID(), processedDuration, block.View)
-	//log.Debugf("[%v] finished processing the block for view: %v, used: %v microseconds, id: %x, prevID: %x", r.ID(), view, processDuration.Microseconds(), block.ID, block.PrevID)
 }
 
+// ListenLocalEvent listens new view and timeout events
 func (r *Replica) ListenLocalEvent() {
 	r.lastViewTime = time.Now()
 	r.timer = time.NewTimer(r.pm.GetTimerForView())
-	//roundTimeMeasure := make([]time.Duration, 0, 5000)
 	for {
 		r.timer.Reset(r.pm.GetTimerForView())
-		//currentLeader := r.FindLeaderFor(r.pm.GetCurView())
-		//if config.GetConfig().IsByzantine(currentLeader) && config.GetConfig().Strategy == "silence" {
-		//	r.pm.AdvanceView(r.pm.GetCurView())
-		//}
 	L:
 		for {
 			select {
@@ -243,21 +217,11 @@ func (r *Replica) ListenLocalEvent() {
 				// measure round time
 				now := time.Now()
 				lasts := now.Sub(r.lastViewTime)
-				//if view >= 10 {
-				//log.Debugf("[%v] spent %v in the last view %v", r.ID(), lasts, r.pm.GetCurView()-1)
 				r.totalRoundTime += lasts
 				r.roundNo++
-				//}
-				//if int(view) == config.GetConfig().MaxRound {
-				//	var sumRoundTime time.Duration
-				//	for _, t := range roundTimeMeasure {
-				//		sumRoundTime = sumRoundTime + t
-				//	}
-				//	log.Infof("[%v] the average view duration is %v microseconds, measured %v views", r.ID(), float64(sumRoundTime.Microseconds())/float64(len(roundTimeMeasure)))
-				//}
 				r.lastViewTime = now
-				//log.Infof("[%v] the last view lasts %v milliseconds, current view: %v", r.ID(), lasts.Milliseconds(), view)
 				r.eventChan <- view
+				log.Debugf("[%v] the last view lasts %v milliseconds, current view: %v", r.ID(), lasts.Milliseconds(), view)
 				break L
 			case <-r.timer.C:
 				r.Safety.ProcessLocalTmo(r.pm.GetCurView())
@@ -267,6 +231,7 @@ func (r *Replica) ListenLocalEvent() {
 	}
 }
 
+// ListenCommittedBlocks listens committed blocks and forked blocks from the protocols
 func (r *Replica) ListenCommittedBlocks() {
 	for {
 		select {
@@ -278,9 +243,20 @@ func (r *Replica) ListenCommittedBlocks() {
 	}
 }
 
+func (r *Replica) startSignal() {
+	if !r.isStarted.Load() {
+		r.startTime = time.Now()
+		r.tmpTime = time.Now()
+		log.Debugf("[%v] is boosting", r.ID())
+		r.isStarted.Store(true)
+		r.start <- true
+	}
+}
+
 // Start starts event loop
 func (r *Replica) Start() {
 	go r.Run()
+	// wait for the start signal
 	<-r.start
 	go r.ListenLocalEvent()
 	go r.ListenCommittedBlocks()
@@ -292,17 +268,14 @@ func (r *Replica) Start() {
 		case blockchain.Block:
 			startProcessTime := time.Now()
 			_ = r.Safety.ProcessBlock(&v)
+			r.totalProcessDuration += time.Now().Sub(startProcessTime)
 			r.processedNo++
-			processingDuration := time.Now().Sub(startProcessTime)
-			r.totalProcessDuration += processingDuration
-			//log.Debugf("[%v] spent %v to process the block for view: %v", r.ID(), processingDuration, v.View)
 		case blockchain.Vote:
 			startProcessTime := time.Now()
 			r.Safety.ProcessVote(&v)
-			r.voteNo++
 			processingDuration := time.Now().Sub(startProcessTime)
 			r.totalVoteTime += processingDuration
-			//log.Debugf("[%v] spent %v to process the vote for view: %v", r.ID(), processingDuration, v.View)
+			r.voteNo++
 		case pacemaker.TMO:
 			r.Safety.ProcessRemoteTmo(&v)
 		}

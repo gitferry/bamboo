@@ -166,9 +166,9 @@ func (sl *Streamlet) ProcessLocalTmo(view types.View) {
 	sl.ProcessRemoteTmo(tmo)
 }
 
-func (sl *Streamlet) MakeProposal(payload []*message.Transaction) *blockchain.Block {
+func (sl *Streamlet) MakeProposal(view types.View, payload []*message.Transaction) *blockchain.Block {
 	prevID := sl.forkChoice()
-	block := blockchain.MakeBlock(sl.pm.GetCurView(), &blockchain.QC{
+	block := blockchain.MakeBlock(view, &blockchain.QC{
 		View:      0,
 		BlockID:   prevID,
 		AggSig:    nil,

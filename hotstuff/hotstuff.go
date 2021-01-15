@@ -173,9 +173,9 @@ func (hs *HotStuff) ProcessLocalTmo(view types.View) {
 	log.Debugf("[%v] broadcast is done for sending tmo", hs.ID())
 }
 
-func (hs *HotStuff) MakeProposal(payload []*message.Transaction) *blockchain.Block {
+func (hs *HotStuff) MakeProposal(view types.View, payload []*message.Transaction) *blockchain.Block {
 	qc := hs.forkChoice()
-	block := blockchain.MakeBlock(hs.pm.GetCurView(), qc, qc.BlockID, payload, hs.ID())
+	block := blockchain.MakeBlock(view, qc, qc.BlockID, payload, hs.ID())
 	return block
 }
 
