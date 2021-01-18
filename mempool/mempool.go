@@ -19,6 +19,7 @@ func NewMemPool() *MemPool {
 
 func (mp *MemPool) addNew(tx *message.Transaction) {
 	mp.Backend.insertBack(tx)
+	mp.Backend.addToBloom(tx.ID)
 }
 
 func (mp *MemPool) addOld(tx *message.Transaction) {

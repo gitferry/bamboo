@@ -84,6 +84,25 @@ func (th *Tchs) ProcessBlock(block *blockchain.Block) error {
 	}
 	th.bc.AddBlock(block)
 
+	// check commit rule
+	qc := block.QC
+	if qc.View >= 2 && qc.View+1 == block.View {
+		ok, b, _ := th.commitRule(block)
+		if !ok {
+			return nil
+		}
+		committedBlocks, forkedBlocks, err := th.bc.CommitBlock(b.ID, th.pm.GetCurView())
+		if err != nil {
+			return fmt.Errorf("[%v] cannot commit blocks", th.ID())
+		}
+		for _, cBlock := range committedBlocks {
+			th.committedBlocks <- cBlock
+		}
+		for _, fBlock := range forkedBlocks {
+			th.forkedBlocks <- fBlock
+		}
+	}
+
 	// process buffered QC
 	qc, ok := th.bufferedQCs[block.ID]
 	if ok {
@@ -112,34 +131,10 @@ func (th *Tchs) ProcessBlock(block *blockchain.Block) error {
 
 	b, ok := th.bufferedBlocks[block.View]
 	if ok {
-		return th.ProcessBlock(b)
+		err := th.ProcessBlock(b)
+		return err
 	}
 
-	qc = block.QC
-	if qc == nil {
-		return nil
-	}
-
-	if qc.View < 2 {
-		return nil
-	}
-	if qc.View+1 != block.View {
-		return nil
-	}
-	ok, b, _ = th.commitRule(block)
-	if !ok {
-		return nil
-	}
-	committedBlocks, forkedBlocks, err := th.bc.CommitBlock(b.ID, th.pm.GetCurView())
-	if err != nil {
-		return fmt.Errorf("[%v] cannot commit blocks", th.ID())
-	}
-	for _, cBlock := range committedBlocks {
-		th.committedBlocks <- cBlock
-	}
-	for _, fBlock := range forkedBlocks {
-		th.forkedBlocks <- fBlock
-	}
 	return nil
 }
 
@@ -175,8 +170,6 @@ func (th *Tchs) ProcessRemoteTmo(tmo *pacemaker.TMO) {
 	if tmo.View < th.pm.GetCurView() {
 		return
 	}
-	//th.updateHighQC(tmo.HighQC)
-	//th.processCertificate(tmo.HighQC)
 	isBuilt, tc := th.pm.ProcessRemoteTmo(tmo)
 	if !isBuilt {
 		log.Debugf("[%v] not enough tc for %v", th.ID(), tmo.View)
@@ -206,7 +199,8 @@ func (th *Tchs) MakeProposal(view types.View, payload []*message.Transaction) *b
 
 func (th *Tchs) forkChoice() *blockchain.QC {
 	choice := th.GetHighQC()
-	//choice.View = th.pm.GetCurView() - 1
+	// to simulate TC under forking attack
+	choice.View = th.pm.GetCurView() - 1
 	return choice
 }
 
@@ -214,7 +208,6 @@ func (th *Tchs) processTC(tc *pacemaker.TC) {
 	if tc.View < th.pm.GetCurView() {
 		return
 	}
-	th.pm.UpdateTC(tc)
 	th.pm.AdvanceView(tc.View)
 }
 
@@ -260,8 +253,8 @@ func (th *Tchs) processCertificate(qc *blockchain.QC) {
 		log.Debugf("[%v] a qc is buffered, view: %v, id: %x", th.ID(), qc.View, qc.BlockID)
 		return
 	}
-	th.pm.AdvanceView(qc.View)
 	th.updateHighQC(qc)
+	th.pm.AdvanceView(qc.View)
 }
 
 func (th *Tchs) votingRule(block *blockchain.Block) (bool, error) {
@@ -278,9 +271,6 @@ func (th *Tchs) votingRule(block *blockchain.Block) (bool, error) {
 		}
 		return false, nil
 	}
-	//if block.View <= th.lastVotedView {
-	//	return false, nil
-	//}
 	return true, nil
 }
 

@@ -30,7 +30,6 @@ func (bc *BlockChain) Exists(id crypto.Identifier) bool {
 
 func (bc *BlockChain) AddBlock(block *Block) {
 	blockContainer := &BlockContainer{block}
-	// TODO: add checks
 	bc.forrest.AddVertex(blockContainer)
 }
 
@@ -116,7 +115,7 @@ func (bc *BlockChain) GetBlockIntervals() float64 {
 	return float64(bc.totalBlockIntervals) / float64(bc.committedBlockNo)
 }
 
-func (bc *BlockChain) GetHighestComitted() int {
+func (bc *BlockChain) GetHighestCommitted() int {
 	return bc.highestComitted
 }
 

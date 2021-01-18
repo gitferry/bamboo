@@ -30,7 +30,3 @@ func (pd *Producer) CollectTxn(txn *message.Transaction) {
 func (pd *Producer) TotalReceivedTxNo() int64 {
 	return pd.mempool.totalReceived
 }
-
-func (pd *Producer) AddToBloom(id string) {
-	pd.mempool.Add(id)
-}

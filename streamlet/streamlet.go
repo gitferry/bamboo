@@ -102,7 +102,6 @@ func (sl *Streamlet) ProcessBlock(block *blockchain.Block) error {
 	// vote to the current leader
 	sl.ProcessVote(vote)
 	sl.Broadcast(vote)
-	//log.Debugf("[%v] is done broadcasting the vote, id: %x", sl.ID(), vote.BlockID)
 
 	// process buffers
 	qc, ok := sl.bufferedQCs[block.ID]
@@ -111,7 +110,7 @@ func (sl *Streamlet) ProcessBlock(block *blockchain.Block) error {
 	}
 	b, ok := sl.bufferedBlocks[block.ID]
 	if ok {
-		sl.ProcessBlock(b)
+		_ = sl.ProcessBlock(b)
 	}
 	return nil
 }
@@ -129,6 +128,7 @@ func (sl *Streamlet) ProcessVote(vote *blockchain.Vote) {
 			return
 		}
 	}
+	// echo the message
 	_, exists := sl.echoedBlock[vote.BlockID]
 	if !exists {
 		sl.echoedBlock[vote.BlockID] = struct{}{}
@@ -182,11 +182,7 @@ func (sl *Streamlet) forkChoice() crypto.Identifier {
 	if sl.GetNotarizedHeight() == 0 {
 		prevID = crypto.MakeID("Genesis block")
 	} else {
-		tail := 1
-		if sl.IsByz() && config.GetConfig().Strategy == "fork" {
-			tail = 2
-		}
-		tailNotarizedBlock := sl.notarizedChain[sl.GetNotarizedHeight()-tail][0]
+		tailNotarizedBlock := sl.notarizedChain[sl.GetNotarizedHeight()-1][0]
 		prevID = tailNotarizedBlock.ID
 	}
 	return prevID
@@ -196,7 +192,6 @@ func (sl *Streamlet) processTC(tc *pacemaker.TC) {
 	if tc.View < sl.pm.GetCurView() {
 		return
 	}
-	sl.pm.UpdateTC(tc)
 	go sl.pm.AdvanceView(tc.View)
 }
 
@@ -241,7 +236,6 @@ func (sl *Streamlet) processCertificate(qc *blockchain.QC) {
 		log.Errorf("[%v] cannot commit blocks", sl.ID())
 		return
 	}
-	//go func() {
 	for _, cBlock := range committedBlocks {
 		sl.committedBlocks <- cBlock
 		delete(sl.echoedBlock, cBlock.ID)
@@ -252,7 +246,6 @@ func (sl *Streamlet) processCertificate(qc *blockchain.QC) {
 		sl.forkedBlocks <- fBlock
 		log.Debugf("[%v] is going to collect forked block, view: %v, id: %x", sl.ID(), fBlock.View, fBlock.ID)
 	}
-	//}()
 	b, ok := sl.bufferedBlocks[qc.BlockID]
 	if ok {
 		log.Debugf("[%v] found a buffered block by qc, qc.BlockID: %x", sl.ID(), qc.BlockID)
