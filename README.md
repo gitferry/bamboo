@@ -23,7 +23,7 @@ For each view, replicas should certify the validity of the proposed block by for
 A block with a valid QC is considered certified.
 The basic structure of a blockchain is depicted in the figure below.
 
-![blockchain][doc/propose-vote.jpeg]
+![blockchain][https://github.com/gitferry/bamboo/blob/master/doc/propose-vote.jpeg?raw=true]
 
 Forks happen because of conflicting blocks, which is a scenario in which two blocks do not extend each other.
 Conflicting blocks might arise because of network delays or proposers deliberately ignoring the tail of the blockchain.
