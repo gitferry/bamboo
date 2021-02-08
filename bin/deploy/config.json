@@ -15,7 +15,7 @@
   "multiversion": false,
   "timeout": 200,
   "bsize": 400,
-  "memsize": 400,
+  "memsize": 10000,
   "fixed": false,
   "payload_size": 0,
   "delta": 1,
