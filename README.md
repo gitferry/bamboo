@@ -8,7 +8,7 @@ Therefore, Bamboo abstracts the 4 rules into a *Safety* module and provides impl
 
 *Warning*: **Bamboo** is still under heavy development, with more features and protocols to include.
 
-Bamboo details can be found in this [technical report](https://arxiv.org/abs/2103.00777).
+Bamboo details can be found in this [technical report](https://arxiv.org/abs/2103.00777). The paper is to appear at [ICDCS 2021](https://icdcs2021.us/).
 
 ## What is cBFT?
 At a high level, cBFT protocols share a unifying *propose-vote* paradigm in which they assign transactions coming from the clients a unique order in the global ledger.
