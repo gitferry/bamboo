@@ -72,9 +72,9 @@ func (hs *HotStuff) ProcessBlock(block *blockchain.Block) error {
 		return fmt.Errorf("the block should contain a QC")
 	}
 	// does not have to process the QC if the replica is the proposer
-	if block.Proposer != hs.ID() {
-		hs.processCertificate(block.QC)
-	}
+	//if block.Proposer != hs.ID() {
+	hs.processCertificate(block.QC)
+	//}
 	curView = hs.pm.GetCurView()
 	if block.View < curView {
 		log.Warningf("[%v] received a stale proposal from %v", hs.ID(), block.Proposer)
@@ -227,13 +227,13 @@ func (hs *HotStuff) processCertificate(qc *blockchain.QC) {
 	if qc.View < hs.pm.GetCurView() {
 		return
 	}
-	if qc.Leader != hs.ID() {
-		quorumIsVerified, _ := crypto.VerifyQuorumSignature(qc.AggSig, qc.BlockID, qc.Signers)
-		if quorumIsVerified == false {
-			log.Warningf("[%v] received a quorum with invalid signatures", hs.ID())
-			return
-		}
+	//if qc.Leader != hs.ID() {
+	quorumIsVerified, _ := crypto.VerifyQuorumSignature(qc.AggSig, qc.BlockID, qc.Signers)
+	if quorumIsVerified == false {
+		log.Warningf("[%v] received a quorum with invalid signatures", hs.ID())
+		return
 	}
+	//}
 	if hs.IsByz() && config.GetConfig().Strategy == FORK && hs.IsLeader(hs.ID(), qc.View+1) {
 		hs.pm.AdvanceView(qc.View)
 		return

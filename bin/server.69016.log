@@ -1,0 +1,29 @@
+[INFO] 2021/04/01 13:37:16.096138 server.go:21: node 3 starting...
+[DEBUG] 2021/04/01 13:37:16.096682 transport.go:129: start listening 3737
+[INFO] 2021/04/01 13:37:16.107986 node.go:93: node 3 start running
+[INFO] 2021/04/01 13:37:16.108098 http.go:47: http server starting on :8072
+[INFO] 2021/04/01 13:37:16.108698 server.go:21: node 4 starting...
+[INFO] 2021/04/01 13:37:16.108736 server.go:21: node 1 starting...
+[DEBUG] 2021/04/01 13:37:16.108870 transport.go:129: start listening 3738
+[DEBUG] 2021/04/01 13:37:16.108915 transport.go:129: start listening 3735
+[INFO] 2021/04/01 13:37:16.108726 server.go:21: node 2 starting...
+[INFO] 2021/04/01 13:37:16.109801 node.go:93: node 4 start running
+[INFO] 2021/04/01 13:37:16.109898 http.go:47: http server starting on :8073
+[INFO] 2021/04/01 13:37:16.111480 node.go:93: node 1 start running
+[INFO] 2021/04/01 13:37:16.111559 http.go:47: http server starting on :8070
+[DEBUG] 2021/04/01 13:37:16.111722 transport.go:129: start listening 3736
+[INFO] 2021/04/01 13:37:16.112114 node.go:93: node 2 start running
+[INFO] 2021/04/01 13:37:16.112215 http.go:47: http server starting on :8071
+[DEBUG] 2021/04/01 13:37:18.139563 replica.go:298: [2] is boosting
+[DEBUG] 2021/04/01 13:37:18.142130 replica.go:298: [1] is boosting
+[DEBUG] 2021/04/01 13:37:18.142819 replica.go:298: [4] is boosting
+[DEBUG] 2021/04/01 13:37:18.142882 replica.go:191: [4] is going to kick off the protocol
+[DEBUG] 2021/04/01 13:37:18.143694 replica.go:272: [4] the last view lasts 0 milliseconds, current view: 1
+[DEBUG] 2021/04/01 13:37:18.143764 replica.go:223: [4] is processing new view: 1, leader is 4
+[DEBUG] 2021/04/01 13:37:18.139882 replica.go:298: [3] is boosting
+[DEBUG] 2021/04/01 13:37:18.147596 hotstuff.go:55: [4] is processing block from 4, view: 1, id: b63530fcf3544c064385311aa4cc6c11f024191b268d8cc05ed4de72c3d0cc63
+[DEBUG] 2021/04/01 13:37:18.147897 hotstuff.go:226: [4] is processing a QC, block id: 0000000000000000000000000000000000000000000000000000000000000000
+[DEBUG] 2021/04/01 13:37:18.148079 hotstuff.go:107: [4] vote is sent to itself, id: b63530fcf3544c064385311aa4cc6c11f024191b268d8cc05ed4de72c3d0cc63
+[DEBUG] 2021/04/01 13:37:18.148175 hotstuff.go:122: [4] is processing the vote, block id: b63530fcf3544c064385311aa4cc6c11f024191b268d8cc05ed4de72c3d0cc63
+[DEBUG] 2021/04/01 13:37:18.148217 hotstuff.go:136: [4] not sufficient votes to build a QC, block id: b63530fcf3544c064385311aa4cc6c11f024191b268d8cc05ed4de72c3d0cc63
+[DEBUG] 2021/04/01 13:37:18.149843 replica.go:133: [1] received a block from 4, view is 1, id: b63530fcf3544c064385311aa4cc6c11f024191b268d8cc05ed4de72c3d0cc63, prevID: 0000000000000000000000000000000000000000000000000000000000000000

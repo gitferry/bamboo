@@ -5,6 +5,7 @@ import (
 	"fmt"
 	fhs "github.com/gitferry/bamboo/fasthostuff"
 	"github.com/gitferry/bamboo/lbft"
+	"sync"
 	"time"
 
 	"go.uber.org/atomic"
@@ -23,6 +24,13 @@ import (
 	"github.com/gitferry/bamboo/tchs"
 	"github.com/gitferry/bamboo/types"
 )
+
+type TimeTrack struct {
+	startTime        time.Time
+	startProcessTime time.Time
+	endProcessTime   time.Time
+	endTime          time.Time
+}
 
 type Replica struct {
 	node.Node
@@ -50,15 +58,21 @@ type Replica struct {
 	totalDelay           time.Duration
 	totalRoundTime       time.Duration
 	totalVoteTime        time.Duration
-	totalBlockSize       int
-	receivedNo           int
-	roundNo              int
-	voteNo               int
-	totalCommittedTx     int
-	latencyNo            int
-	proposedNo           int
-	processedNo          int
-	committedNo          int
+	viewTimeTrack        map[types.View]*TimeTrack
+	aveProposeTime       float64
+	aveProcessTime       float64
+	aveVotingTime        float64
+
+	totalBlockSize   int
+	receivedNo       int
+	roundNo          int
+	voteNo           int
+	totalCommittedTx int
+	latencyNo        int
+	proposedNo       int
+	processedNo      int
+	committedNo      int
+	mu               sync.Mutex
 }
 
 // NewReplica creates a new replica instance
@@ -79,6 +93,7 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 	r.start = make(chan bool)
 	r.eventChan = make(chan interface{})
 	r.committedBlocks = make(chan *blockchain.Block, 100)
+	r.viewTimeTrack = make(map[types.View]*TimeTrack)
 	r.forkedBlocks = make(chan *blockchain.Block, 100)
 	r.Register(blockchain.Block{}, r.HandleBlock)
 	r.Register(blockchain.Vote{}, r.HandleVote)
@@ -136,20 +151,21 @@ func (r *Replica) HandleTmo(tmo pacemaker.TMO) {
 
 // handleQuery replies a query with the statistics of the node
 func (r *Replica) handleQuery(m message.Query) {
-	realAveProposeTime := float64(r.totalProposeDuration.Milliseconds()) / float64(r.processedNo)
-	aveProcessTime := float64(r.totalProcessDuration.Milliseconds()) / float64(r.processedNo)
-	aveVoteProcessTime := float64(r.totalVoteTime.Milliseconds()) / float64(r.roundNo)
 	aveBlockSize := float64(r.totalBlockSize) / float64(r.proposedNo)
-	//requestRate := float64(r.pd.TotalReceivedTxNo()) / time.Now().Sub(r.startTime).Seconds()
-	//committedRate := float64(r.committedNo) / time.Now().Sub(r.startTime).Seconds()
-	aveRoundTime := float64(r.totalRoundTime.Milliseconds()) / float64(r.roundNo)
-	aveProposeTime := aveRoundTime - aveProcessTime - aveVoteProcessTime
+	//for _, tc := range r.viewTimeTrack {
+	//	if tc.startProcessTime.IsZero() || tc.endProcessTime.IsZero() {
+	//		r.totalProposeDuration += tc.startProcessTime.Sub(tc.startTime)
+	//		r.totalProcessDuration += tc.endProcessTime.Sub(tc.startProcessTime)
+	//		r.totalVoteTime += tc.endTime.Sub(tc.endProcessTime)
+	//	}
+	//}
+	//aveProposeTime := float64(r.totalProcessDuration) / float64(len(r.viewTimeTrack))
+	//aveProcessTime := float64(r.totalProcessDuration) / float64(len(r.viewTimeTrack))
+	//aveVotingTime := float64(r.totalVoteTime) / float64(len(r.viewTimeTrack))
 	latency := float64(r.totalDelay.Milliseconds()) / float64(r.latencyNo)
-	//r.thrus += fmt.Sprintf("Time: %v s. Throughput: %v txs/s\n", time.Now().Sub(r.startTime).Seconds(), float64(r.totalCommittedTx)/time.Now().Sub(r.tmpTime).Seconds())
 	r.totalCommittedTx = 0
 	r.tmpTime = time.Now()
-	//status := fmt.Sprintf("chain status is: %s\nCommitted rate is %v.\nAve. block size is %v.\nAve. trans. delay is %v ms.\nAve. creation time is %f ms.\nAve. processing time is %v ms.\nAve. vote time is %v ms.\nRequest rate is %f txs/s.\nAve. round time is %f ms.\nLatency is %f ms.\nThroughput is %f txs/s.\n", r.Safety.GetChainStatus(), committedRate, aveBlockSize, aveTransDelay, aveCreateDuration, aveProcessTime, aveVoteProcessTime, requestRate, aveRoundTime, latency, throughput)
-	status := fmt.Sprintf("Ave. actual proposing time is %v ms.\nAve. proposing time is %v ms.\nAve. processing time is %v ms.\nAve. vote time is %v ms.\nAve. block size is %v.\nAve. round time is %v ms.\nLatency is %v ms.\n", realAveProposeTime, aveProposeTime, aveProcessTime, aveVoteProcessTime, aveBlockSize, aveRoundTime, latency)
+	status := fmt.Sprintf("No. of views: %v.\nAve. proposing time is %v ms.\nAve. processing time is %v ms.\nAve. vote time is %v ms.\nAve. block size is %v.\nLatency is %v ms.\n", len(r.viewTimeTrack), r.aveProposeTime, r.aveProcessTime, r.aveVotingTime, aveBlockSize, latency)
 	m.Reply(message.QueryReply{Info: status})
 }
 
@@ -198,17 +214,16 @@ func (r *Replica) processNewView(newView types.View) {
 }
 
 func (r *Replica) proposeBlock(view types.View) {
-	createStart := time.Now()
 	block := r.Safety.MakeProposal(view, r.pd.GeneratePayload())
 	r.totalBlockSize += len(block.Payload)
 	r.proposedNo++
-	createEnd := time.Now()
-	createDuration := createEnd.Sub(createStart)
-	block.Timestamp = time.Now()
-	r.totalCreateDuration += createDuration
 	r.Broadcast(block)
+	if _, exists := r.viewTimeTrack[block.View]; !exists {
+		r.viewTimeTrack[block.View] = &TimeTrack{startTime: time.Now()}
+	}
+	r.viewTimeTrack[block.View].startProcessTime = time.Now()
 	_ = r.Safety.ProcessBlock(block)
-	r.voteStart = time.Now()
+	r.viewTimeTrack[block.View].endProcessTime = time.Now()
 }
 
 // ListenLocalEvent listens new view and timeout events
@@ -221,8 +236,25 @@ func (r *Replica) ListenLocalEvent() {
 		for {
 			select {
 			case view := <-r.pm.EnteringViewEvent():
-				if view >= 2 {
-					r.totalVoteTime += time.Now().Sub(r.voteStart)
+				r.mu.Lock()
+				r.viewTimeTrack[view] = &TimeTrack{
+					startTime: time.Now(),
+				}
+				r.mu.Unlock()
+				if view >= 1 {
+					r.mu.Lock()
+					if tc, exists := r.viewTimeTrack[view-1]; exists {
+						tc.endTime = time.Now()
+						//log.Debugf("time track for view %d, start: %v, startP: %v, endP: %v, end: %v", view-1, tc.startTime.Second(), tc.startProcessTime.Second(), tc.endProcessTime.Second(), tc.endTime.Second())
+						//r.totalProposeDuration += tc.startProcessTime.Sub(tc.startTime)
+						r.totalProcessDuration += tc.endProcessTime.Sub(tc.startProcessTime)
+						//r.totalVoteTime += tc.endTime.Sub(tc.endProcessTime)
+						//r.aveProposeTime = float64(r.totalProposeDuration.Milliseconds()) / float64(len(r.viewTimeTrack))
+						r.aveProcessTime = float64(r.totalProcessDuration.Milliseconds()) / float64(len(r.viewTimeTrack))
+						//r.aveVotingTime = float64(r.totalVoteTime.Milliseconds()) / float64(len(r.viewTimeTrack))
+						//log.Debugf("Ave. proposing time is %v ms.\nAve. processing time is %v ms.\nAve. vote time is %v ms.\n", r.totalProposeDuration, r.totalProcessDuration, r.totalVoteTime)
+					}
+					r.mu.Unlock()
 				}
 				// measure round time
 				now := time.Now()
@@ -270,24 +302,27 @@ func (r *Replica) Start() {
 	<-r.start
 	go r.ListenLocalEvent()
 	go r.ListenCommittedBlocks()
+	r.viewTimeTrack[0] = &TimeTrack{
+		startTime: time.Now(),
+	}
 	for r.isStarted.Load() {
 		event := <-r.eventChan
 		switch v := event.(type) {
 		case types.View:
 			r.processNewView(v)
 		case blockchain.Block:
-			startProcessTime := time.Now()
-			r.totalProposeDuration += startProcessTime.Sub(v.Timestamp)
+			r.mu.Lock()
+			if _, exists := r.viewTimeTrack[v.View]; !exists {
+				r.viewTimeTrack[v.View] = &TimeTrack{startTime: time.Now()}
+			}
+			r.viewTimeTrack[v.View].startProcessTime = time.Now()
+			r.mu.Unlock()
 			_ = r.Safety.ProcessBlock(&v)
-			r.totalProcessDuration += time.Now().Sub(startProcessTime)
-			r.voteStart = time.Now()
-			r.processedNo++
+			r.mu.Lock()
+			r.viewTimeTrack[v.View].endProcessTime = time.Now()
+			r.mu.Unlock()
 		case blockchain.Vote:
-			startProcessTime := time.Now()
 			r.Safety.ProcessVote(&v)
-			processingDuration := time.Now().Sub(startProcessTime)
-			r.totalVoteTime += processingDuration
-			r.voteNo++
 		case pacemaker.TMO:
 			r.Safety.ProcessRemoteTmo(&v)
 		}

@@ -11,7 +11,7 @@ start(){
     done
 }
 
-USERNAME="gaify"
+USERNAME="hyperchain"
 MAXPEERNUM=(`wc -l public_ips.txt | awk '{ print $1 }'`)
 
 # update config.json to replicas

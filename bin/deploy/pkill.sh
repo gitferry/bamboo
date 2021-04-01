@@ -11,7 +11,7 @@ kill_all_servers(){
 }
 
 # NOTE!!!
-USERNAME="gaify"
+USERNAME="hyperchain"
 
 # distribute files
 kill_all_servers  $USERNAME

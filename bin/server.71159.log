@@ -1,0 +1,24 @@
+[INFO] 2021/04/01 13:49:36.450057 server.go:21: node 3 starting...
+[INFO] 2021/04/01 13:49:36.450057 server.go:21: node 1 starting...
+[INFO] 2021/04/01 13:49:36.450057 server.go:21: node 4 starting...
+[DEBUG] 2021/04/01 13:49:36.450419 transport.go:129: start listening 3737
+[INFO] 2021/04/01 13:49:36.450073 server.go:21: node 2 starting...
+[DEBUG] 2021/04/01 13:49:36.450554 transport.go:129: start listening 3735
+[DEBUG] 2021/04/01 13:49:36.450556 transport.go:129: start listening 3738
+[DEBUG] 2021/04/01 13:49:36.450675 transport.go:129: start listening 3736
+[INFO] 2021/04/01 13:49:36.451910 node.go:93: node 2 start running
+[INFO] 2021/04/01 13:49:36.451994 http.go:47: http server starting on :8071
+[INFO] 2021/04/01 13:49:36.451932 node.go:93: node 4 start running
+[INFO] 2021/04/01 13:49:36.452147 node.go:93: node 1 start running
+[INFO] 2021/04/01 13:49:36.452146 http.go:47: http server starting on :8073
+[INFO] 2021/04/01 13:49:36.452209 http.go:47: http server starting on :8070
+[INFO] 2021/04/01 13:49:36.453671 node.go:93: node 3 start running
+[INFO] 2021/04/01 13:49:36.453845 http.go:47: http server starting on :8072
+[DEBUG] 2021/04/01 13:49:37.736096 replica.go:276: [4] is boosting
+[DEBUG] 2021/04/01 13:49:37.736355 replica.go:171: [4] is going to kick off the protocol
+[DEBUG] 2021/04/01 13:49:37.736437 replica.go:250: [4] the last view lasts 0 milliseconds, current view: 1
+[DEBUG] 2021/04/01 13:49:37.736474 replica.go:203: [4] is processing new view: 1, leader is 4
+[DEBUG] 2021/04/01 13:49:37.737118 replica.go:276: [3] is boosting
+[DEBUG] 2021/04/01 13:49:37.737416 replica.go:276: [2] is boosting
+[DEBUG] 2021/04/01 13:49:37.738118 replica.go:276: [1] is boosting
+[DEBUG] 2021/04/01 13:49:37.739712 replica.go:125: [3] received a block from 4, view is 1, id: 64a7374cc4631ac05187d7c19b80e566baecb891adc866e71875e22fb671965e, prevID: 0000000000000000000000000000000000000000000000000000000000000000
