@@ -28,7 +28,7 @@ type Replica struct {
 	node.Node
 	Safety
 	election.Election
-	pd              *mempool.Producer
+	pd              mempool.SharedMempool
 	pm              *pacemaker.Pacemaker
 	start           chan bool // signal to start the node
 	isStarted       atomic.Bool

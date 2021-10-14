@@ -193,7 +193,7 @@ func (f *Fhs) ProcessLocalTmo(view types.View) {
 
 func (f *Fhs) MakeProposal(view types.View, payload []*message.Transaction) *blockchain.Block {
 	qc := f.forkChoice()
-	block := blockchain.MakeBlock(view, qc, qc.BlockID, payload, f.ID())
+	block := blockchain.BuildProposal(view, qc, qc.BlockID, payload, f.ID())
 	return block
 }
 

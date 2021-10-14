@@ -168,7 +168,7 @@ func (sl *Streamlet) ProcessLocalTmo(view types.View) {
 
 func (sl *Streamlet) MakeProposal(view types.View, payload []*message.Transaction) *blockchain.Block {
 	prevID := sl.forkChoice()
-	block := blockchain.MakeBlock(view, &blockchain.QC{
+	block := blockchain.BuildProposal(view, &blockchain.QC{
 		View:      0,
 		BlockID:   prevID,
 		AggSig:    nil,

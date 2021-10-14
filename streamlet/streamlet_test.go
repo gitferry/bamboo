@@ -14,7 +14,7 @@ import (
 // one chain
 func TestStreamlet_CommitRule1(t *testing.T) {
 	sl := MakeStreamlet()
-	b1 := blockchain.MakeBlock()
+	b1 := blockchain.BuildProposal()
 	bc.AddBlock(b1)
 	err := hs.UpdateStateByQC(b1.QC)
 	require.NoError(t, err)

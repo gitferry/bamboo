@@ -9,53 +9,59 @@ import (
 	"github.com/gitferry/bamboo/types"
 )
 
-type Block struct {
+type BlockHeader struct {
 	types.View
 	QC        *QC
 	Proposer  identity.NodeID
 	Timestamp time.Time
-	Payload   []*message.Transaction
 	PrevID    crypto.Identifier
 	Sig       crypto.Signature
 	ID        crypto.Identifier
 	Ts        time.Duration
 }
 
-type rawBlock struct {
+type Block struct {
+	BlockHeader
+	Payload [][]*MicroBlock
+}
+
+type MicroBlock struct {
+	Txns []*message.Transaction
+}
+
+type Proposal struct {
+	BlockHeader
+	HashList [][]byte
+}
+
+type rawProposal struct {
 	types.View
 	QC       *QC
 	Proposer identity.NodeID
-	Payload  []string
+	Payload  [][]byte
 	PrevID   crypto.Identifier
-	Sig      crypto.Signature
-	ID       crypto.Identifier
 }
 
-// MakeBlock creates an unsigned block
-func MakeBlock(view types.View, qc *QC, prevID crypto.Identifier, payload []*message.Transaction, proposer identity.NodeID) *Block {
-	b := new(Block)
-	b.View = view
-	b.Proposer = proposer
-	b.QC = qc
-	b.Payload = payload
-	b.PrevID = prevID
-	b.makeID(proposer)
-	return b
+// BuildProposal creates a signed proposal
+func BuildProposal(view types.View, qc *QC, prevID crypto.Identifier, payload [][]byte, proposer identity.NodeID) *Proposal {
+	p := new(Proposal)
+	p.View = view
+	p.Proposer = proposer
+	p.QC = qc
+	p.HashList = payload
+	p.PrevID = prevID
+	p.makeID(proposer)
+	return p
 }
 
-func (b *Block) makeID(nodeID identity.NodeID) {
-	raw := &rawBlock{
-		View:     b.View,
-		QC:       b.QC,
-		Proposer: b.Proposer,
-		PrevID:   b.PrevID,
+func (p *Proposal) makeID(nodeID identity.NodeID) {
+	raw := &rawProposal{
+		View:     p.View,
+		QC:       p.QC,
+		Proposer: p.Proposer,
+		Payload:  p.HashList,
+		PrevID:   p.PrevID,
 	}
-	var payloadIDs []string
-	for _, txn := range b.Payload {
-		payloadIDs = append(payloadIDs, txn.ID)
-	}
-	raw.Payload = payloadIDs
-	b.ID = crypto.MakeID(raw)
-	// TODO: uncomment the following
-	b.Sig, _ = crypto.PrivSign(crypto.IDToByte(b.ID), nodeID, nil)
+	p.ID = crypto.MakeID(raw)
+	p.Sig, _ = crypto.PrivSign(crypto.IDToByte(p.ID), nodeID, nil)
 }

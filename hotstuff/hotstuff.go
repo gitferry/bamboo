@@ -9,7 +9,6 @@ import (
 	"github.com/gitferry/bamboo/crypto"
 	"github.com/gitferry/bamboo/election"
 	"github.com/gitferry/bamboo/log"
-	"github.com/gitferry/bamboo/message"
 	"github.com/gitferry/bamboo/node"
 	"github.com/gitferry/bamboo/pacemaker"
 	"github.com/gitferry/bamboo/types"
@@ -168,10 +167,10 @@ func (hs *HotStuff) ProcessLocalTmo(view types.View) {
 	hs.ProcessRemoteTmo(tmo)
 }
 
-func (hs *HotStuff) MakeProposal(view types.View, payload []*message.Transaction) *blockchain.Block {
+func (hs *HotStuff) MakeProposal(view types.View, payload [][]byte) *blockchain.Proposal {
 	qc := hs.forkChoice()
-	block := blockchain.MakeBlock(view, qc, qc.BlockID, payload, hs.ID())
-	return block
+	proposal := blockchain.BuildProposal(view, qc, qc.BlockID, payload, hs.ID())
+	return proposal
 }
 
 func (hs *HotStuff) forkChoice() *blockchain.QC {

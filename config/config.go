@@ -31,7 +31,8 @@ type Config struct {
 	MultiVersion   bool            `json:"multiversion"`     // create multi-version database
 	Timeout        int             `json:"timeout"`
 	ByzNo          int             `json:"byzNo"`
-	BSize          int             `json:"bsize"`
+	BSize          int             `json:"bsize"` // max number of microblock contained in a block
+	MSize          int             `json:"msize"` // byte size of a microblock
 	Fixed          bool            `json:"fixed"`
 	Benchmark      Bconfig         `json:"benchmark"` // benchmark configuration
 	Delta          int             `json:"delta"`     // timeout, seconds
@@ -40,9 +41,9 @@ type Config struct {
 	Strategy       string          `json:"strategy"`
 	PayloadSize    int             `json:"payload_size"`
 	Master         identity.NodeID `json:"master"`
-	Delay          int             `json:"delay"` // transmission delay in ms
-	DErr           int             `json:"derr"`  // the err taken into delays
-	MemSize        int             `json:"memsize"`
+	Delay          int             `json:"delay"`   // transmission delay in ms
+	DErr           int             `json:"derr"`    // the err taken into delays
+	MemSize        int             `json:"memsize"` // max byte size of the mempool
 	Slow           int             `json:"slow"`
 	Crash          int             `json:"crash"`
 
