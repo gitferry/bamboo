@@ -65,3 +65,7 @@ func (p *Proposal) makeID(nodeID identity.NodeID) {
 	p.ID = crypto.MakeID(raw)
 	p.Sig, _ = crypto.PrivSign(crypto.IDToByte(p.ID), nodeID, nil)
 }
+
+func (mb *MicroBlock) ID() crypto.Identifier {
+	return crypto.MakeID(mb.Txns)
+}
