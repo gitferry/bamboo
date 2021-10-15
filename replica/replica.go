@@ -3,6 +3,7 @@ package replica
 import (
 	"encoding/gob"
 	"fmt"
+	"github.com/gitferry/bamboo/crypto"
 	"time"
 
 	"go.uber.org/atomic"
@@ -55,6 +56,7 @@ type Replica struct {
 	proposedNo           int
 	processedNo          int
 	committedNo          int
+	missingMBMap         map[crypto.Identifier]map[crypto.Identifier]struct{}
 }
 
 // NewReplica creates a new replica instance
@@ -76,12 +78,15 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 	r.eventChan = make(chan interface{})
 	r.committedBlocks = make(chan *blockchain.Block, 100)
 	r.forkedBlocks = make(chan *blockchain.Block, 100)
-	r.Register(blockchain.Block{}, r.HandleBlock)
+	r.missingMBMap = make(map[crypto.Identifier]map[crypto.Identifier]struct{})
+	r.Register(blockchain.Proposal{}, r.HandleProposal)
+	r.Register(blockchain.MicroBlock{}, r.HandleMicroblock)
 	r.Register(blockchain.Vote{}, r.HandleVote)
 	r.Register(pacemaker.TMO{}, r.HandleTmo)
 	r.Register(message.Transaction{}, r.handleTxn)
 	r.Register(message.Query{}, r.handleQuery)
-	gob.Register(blockchain.Block{})
+	gob.Register(blockchain.Proposal{})
+	gob.Register(blockchain.MicroBlock{})
 	gob.Register(blockchain.Vote{})
 	gob.Register(pacemaker.TC{})
 	gob.Register(pacemaker.TMO{})
@@ -106,11 +111,31 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 
 /* Message Handlers */
 
-func (r *Replica) HandleBlock(block blockchain.Block) {
+// HandleProposal handles proposals from the leader
+// it first checks if the referred microblocks exist in the mempool
+// and requests the missing ones
+func (r *Replica) HandleProposal(proposal blockchain.Proposal) {
 	r.receivedNo++
 	r.startSignal()
-	log.Debugf("[%v] received a block from %v, view is %v, id: %x, prevID: %x", r.ID(), block.Proposer, block.View, block.ID, block.PrevID)
-	r.eventChan <- block
+	log.Debugf("[%v] received a proposal from %v, view is %v, id: %x, prevID: %x", r.ID(), proposal.Proposer, proposal.View, proposal.ID, proposal.PrevID)
+	block, missingList := r.sm.FillProposal(&proposal)
+	if len(missingList) == 0 {
+		log.Debugf("[%v] a block is ready, view: %v, id: %x", r.ID(), proposal.View, proposal.ID)
+		r.eventChan <- block
+	} else {
+		mbmap, exists := r.missingMBMap[proposal.ID]
+		if !exists {
+			mbmap = make(map[crypto.Identifier]struct{})
+			r.missingMBMap[proposal.ID] = mbmap
+		}
+		for _, mb := range missingList {
+			mbmap[mb] = struct{}{}
+		}
+	}
+}
+
+func (r *Replica) HandleMicroblock(mb blockchain.MicroBlock) {
+
 }
 
 func (r *Replica) HandleVote(vote blockchain.Vote) {
@@ -150,7 +175,10 @@ func (r *Replica) handleQuery(m message.Query) {
 }
 
 func (r *Replica) handleTxn(m message.Transaction) {
-	r.sm.AddTxn(&m)
+	isbuilt, mb := r.sm.AddTxn(&m)
+	if isbuilt {
+		r.Broadcast(mb)
+	}
 	r.startSignal()
 	// the first leader kicks off the protocol
 	if r.pm.GetCurView() == 0 && r.IsLeader(r.ID(), 1) {
@@ -178,7 +206,7 @@ func (r *Replica) processCommittedBlock(block *blockchain.Block) {
 }
 
 func (r *Replica) processForkedBlock(block *blockchain.Block) {
-	//if block.Proposer == r.ID() {
+	//if block.Proposer == r.Hash() {
 	//	for _, txn := range block.Payload {
 	//		// collect txn back to mem pool
 	//		//r.sm.CollectTxn(txn)

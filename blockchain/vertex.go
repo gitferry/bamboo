@@ -5,11 +5,11 @@ import (
 )
 
 type Vertex interface {
-	// VertexID returns the vertex's ID (in most cases its hash)
+	// VertexID returns the vertex's Hash (in most cases its hash)
 	VertexID() crypto.Identifier
 	// Level returns the vertex's level
 	Level() uint64
-	// Parent returns the returns the parents (level, ID)
+	// Parent returns the returns the parents (level, Hash)
 	Parent() (crypto.Identifier, uint64)
 	// GetBlock returns the block contained in vertex
 	GetBlock() *Block

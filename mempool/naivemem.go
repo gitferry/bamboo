@@ -59,13 +59,14 @@ func (nm *NaiveMem) GeneratePayload() []crypto.Identifier {
 	batch := make([]crypto.Identifier, 0, batchSize)
 	for i := 0; i < batchSize; i++ {
 		mb := nm.front()
-		batch = append(batch, mb.ID())
+		batch = append(batch, mb.Hash())
 	}
 	return batch
 }
 
 // CheckExistence checks if the referred microblocks in the proposal exists
 // in the mempool and return missing ones if there's any
+// return true if there's no missing transactions
 func (nm *NaiveMem) CheckExistence(p *blockchain.Proposal) (bool, []crypto.Identifier) {
 	exists := false
 	missingList := make([]crypto.Identifier, 0)
@@ -85,11 +86,12 @@ func (nm *NaiveMem) FindMicroblock(id crypto.Identifier) (bool, *blockchain.Micr
 	return found, mb
 }
 
-// FillProposal pulls microblocks from the mempool and build a new block
-func (nm *NaiveMem) FillProposal(p *blockchain.Proposal) (*blockchain.Block, error) {
+// FillProposal pulls microblocks from the mempool and build a new block,
+// return missing list if there's any
+func (nm *NaiveMem) FillProposal(p *blockchain.Proposal) (*blockchain.Block, []crypto.Identifier) {
 	var b *blockchain.Block
-	var err error
-	return b, err
+	missingList := make([]crypto.Identifier, 0)
+	return b, missingList
 }
 
 func (nm *NaiveMem) front() *blockchain.MicroBlock {

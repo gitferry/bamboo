@@ -26,7 +26,8 @@ type Block struct {
 }
 
 type MicroBlock struct {
-	Txns []*message.Transaction
+	BlockID crypto.Identifier
+	Txns    []*message.Transaction
 }
 
 type Proposal struct {
@@ -54,6 +55,14 @@ func BuildProposal(view types.View, qc *QC, prevID crypto.Identifier, payload []
 	return p
 }
 
+// BuildBlock fills microblocks to make a block
+func (p *Proposal) BuildBlock(mblist []*MicroBlock) *Block {
+	return &Block{
+		BlockHeader: p.BlockHeader,
+		Payload:     mblist,
+	}
+}
+
 func (p *Proposal) makeID(nodeID identity.NodeID) {
 	raw := &rawProposal{
 		View:     p.View,
@@ -66,6 +75,6 @@ func (p *Proposal) makeID(nodeID identity.NodeID) {
 	p.Sig, _ = crypto.PrivSign(crypto.IDToByte(p.ID), nodeID, nil)
 }
 
-func (mb *MicroBlock) ID() crypto.Identifier {
+func (mb *MicroBlock) Hash() crypto.Identifier {
 	return crypto.MakeID(mb.Txns)
 }

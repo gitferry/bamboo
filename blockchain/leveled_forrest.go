@@ -186,7 +186,7 @@ func (f *LevelledForest) registerWithParent(vertexContainer *vertexContainer) {
 // It errors if a vertex with same id but different Level is already known
 // (i.e. there exists an empty or full container with the same id but different level).
 func (f *LevelledForest) getOrCreateVertexContainer(id crypto.Identifier, level uint64) *vertexContainer {
-	container, exists := f.vertices[id] // try to find vertex container with same ID
+	container, exists := f.vertices[id] // try to find vertex container with same Hash
 	if !exists {                        // if no vertex container found, create one and store it
 		container = &vertexContainer{
 			id:    id,
@@ -230,7 +230,7 @@ func (f *LevelledForest) VerifyVertex(vertex Vertex) error {
 //
 // (2) return value (true, nil)
 // Two vertices _are equivalent_ if their respective fields are identical:
-// ID, Level, and Parent (both parent ID and parent Level)
+// Hash, Level, and Parent (both parent Hash and parent Level)
 //
 // (3) return value (false, error)
 // errors if the vertices' IDs are identical but they differ
@@ -241,10 +241,10 @@ func (f *LevelledForest) isEquivalentToStoredVertex(vertex Vertex) (bool, error)
 		return false, nil //have no vertex with same id stored
 	}
 
-	// found vertex in storage with identical ID
+	// found vertex in storage with identical Hash
 	// => we expect all other (relevant) fields to be identical
 	if vertex.Level() != storedVertex.Level() { // view number
-		return false, fmt.Errorf("conflicting vertices with ID %v", vertex.VertexID())
+		return false, fmt.Errorf("conflicting vertices with Hash %v", vertex.VertexID())
 	}
 	if vertex.Level() <= f.LowestLevel {
 		return true, nil
@@ -252,10 +252,10 @@ func (f *LevelledForest) isEquivalentToStoredVertex(vertex Vertex) (bool, error)
 	newParentId, newParentView := vertex.Parent()
 	storedParentId, storedParentView := storedVertex.Parent()
 	if newParentId != storedParentId { // qc.blockID
-		return false, fmt.Errorf("conflicting vertices with ID %v", vertex.VertexID())
+		return false, fmt.Errorf("conflicting vertices with Hash %v", vertex.VertexID())
 	}
 	if newParentView != storedParentView { // qc.view
-		return false, fmt.Errorf("conflicting vertices with ID %v", vertex.VertexID())
+		return false, fmt.Errorf("conflicting vertices with Hash %v", vertex.VertexID())
 	}
 	// all _relevant_ fields identical
 	return true, nil

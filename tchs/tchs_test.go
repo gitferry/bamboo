@@ -35,7 +35,7 @@ func TestTchs_CommitRule2(t *testing.T) {
 	//_ = hs.UpdateStateByQC(b1.QC)
 	//qc2 := &blockchain.QC{
 	//	View:    2,
-	//	BlockID: b1.ID,
+	//	BlockID: b1.Hash,
 	//}
 	//b2 := blockchain.MakeBlock(3, qc2, nil, "1")
 	//bc.AddBlock(b2)
@@ -59,13 +59,13 @@ func TestTchs_CommitRule3(t *testing.T) {
 	//bc.AddBlock(b1)
 	//qc2 := &blockchain.QC{
 	//	View:    2,
-	//	BlockID: b1.ID,
+	//	BlockID: b1.Hash,
 	//}
 	//b2 := blockchain.MakeBlock(3, qc2, nil, "1")
 	//bc.AddBlock(b2)
 	//qc3 := &blockchain.QC{
 	//	View:    3,
-	//	BlockID: b2.ID,
+	//	BlockID: b2.Hash,
 	//}
 	//b3 := blockchain.MakeBlock(4, qc3, nil, "1")
 	//bc.AddBlock(b3)
@@ -88,20 +88,20 @@ func TestTchs_CommitRule3(t *testing.T) {
 // 	bc.AddBlock(b1)
 // 	qc2 := &blockchain.QC{
 // 		View:    2,
-// 		BlockID: b1.ID,
+// 		BlockID: b1.Hash,
 // 	}
 // 	b2 := blockchain.MakeBlock(3, qc2, nil, "1")
 // 	bc.AddBlock(b2)
 // 	qc3 := &blockchain.QC{
 // 		View:    3,
-// 		BlockID: b2.ID,
+// 		BlockID: b2.Hash,
 // 	}
 // 	b3 := blockchain.MakeBlock(4, qc3, nil, "1")
 // 	bc.AddBlock(b3)
 // 	_ = hs.UpdateStateByQC(b3.QC)
 // 	qc4 := &blockchain.QC{
 // 		View:    4,
-// 		BlockID: b3.ID,
+// 		BlockID: b3.Hash,
 // 	}
 // 	b4 := blockchain.MakeBlock(5, qc4, nil, "1")
 // 	bc.AddBlock(b4)

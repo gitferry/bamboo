@@ -6,7 +6,7 @@ import (
 
 type Identifier [32]byte
 
-// MakeID creates an ID from the hash of encoded data.
+// MakeID creates an Hash from the hash of encoded data.
 func MakeID(body interface{}) Identifier {
 	data := encoding.DefaultEncoder.MustEncode(body)
 	hasher := NewSHA3_256()

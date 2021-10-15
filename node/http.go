@@ -75,7 +75,7 @@ func (n *node) handleRoot(w http.ResponseWriter, r *http.Request) {
 
 	//reply := <-req.C
 	//
-	//log.Debugf("[%v] tx %v delay is %v", n.id, req.ID, strconv.Itoa(int(reply.Delay.Nanoseconds())))
+	//log.Debugf("[%v] tx %v delay is %v", n.id, req.Hash, strconv.Itoa(int(reply.Delay.Nanoseconds())))
 
 	//if reply.Err != nil {
 	//	http.Error(w, reply.Err.Error(), http.StatusInternalServerError)
