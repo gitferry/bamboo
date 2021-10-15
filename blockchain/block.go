@@ -22,7 +22,7 @@ type BlockHeader struct {
 
 type Block struct {
 	BlockHeader
-	Payload [][]*MicroBlock
+	Payload []*MicroBlock
 }
 
 type MicroBlock struct {
@@ -31,19 +31,19 @@ type MicroBlock struct {
 
 type Proposal struct {
 	BlockHeader
-	HashList [][]byte
+	HashList []crypto.Identifier
 }
 
 type rawProposal struct {
 	types.View
 	QC       *QC
 	Proposer identity.NodeID
-	Payload  [][]byte
+	Payload  []crypto.Identifier
 	PrevID   crypto.Identifier
 }
 
 // BuildProposal creates a signed proposal
-func BuildProposal(view types.View, qc *QC, prevID crypto.Identifier, payload [][]byte, proposer identity.NodeID) *Proposal {
+func BuildProposal(view types.View, qc *QC, prevID crypto.Identifier, payload []crypto.Identifier, proposer identity.NodeID) *Proposal {
 	p := new(Proposal)
 	p.View = view
 	p.Proposer = proposer

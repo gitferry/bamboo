@@ -26,4 +26,7 @@ type SharedMempool interface {
 
 	// FindMicroblock finds the referred microblock
 	FindMicroblock(id crypto.Identifier) (bool, *blockchain.MicroBlock)
+
+	// FillProposal pulls microblocks from the mempool and build a new block
+	FillProposal(p *blockchain.Proposal) (*blockchain.Block, error)
 }

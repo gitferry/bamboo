@@ -3,8 +3,6 @@ package replica
 import (
 	"encoding/gob"
 	"fmt"
-	fhs "github.com/gitferry/bamboo/fasthostuff"
-	"github.com/gitferry/bamboo/lbft"
 	"time"
 
 	"go.uber.org/atomic"
@@ -19,8 +17,6 @@ import (
 	"github.com/gitferry/bamboo/message"
 	"github.com/gitferry/bamboo/node"
 	"github.com/gitferry/bamboo/pacemaker"
-	"github.com/gitferry/bamboo/streamlet"
-	"github.com/gitferry/bamboo/tchs"
 	"github.com/gitferry/bamboo/types"
 )
 
@@ -94,14 +90,14 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 	switch alg {
 	case "hotstuff":
 		r.Safety = hotstuff.NewHotStuff(r.Node, r.pm, r.Election, r.committedBlocks, r.forkedBlocks)
-	case "tchs":
-		r.Safety = tchs.NewTchs(r.Node, r.pm, r.Election, r.committedBlocks, r.forkedBlocks)
-	case "streamlet":
-		r.Safety = streamlet.NewStreamlet(r.Node, r.pm, r.Election, r.committedBlocks, r.forkedBlocks)
-	case "lbft":
-		r.Safety = lbft.NewLbft(r.Node, r.pm, r.Election, r.committedBlocks, r.forkedBlocks)
-	case "fasthotstuff":
-		r.Safety = fhs.NewFhs(r.Node, r.pm, r.Election, r.committedBlocks, r.forkedBlocks)
+	//case "tchs":
+	//	r.Safety = tchs.NewTchs(r.Node, r.pm, r.Election, r.committedBlocks, r.forkedBlocks)
+	//case "streamlet":
+	//	r.Safety = streamlet.NewStreamlet(r.Node, r.pm, r.Election, r.committedBlocks, r.forkedBlocks)
+	//case "lbft":
+	//	r.Safety = lbft.NewLbft(r.Node, r.pm, r.Election, r.committedBlocks, r.forkedBlocks)
+	//case "fasthotstuff":
+	//	r.Safety = fhs.NewFhs(r.Node, r.pm, r.Election, r.committedBlocks, r.forkedBlocks)
 	default:
 		r.Safety = hotstuff.NewHotStuff(r.Node, r.pm, r.Election, r.committedBlocks, r.forkedBlocks)
 	}
@@ -167,11 +163,13 @@ func (r *Replica) handleTxn(m message.Transaction) {
 
 func (r *Replica) processCommittedBlock(block *blockchain.Block) {
 	if block.Proposer == r.ID() {
-		for _, txn := range block.Payload {
-			// only record the delay of transactions from the local memory pool
-			delay := time.Now().Sub(txn.Timestamp)
-			r.totalDelay += delay
-			r.latencyNo++
+		for _, mb := range block.Payload {
+			for _, txn := range mb.Txns {
+				// only record the delay of transactions from the local memory pool
+				delay := time.Now().Sub(txn.Timestamp)
+				r.totalDelay += delay
+				r.latencyNo++
+			}
 		}
 	}
 	r.committedNo++
@@ -180,12 +178,12 @@ func (r *Replica) processCommittedBlock(block *blockchain.Block) {
 }
 
 func (r *Replica) processForkedBlock(block *blockchain.Block) {
-	if block.Proposer == r.ID() {
-		for _, txn := range block.Payload {
-			// collect txn back to mem pool
-			r.sm.CollectTxn(txn)
-		}
-	}
+	//if block.Proposer == r.ID() {
+	//	for _, txn := range block.Payload {
+	//		// collect txn back to mem pool
+	//		//r.sm.CollectTxn(txn)
+	//	}
+	//}
 	log.Infof("[%v] the block is forked, No. of transactions: %v, view: %v, current view: %v, id: %x", r.ID(), len(block.Payload), block.View, r.pm.GetCurView(), block.ID)
 }
 
@@ -199,14 +197,18 @@ func (r *Replica) processNewView(newView types.View) {
 
 func (r *Replica) proposeBlock(view types.View) {
 	createStart := time.Now()
-	block := r.Safety.MakeProposal(view, r.sm.GeneratePayload())
-	r.totalBlockSize += len(block.Payload)
+	proposal := r.Safety.MakeProposal(view, r.sm.GeneratePayload())
+	r.totalBlockSize += len(proposal.HashList)
 	r.proposedNo++
 	createEnd := time.Now()
 	createDuration := createEnd.Sub(createStart)
-	block.Timestamp = time.Now()
+	proposal.Timestamp = time.Now()
 	r.totalCreateDuration += createDuration
-	r.Broadcast(block)
+	r.Broadcast(proposal)
+	block, err := r.sm.FillProposal(proposal)
+	if err != nil {
+		log.Error("[%d] cannot fill a proposal, id: %x", r.ID(), proposal.ID)
+	}
 	_ = r.Safety.ProcessBlock(block)
 	r.voteStart = time.Now()
 }

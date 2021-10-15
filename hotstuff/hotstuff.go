@@ -167,7 +167,7 @@ func (hs *HotStuff) ProcessLocalTmo(view types.View) {
 	hs.ProcessRemoteTmo(tmo)
 }
 
-func (hs *HotStuff) MakeProposal(view types.View, payload [][]byte) *blockchain.Proposal {
+func (hs *HotStuff) MakeProposal(view types.View, payload []crypto.Identifier) *blockchain.Proposal {
 	qc := hs.forkChoice()
 	proposal := blockchain.BuildProposal(view, qc, qc.BlockID, payload, hs.ID())
 	return proposal

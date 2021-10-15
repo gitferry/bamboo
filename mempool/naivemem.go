@@ -85,6 +85,13 @@ func (nm *NaiveMem) FindMicroblock(id crypto.Identifier) (bool, *blockchain.Micr
 	return found, mb
 }
 
+// FillProposal pulls microblocks from the mempool and build a new block
+func (nm *NaiveMem) FillProposal(p *blockchain.Proposal) (*blockchain.Block, error) {
+	var b *blockchain.Block
+	var err error
+	return b, err
+}
+
 func (nm *NaiveMem) front() *blockchain.MicroBlock {
 	if nm.microblocks.Len() == 0 {
 		return nil
