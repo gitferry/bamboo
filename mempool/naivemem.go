@@ -22,17 +22,21 @@ type NaiveMem struct {
 // NewNaiveMem creates a new naive mempool
 func NewNaiveMem() *NaiveMem {
 	return &NaiveMem{
-		bsize:       config.GetConfig().BSize,
-		msize:       config.GetConfig().MSize,
-		memsize:     config.GetConfig().MemSize,
-		microblocks: list.New(),
-		txnList:     list.New(),
+		bsize:         config.GetConfig().BSize,
+		msize:         config.GetConfig().MSize,
+		memsize:       config.GetConfig().MemSize,
+		microblocks:   list.New(),
+		microblockMap: map[crypto.Identifier]*blockchain.MicroBlock{},
+		txnList:       list.New(),
 	}
 }
 
 // AddTxn adds a transaction and returns a microblock if msize is reached
 // then the contained transactions should be deleted
 func (nm *NaiveMem) AddTxn(txn *message.Transaction) (bool, *blockchain.MicroBlock) {
+	success := false
+	var mb *blockchain.MicroBlock
+	return success, mb
 }
 
 // AddMicroblock adds a microblock into a FIFO queue
@@ -63,7 +67,9 @@ func (nm *NaiveMem) GeneratePayload() []crypto.Identifier {
 // CheckExistence checks if the referred microblocks in the proposal exists
 // in the mempool and return missing ones if there's any
 func (nm *NaiveMem) CheckExistence(p *blockchain.Proposal) (bool, []crypto.Identifier) {
-
+	exists := false
+	missingList := make([]crypto.Identifier, 0)
+	return exists, missingList
 }
 
 // RemoveMicroblock removes reffered microblocks from the mempool
@@ -73,9 +79,10 @@ func (nm *NaiveMem) RemoveMicroblock(id crypto.Identifier) error {
 }
 
 // FindMicroblock finds a reffered microblock
-func (nm *NaiveMem) FindMicorblock(id crypto.Identifier) error {
-	var err error
-	return err
+func (nm *NaiveMem) FindMicroblock(id crypto.Identifier) (bool, *blockchain.MicroBlock) {
+	found := false
+	var mb *blockchain.MicroBlock
+	return found, mb
 }
 
 func (nm *NaiveMem) front() *blockchain.MicroBlock {

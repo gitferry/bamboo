@@ -28,7 +28,7 @@ type Replica struct {
 	node.Node
 	Safety
 	election.Election
-	pd              mempool.SharedMempool
+	sm              mempool.SharedMempool
 	pm              *pacemaker.Pacemaker
 	start           chan bool // signal to start the node
 	isStarted       atomic.Bool
@@ -74,7 +74,7 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 		r.Election = election.NewStatic(config.GetConfig().Master)
 	}
 	r.isByz = isByz
-	r.pd = mempool.NewProducer()
+	r.sm = mempool.NewNaiveMem()
 	r.pm = pacemaker.NewPacemaker(config.GetConfig().N())
 	r.start = make(chan bool)
 	r.eventChan = make(chan interface{})
@@ -140,7 +140,7 @@ func (r *Replica) handleQuery(m message.Query) {
 	aveProcessTime := float64(r.totalProcessDuration.Milliseconds()) / float64(r.processedNo)
 	aveVoteProcessTime := float64(r.totalVoteTime.Milliseconds()) / float64(r.roundNo)
 	aveBlockSize := float64(r.totalBlockSize) / float64(r.proposedNo)
-	//requestRate := float64(r.pd.TotalReceivedTxNo()) / time.Now().Sub(r.startTime).Seconds()
+	//requestRate := float64(r.sm.TotalReceivedTxNo()) / time.Now().Sub(r.startTime).Seconds()
 	//committedRate := float64(r.committedNo) / time.Now().Sub(r.startTime).Seconds()
 	aveRoundTime := float64(r.totalRoundTime.Milliseconds()) / float64(r.roundNo)
 	aveProposeTime := aveRoundTime - aveProcessTime - aveVoteProcessTime
@@ -154,7 +154,7 @@ func (r *Replica) handleQuery(m message.Query) {
 }
 
 func (r *Replica) handleTxn(m message.Transaction) {
-	r.pd.AddTxn(&m)
+	r.sm.AddTxn(&m)
 	r.startSignal()
 	// the first leader kicks off the protocol
 	if r.pm.GetCurView() == 0 && r.IsLeader(r.ID(), 1) {
@@ -183,7 +183,7 @@ func (r *Replica) processForkedBlock(block *blockchain.Block) {
 	if block.Proposer == r.ID() {
 		for _, txn := range block.Payload {
 			// collect txn back to mem pool
-			r.pd.CollectTxn(txn)
+			r.sm.CollectTxn(txn)
 		}
 	}
 	log.Infof("[%v] the block is forked, No. of transactions: %v, view: %v, current view: %v, id: %x", r.ID(), len(block.Payload), block.View, r.pm.GetCurView(), block.ID)
@@ -199,7 +199,7 @@ func (r *Replica) processNewView(newView types.View) {
 
 func (r *Replica) proposeBlock(view types.View) {
 	createStart := time.Now()
-	block := r.Safety.MakeProposal(view, r.pd.GeneratePayload())
+	block := r.Safety.MakeProposal(view, r.sm.GeneratePayload())
 	r.totalBlockSize += len(block.Payload)
 	r.proposedNo++
 	createEnd := time.Now()
