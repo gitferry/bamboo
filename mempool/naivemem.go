@@ -72,6 +72,12 @@ func (nm *NaiveMem) RemoveMicroblock(id crypto.Identifier) error {
 	return err
 }
 
+// FindMicroblock finds a reffered microblock
+func (nm *NaiveMem) FindMicorblock(id crypto.Identifier) error {
+	var err error
+	return err
+}
+
 func (nm *NaiveMem) front() *blockchain.MicroBlock {
 	if nm.microblocks.Len() == 0 {
 		return nil

@@ -23,4 +23,7 @@ type SharedMempool interface {
 
 	// RemoveMicroBlock removes the referred microblock
 	RemoveMicroBlock(id crypto.Identifier) error
+
+	// FindMicroblock finds the referred microblock
+	FindMicroblock(id crypto.Identifier) (bool, *blockchain.MicroBlock)
 }
