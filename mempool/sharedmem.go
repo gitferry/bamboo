@@ -15,7 +15,7 @@ type SharedMempool interface {
 	AddMicroblock(mb *blockchain.MicroBlock) error
 
 	// GeneratePayload pulls a hash list of microblocks from the queue,
-	GeneratePayload() []crypto.Identifier
+	GeneratePayload() *blockchain.Payload
 
 	// CheckExistence checks if the microblocks contained in the proposal
 	// exists, and return a hash list of the missing ones
@@ -27,7 +27,7 @@ type SharedMempool interface {
 	// FindMicroblock finds the referred microblock
 	FindMicroblock(id crypto.Identifier) (bool, *blockchain.MicroBlock)
 
-	// FillProposal pulls microblocks from the mempool and build a new block,
+	// FillProposal pulls microblocks from the mempool and build a pending block,
 	// return missing list if there's any
-	FillProposal(p *blockchain.Proposal) (*blockchain.Block, []crypto.Identifier)
+	FillProposal(p *blockchain.Proposal) *blockchain.PendingBlock
 }

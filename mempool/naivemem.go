@@ -46,9 +46,9 @@ func (nm *NaiveMem) AddMicroblock(mb *blockchain.MicroBlock) error {
 	return err
 }
 
-// GeneratePayload generates a hash list of microblocks according to bsize
+// GeneratePayload generates a list of microblocks according to bsize
 // if the remaining microblocks is less than bsize then return all
-func (nm *NaiveMem) GeneratePayload() []crypto.Identifier {
+func (nm *NaiveMem) GeneratePayload() *blockchain.Payload {
 	var batchSize int
 	nm.mu.Lock()
 	defer nm.mu.Unlock()
@@ -56,12 +56,13 @@ func (nm *NaiveMem) GeneratePayload() []crypto.Identifier {
 	if batchSize >= nm.bsize {
 		batchSize = nm.bsize
 	}
-	batch := make([]crypto.Identifier, 0, batchSize)
+	microblockList := make([]*blockchain.MicroBlock, batchSize)
 	for i := 0; i < batchSize; i++ {
 		mb := nm.front()
-		batch = append(batch, mb.Hash())
+		microblockList = append(microblockList, mb)
 	}
-	return batch
+
+	return blockchain.NewPayload(microblockList)
 }
 
 // CheckExistence checks if the referred microblocks in the proposal exists
@@ -86,12 +87,12 @@ func (nm *NaiveMem) FindMicroblock(id crypto.Identifier) (bool, *blockchain.Micr
 	return found, mb
 }
 
-// FillProposal pulls microblocks from the mempool and build a new block,
-// return missing list if there's any
-func (nm *NaiveMem) FillProposal(p *blockchain.Proposal) (*blockchain.Block, []crypto.Identifier) {
-	var b *blockchain.Block
-	missingList := make([]crypto.Identifier, 0)
-	return b, missingList
+// FillProposal pulls microblocks from the mempool and build a pending block,
+// a pending block should include the proposal, micorblocks that already exist,
+// and a missing list if there's any
+func (nm *NaiveMem) FillProposal(p *blockchain.Proposal) *blockchain.PendingBlock {
+	var pd *blockchain.PendingBlock
+	return pd
 }
 
 func (nm *NaiveMem) front() *blockchain.MicroBlock {
