@@ -3,6 +3,7 @@ package message
 import (
 	"encoding/gob"
 	"fmt"
+	"github.com/gitferry/bamboo/crypto"
 	"time"
 
 	"github.com/gitferry/bamboo/config"
@@ -71,6 +72,12 @@ type Read struct {
 
 func (r Read) String() string {
 	return fmt.Sprintf("Read {cid=%d, key=%d}", r.CommandID, r.Key)
+}
+
+type MissingMBRequest struct {
+	RequesterID   identity.NodeID
+	ProposalID    crypto.Identifier
+	MissingMBList []crypto.Identifier
 }
 
 // ReadReply cid and value of reading key

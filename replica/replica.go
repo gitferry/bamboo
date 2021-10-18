@@ -85,11 +85,13 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 	r.Register(pacemaker.TMO{}, r.HandleTmo)
 	r.Register(message.Transaction{}, r.handleTxn)
 	r.Register(message.Query{}, r.handleQuery)
+	r.Register(message.MissingMBRequest{}, r.HandleMissingMBRequest)
 	gob.Register(blockchain.Proposal{})
 	gob.Register(blockchain.MicroBlock{})
 	gob.Register(blockchain.Vote{})
 	gob.Register(pacemaker.TC{})
 	gob.Register(pacemaker.TMO{})
+	gob.Register(message.MissingMBRequest{})
 
 	// Is there a better way to reduce the number of parameters?
 	switch alg {
@@ -125,6 +127,13 @@ func (r *Replica) HandleProposal(proposal blockchain.Proposal) {
 		r.eventChan <- block
 	} else {
 		r.pendingBlockMap[proposal.ID] = pendingBlock
+		log.Debugf("[%v] %v microblocks are missing in a pending block, id: %x", r.ID(), pendingBlock.MissingCount(), proposal.ID)
+		missingRequest := message.MissingMBRequest{
+			RequesterID:   r.ID(),
+			ProposalID:    proposal.ID,
+			MissingMBList: pendingBlock.MissingMBList(),
+		}
+		r.Send(proposal.Proposer, missingRequest)
 	}
 }
 
@@ -144,6 +153,19 @@ func (r *Replica) HandleMicroblock(mb blockchain.MicroBlock) {
 		err := r.sm.AddMicroblock(&mb)
 		if err != nil {
 			log.Errorf("[%v] can not add a microblock, id: %x", r.ID(), mb.Hash)
+		}
+	}
+}
+
+func (r *Replica) HandleMissingMBRequest(mbr message.MissingMBRequest) {
+	log.Debugf("[%v] %d missing microblocks request is received from %v for proposal %x", r.ID(), len(mbr.MissingMBList), mbr.RequesterID, mbr.ProposalID)
+	for _, mbid := range mbr.MissingMBList {
+		found, mb := r.sm.FindMicroblock(mbid)
+		if found {
+			log.Debugf("[%v] a microblock is found in mempool for proposal %x", r.ID(), mbr.ProposalID)
+			r.Send(mbr.RequesterID, mb)
+		} else {
+			log.Errorf("[%v] a requested microblock for proposal %x is not found in mempool, id: %x", r.ID(), mbr.ProposalID, mb.Hash)
 		}
 	}
 }

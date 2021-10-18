@@ -143,3 +143,15 @@ func (pd *PendingBlock) CompleteBlock() *Block {
 	}
 	return nil
 }
+
+func (pd *PendingBlock) MissingCount() int {
+	return len(pd.missingMap)
+}
+
+func (pd *PendingBlock) MissingMBList() []crypto.Identifier {
+	missingList := make([]crypto.Identifier, pd.MissingCount())
+	for k, _ := range pd.missingMap {
+		missingList = append(missingList, k)
+	}
+	return missingList
+}
