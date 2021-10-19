@@ -16,6 +16,7 @@ func (et *Estimator) AddAck(ack *message.Ack) {
 
 }
 
-func (et *Estimator) PredictStableTime(t string) time.Time {
-	return time.Now()
+func (et *Estimator) PredictStableTime(t string) time.Duration {
+	var d time.Duration
+	return d
 }

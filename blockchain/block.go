@@ -90,6 +90,10 @@ func (pl *Payload) addMicroblock(mb *MicroBlock) {
 	pl.microblockList = append(pl.microblockList, mb)
 }
 
+func (pl *Payload) LastItem() *MicroBlock {
+	return pl.microblockList[len(pl.microblockList)-1]
+}
+
 // BuildBlock fills microblocks to make a block
 func BuildBlock(proposal *Proposal, payload *Payload) *Block {
 	return &Block{

@@ -27,6 +27,7 @@ type Replica struct {
 	election.Election
 	sm              mempool.SharedMempool
 	pm              *pacemaker.Pacemaker
+	estimator       *Estimator
 	start           chan bool // signal to start the node
 	isStarted       atomic.Bool
 	isByz           bool
@@ -74,6 +75,7 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 	r.isByz = isByz
 	r.sm = mempool.NewNaiveMem()
 	r.pm = pacemaker.NewPacemaker(config.GetConfig().N())
+	r.estimator = NewEstimator()
 	r.start = make(chan bool)
 	r.eventChan = make(chan interface{})
 	r.committedBlocks = make(chan *blockchain.Block, 100)
@@ -212,6 +214,7 @@ func (r *Replica) HandleTmo(tmo pacemaker.TMO) {
 
 func (r *Replica) HandleAck(ack message.Ack) {
 	log.Debugf("[%v] received an ack message, type: %v, id: %x", r.ID(), ack.Type, ack.ID)
+	r.estimator.AddAck(&ack)
 }
 
 // handleQuery replies a query with the statistics of the node
@@ -236,6 +239,9 @@ func (r *Replica) handleQuery(m message.Query) {
 func (r *Replica) handleTxn(m message.Transaction) {
 	isbuilt, mb := r.sm.AddTxn(&m)
 	if isbuilt {
+		if config.Configuration.MemType == "time" {
+			mb.FutureTimestamp = time.Now().Add(r.estimator.PredictStableTime("mb"))
+		}
 		r.Broadcast(mb)
 	}
 	r.startSignal()
@@ -288,6 +294,14 @@ func (r *Replica) processNewView(newView types.View) {
 func (r *Replica) proposeBlock(view types.View) {
 	createStart := time.Now()
 	payload := r.sm.GeneratePayload()
+	// if we are using time-based shared mempool, wait until all the microblocks are stable
+	if config.Configuration.MemType == "time" {
+		lastTimestamp := payload.LastItem().Timestamp
+		if time.Now().Before(lastTimestamp) {
+			log.Debugf("[%v] wait for %v until the contained microblocks are stable", r.ID(), lastTimestamp.Sub(time.Now()))
+			time.Sleep(lastTimestamp.Sub(time.Now()) - r.estimator.PredictStableTime("proposal"))
+		}
+	}
 	proposal := r.Safety.MakeProposal(view, payload.GenerateHashList())
 	r.totalBlockSize += len(proposal.HashList)
 	r.proposedNo++
