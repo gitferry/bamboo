@@ -86,12 +86,14 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 	r.Register(message.Transaction{}, r.handleTxn)
 	r.Register(message.Query{}, r.handleQuery)
 	r.Register(message.MissingMBRequest{}, r.HandleMissingMBRequest)
+	r.Register(message.Ack{}, r.HandleAck)
 	gob.Register(blockchain.Proposal{})
 	gob.Register(blockchain.MicroBlock{})
 	gob.Register(blockchain.Vote{})
 	gob.Register(pacemaker.TC{})
 	gob.Register(pacemaker.TMO{})
 	gob.Register(message.MissingMBRequest{})
+	gob.Register(message.Ack{})
 
 	// Is there a better way to reduce the number of parameters?
 	switch alg {
@@ -120,6 +122,16 @@ func (r *Replica) HandleProposal(proposal blockchain.Proposal) {
 	r.receivedNo++
 	r.startSignal()
 	log.Debugf("[%v] received a proposal from %v, view is %v, id: %x, prevID: %x", r.ID(), proposal.Proposer, proposal.View, proposal.ID, proposal.PrevID)
+	if config.Configuration.MemType == "time" {
+		ack := message.Ack{
+			SentTime: proposal.Timestamp,
+			AckTime:  time.Now(),
+			Receiver: r.ID(),
+			ID:       proposal.ID,
+			Type:     "proposal",
+		}
+		r.Send(proposal.Proposer, ack)
+	}
 	pendingBlock := r.sm.FillProposal(&proposal)
 	block := pendingBlock.CompleteBlock()
 	if block != nil {
@@ -141,7 +153,18 @@ func (r *Replica) HandleProposal(proposal blockchain.Proposal) {
 // it first checks if the relevant proposal is pending
 // if so, tries to complete the block
 func (r *Replica) HandleMicroblock(mb blockchain.MicroBlock) {
+	log.Debugf("[%v] received a microblock, id: %x, proposalID: %x", r.ID(), mb.Hash, mb.ProposalID)
 	pd, exists := r.pendingBlockMap[mb.ProposalID]
+	if !mb.IsRequested && config.Configuration.MemType == "time" {
+		ack := message.Ack{
+			SentTime: mb.Timestamp,
+			AckTime:  time.Now(),
+			Receiver: r.ID(),
+			ID:       mb.Hash,
+			Type:     "mb",
+		}
+		r.Send(mb.Sender, ack)
+	}
 	if exists {
 		block := pd.AddMicroblock(&mb)
 		if block != nil {
@@ -185,6 +208,10 @@ func (r *Replica) HandleTmo(tmo pacemaker.TMO) {
 	}
 	log.Debugf("[%v] received a timeout from %v for view %v", r.ID(), tmo.NodeID, tmo.View)
 	r.eventChan <- tmo
+}
+
+func (r *Replica) HandleAck(ack message.Ack) {
+
 }
 
 // handleQuery replies a query with the statistics of the node

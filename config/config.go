@@ -46,6 +46,7 @@ type Config struct {
 	MemSize        int             `json:"memsize"` // max byte size of the mempool
 	Slow           int             `json:"slow"`
 	Crash          int             `json:"crash"`
+	MemType        string          `json:"mem_type"`
 
 	hasher string
 	signer string
