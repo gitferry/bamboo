@@ -211,7 +211,7 @@ func (r *Replica) HandleTmo(tmo pacemaker.TMO) {
 }
 
 func (r *Replica) HandleAck(ack message.Ack) {
-
+	log.Debugf("[%v] received an ack message, type: %v, id: %x", r.ID(), ack.Type, ack.ID)
 }
 
 // handleQuery replies a query with the statistics of the node

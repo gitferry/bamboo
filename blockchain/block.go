@@ -30,12 +30,13 @@ type Payload struct {
 }
 
 type MicroBlock struct {
-	ProposalID  crypto.Identifier
-	Hash        crypto.Identifier
-	Txns        []*message.Transaction
-	Timestamp   time.Time
-	Sender      identity.NodeID
-	IsRequested bool
+	ProposalID      crypto.Identifier
+	Hash            crypto.Identifier
+	Txns            []*message.Transaction
+	Timestamp       time.Time
+	FutureTimestamp time.Time
+	Sender          identity.NodeID
+	IsRequested     bool
 }
 
 type Proposal struct {
