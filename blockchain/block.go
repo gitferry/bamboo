@@ -47,7 +47,7 @@ type Proposal struct {
 type PendingBlock struct {
 	payload    *Payload // microblocks that already exist
 	Proposal   *Proposal
-	missingMap map[crypto.Identifier]*MicroBlock // missing list
+	missingMap map[crypto.Identifier]struct{} // missing list
 }
 
 type rawProposal struct {
@@ -110,11 +110,11 @@ func NewMicroblock(proposalID crypto.Identifier, txnList []*message.Transaction)
 	return mb
 }
 
-func NewPendingBlock(proposal *Proposal, missingMap map[crypto.Identifier]*MicroBlock, payLoad *Payload) *PendingBlock {
+func NewPendingBlock(proposal *Proposal, missingMap map[crypto.Identifier]struct{}, microBlocks []*MicroBlock) *PendingBlock {
 	return &PendingBlock{
 		Proposal:   proposal,
 		missingMap: missingMap,
-		payload:    payLoad,
+		payload:    &Payload{microblockList: microBlocks},
 	}
 }
 

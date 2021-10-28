@@ -19,7 +19,7 @@ type NaiveMem struct {
 	bsize         int // number of microblocks in a proposal
 	msize         int // byte size of transactions in a microblock
 	memsize       int // number of microblocks in mempool
-	currSize      uint
+	currSize      int
 	mu            sync.Mutex
 }
 
@@ -41,13 +41,17 @@ func NewNaiveMem() *NaiveMem {
 func (nm *NaiveMem) AddTxn(txn *message.Transaction) (bool, *blockchain.MicroBlock) {
 	// get the size of the structure. txn is the pointer.
 	tranSize := unsafe.Sizeof(*txn)
-	totalSize := int(tranSize) + nm.msize
+	totalSize := int(tranSize) + nm.currSize
 	if totalSize > nm.msize {
 		//do not add the curr trans, and generate a microBlock
+		//set the currSize to curr trans, since it is the only one does not add to the microblock
+		nm.currSize = int(tranSize)
 	} else if totalSize == nm.msize {
 		//add the curr trans, and generate a microBlock
+		nm.currSize = 0
 	} else {
 		//
+		nm.currSize = totalSize
 	}
 	var mb *blockchain.MicroBlock
 	return true, mb
@@ -75,7 +79,7 @@ func (nm *NaiveMem) GeneratePayload() *blockchain.Payload {
 	nm.mu.Lock()
 	defer nm.mu.Unlock()
 
-	if batchSize >= nm.bsize {
+	if nm.microblocks.Len() >= nm.bsize {
 		batchSize = nm.bsize
 	} else {
 		batchSize = nm.microblocks.Len()
@@ -145,30 +149,32 @@ func (nm *NaiveMem) RemoveMicroblock(id crypto.Identifier) error {
 
 // FindMicroblock finds a reffered microblock
 func (nm *NaiveMem) FindMicroblock(id crypto.Identifier) (bool, *blockchain.MicroBlock) {
-
-	var next *list.Element
-	targetByte := crypto.IDToByte(id)
-
 	nm.mu.Lock()
 	defer nm.mu.Unlock()
 
-	for e := nm.microblocks.Front(); e != nil; e = next {
-		next = e.Next()
-		currId := e.Value.(blockchain.MicroBlock).Hash
-		currByte := crypto.IDToByte(currId)
-
-		if bytes.Equal(currByte, targetByte) {
-			return true, e.Value.(*blockchain.MicroBlock)
-		}
+	block, exist := nm.microblockMap[id]
+	if exist {
+		return true, block
+	} else {
+		return false, nil
 	}
-	return false, nil
 }
 
 // FillProposal pulls microblocks from the mempool and build a pending block,
 // a pending block should include the proposal, micorblocks that already exist,
 // and a missing list if there's any
 func (nm *NaiveMem) FillProposal(p *blockchain.Proposal) *blockchain.PendingBlock {
-	return blockchain.NewPendingBlock(p, nm.microblockMap, nm.GeneratePayload())
+	existingBlocks := make([]*blockchain.MicroBlock, 0)
+	missingBlocks := make(map[crypto.Identifier]struct{}, 0)
+	for _, id := range p.HashList {
+		block, found := nm.microblockMap[id]
+		if found {
+			existingBlocks = append(existingBlocks, block)
+		} else {
+			missingBlocks[id] = struct{}{}
+		}
+	}
+	return blockchain.NewPendingBlock(p, missingBlocks, existingBlocks)
 }
 
 //func (nm *NaiveMem) front() *blockchain.MicroBlock {
