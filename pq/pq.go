@@ -9,6 +9,7 @@ package pq
 import (
 	"container/heap"
 	"errors"
+	"fmt"
 )
 
 // PriorityQueue represents the queue
@@ -43,6 +44,17 @@ func (p *PriorityQueue) Insert(v interface{}, priority int64) {
 	}
 	heap.Push(p.itemHeap, newItem)
 	p.lookup[v] = newItem
+}
+
+// Remove removes a value from the queue.
+func (p *PriorityQueue) Remove(v interface{}) error {
+	item, ok := p.lookup[v]
+	if !ok {
+		return fmt.Errorf("the value does not exist in the priority queue")
+	}
+	heap.Remove(p.itemHeap, item.index)
+	delete(p.lookup, v)
+	return nil
 }
 
 // Pop removes the element with the highest priority from the queue and returns it.

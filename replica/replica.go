@@ -240,7 +240,7 @@ func (r *Replica) handleTxn(m message.Transaction) {
 	isbuilt, mb := r.sm.AddTxn(&m)
 	if isbuilt {
 		if config.Configuration.MemType == "time" {
-			mb.FutureTimestamp = time.Now().Add(r.estimator.PredictStableTime("mb"))
+			mb.FutureTimestamp = time.Now().Add(r.estimator.PredictStableTime("mb")).UnixNano()
 		}
 		r.Broadcast(mb)
 	}
@@ -262,10 +262,6 @@ func (r *Replica) processCommittedBlock(block *blockchain.Block) {
 				delay := time.Now().Sub(txn.Timestamp)
 				r.totalDelay += delay
 				r.latencyNo++
-			}
-			err := r.sm.RemoveMicroblock(mb.Hash)
-			if err != nil {
-				log.Errorf("[%v] failed to remove microblock, id: %x", r.ID(), mb.Hash)
 			}
 		}
 	}

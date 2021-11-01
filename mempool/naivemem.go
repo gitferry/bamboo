@@ -168,7 +168,17 @@ func (nm *NaiveMem) FindMicroblock(id crypto.Identifier) (bool, *blockchain.Micr
 // a pending block should include the proposal, micorblocks that already exist,
 // and a missing list if there's any
 func (nm *NaiveMem) FillProposal(p *blockchain.Proposal) *blockchain.PendingBlock {
-	return blockchain.NewPendingBlock(p, nm.microblockMap, nm.GeneratePayload())
+	existingBlocks := make([]*blockchain.MicroBlock, 0)
+	missingBlocks := make(map[crypto.Identifier]struct{}, 0)
+	for _, id := range p.HashList {
+		block, found := nm.microblockMap[id]
+		if found {
+			existingBlocks = append(existingBlocks, block)
+		} else {
+			missingBlocks[id] = struct{}{}
+		}
+	}
+	return blockchain.NewPendingBlock(p, missingBlocks, blockchain.NewPayload(existingBlocks))
 }
 
 //func (nm *NaiveMem) front() *blockchain.MicroBlock {
