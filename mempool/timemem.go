@@ -6,6 +6,7 @@ import (
 	"github.com/gitferry/bamboo/blockchain"
 	"github.com/gitferry/bamboo/config"
 	"github.com/gitferry/bamboo/crypto"
+	"github.com/gitferry/bamboo/log"
 	"github.com/gitferry/bamboo/message"
 	"github.com/gitferry/bamboo/pq"
 	"sync"
@@ -28,7 +29,7 @@ func NewTimemem() *Timemem {
 		msize:         config.GetConfig().MSize,
 		memsize:       config.GetConfig().MemSize,
 		mbpq:          pq.NewPriorityQueue(),
-		microblockMap: map[crypto.Identifier]*blockchain.MicroBlock{},
+		microblockMap: make(map[crypto.Identifier]*blockchain.MicroBlock),
 		txnList:       list.New(),
 	}
 }
@@ -44,10 +45,11 @@ func (tm *Timemem) AddTxn(txn *message.Transaction) (bool, *blockchain.MicroBloc
 // AddMicroblock adds a microblock into a priority queue
 // return an err if the queue is full (memsize)
 func (tm *Timemem) AddMicroblock(mb *blockchain.MicroBlock) error {
-	if tm.isFull() {
+	if tm.mbpq.Len() >= tm.memsize {
 		return fmt.Errorf("mempool is full")
 	}
-	tm.mbpq.Insert(mb, mb.FutureTimestamp.UnixNano())
+	tm.mbpq.Insert(mb, mb.FutureTimestamp)
+	tm.microblockMap[mb.Hash] = mb
 
 	return nil
 }
@@ -62,13 +64,14 @@ func (tm *Timemem) GeneratePayload() *blockchain.Payload {
 	if batchSize >= tm.bsize {
 		batchSize = tm.bsize
 	}
-	microblockList := make([]*blockchain.MicroBlock, batchSize)
+	microblockList := make([]*blockchain.MicroBlock, 0)
 	for i := 0; i < batchSize; i++ {
 		mb, _ := tm.mbpq.Pop()
 		if mb == nil {
 			break
 		}
 		microblockList = append(microblockList, mb.(*blockchain.MicroBlock))
+		delete(tm.microblockMap, mb.(*blockchain.MicroBlock).Hash)
 	}
 	return blockchain.NewPayload(microblockList)
 }
@@ -90,19 +93,28 @@ func (tm *Timemem) RemoveMicroblock(id crypto.Identifier) error {
 
 // FindMicroblock finds a reffered microblock
 func (tm *Timemem) FindMicroblock(id crypto.Identifier) (bool, *blockchain.MicroBlock) {
-	found := false
-	var mb *blockchain.MicroBlock
-	return found, mb
+	mb, exists := tm.microblockMap[id]
+	return exists, mb
 }
 
 // FillProposal pulls microblocks from the mempool and build a pending block,
 // a pending block should include the proposal, micorblocks that already exist,
 // and a missing list if there's any
 func (tm *Timemem) FillProposal(p *blockchain.Proposal) *blockchain.PendingBlock {
-	var pd *blockchain.PendingBlock
-	return pd
-}
-
-func (tm *Timemem) isFull() bool {
-	return tm.memsize <= tm.mbpq.Len()
+	existingBlocks := make([]*blockchain.MicroBlock, 0)
+	missingBlocks := make(map[crypto.Identifier]struct{}, 0)
+	for _, id := range p.HashList {
+		mb, found := tm.microblockMap[id]
+		if found {
+			existingBlocks = append(existingBlocks, mb)
+			err := tm.mbpq.Remove(mb)
+			if err != nil {
+				log.Errorf("a microblock does not exist in pq")
+			}
+			delete(tm.microblockMap, mb.Hash)
+		} else {
+			missingBlocks[id] = struct{}{}
+		}
+	}
+	return blockchain.NewPendingBlock(p, missingBlocks, blockchain.NewPayload(existingBlocks))
 }

@@ -47,6 +47,8 @@ type Config struct {
 	Slow           int             `json:"slow"`
 	Crash          int             `json:"crash"`
 	MemType        string          `json:"mem_type"`
+	EstimateNum    int             `json:"estimate_num"`
+	EstimateWindow int             `json:"estimate_window"`
 
 	hasher string
 	signer string
