@@ -47,8 +47,9 @@ func (nm *NaiveMem) AddTxn(txn *message.Transaction) (bool, *blockchain.MicroBlo
 		//set the currSize to curr trans, since it is the only one does not add to the microblock
 		var id crypto.Identifier
 		nm.currSize = int(tranSize)
+		newBlock := blockchain.NewMicroblock(id, nm.makeTxnSlice())
 		nm.txnList.PushBack(txn)
-		return true, blockchain.NewMicroblock(id, nm.makeTxnSlice())
+		return true, newBlock
 
 	} else if totalSize == nm.msize {
 		//add the curr trans, and generate a microBlock
