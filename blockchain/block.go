@@ -48,7 +48,7 @@ type PendingBlock struct {
 	Payload    *Payload // microblocks that already exist
 	Proposal   *Proposal
 	missingMap map[crypto.Identifier]struct{} // missing list
-
+}
 
 type rawProposal struct {
 	types.View
@@ -114,7 +114,8 @@ func NewPendingBlock(proposal *Proposal, missingMap map[crypto.Identifier]struct
 	return &PendingBlock{
 		Proposal:   proposal,
 		missingMap: missingMap,
-		payload:    &Payload{microblockList: microBlocks},
+		Payload:    &Payload{MicroblockList: microBlocks},
+	}
 }
 
 func (p *Proposal) makeID(nodeID identity.NodeID) {
@@ -134,31 +135,31 @@ func (mb *MicroBlock) hash() crypto.Identifier {
 }
 
 func (pd *PendingBlock) AddMicroblock(mb *MicroBlock) *Block {
-	_, exists := pd.MissingMap[mb.Hash]
+	_, exists := pd.missingMap[mb.Hash]
 	if exists {
 		pd.Payload.addMicroblock(mb)
-		delete(pd.MissingMap, mb.Hash)
+		delete(pd.missingMap, mb.Hash)
 	}
-	if len(pd.MissingMap) == 0 {
+	if len(pd.missingMap) == 0 {
 		return BuildBlock(pd.Proposal, pd.Payload)
 	}
 	return nil
 }
 
 func (pd *PendingBlock) CompleteBlock() *Block {
-	if len(pd.MissingMap) == 0 {
+	if len(pd.missingMap) == 0 {
 		return BuildBlock(pd.Proposal, pd.Payload)
 	}
 	return nil
 }
 
 func (pd *PendingBlock) MissingCount() int {
-	return len(pd.MissingMap)
+	return len(pd.missingMap)
 }
 
 func (pd *PendingBlock) MissingMBList() []crypto.Identifier {
 	missingList := make([]crypto.Identifier, pd.MissingCount())
-	for k, _ := range pd.MissingMap {
+	for k, _ := range pd.missingMap {
 		missingList = append(missingList, k)
 	}
 	return missingList
