@@ -1,6 +1,7 @@
 package mempool
 
 import (
+	"crypto/rand"
 	"encoding/hex"
 	"github.com/gitferry/bamboo/blockchain"
 	"github.com/gitferry/bamboo/config"
@@ -95,9 +96,18 @@ func TestTimemem_FillProposal2(t *testing.T) {
 	require.Equal(t, block, pendingBlock.CompleteBlock())
 }
 
+// msize = 128, add 1 transaction with payload size of 0, and not mircoblock should be generated
+func TestTimemem_AddTxn1(t *testing.T) {
+	tm := NewMockTimemem()
+	tx1 := NewMockTxn(0)
+	isBuilt, mb := tm.AddTxn(tx1)
+	require.False(t, isBuilt)
+	require.Nil(t, mb)
+}
+
 func NewMockTimemem() *Timemem {
 	config.Configuration.BSize = 2
-	config.Configuration.MSize = 10000
+	config.Configuration.MSize = 128
 	config.Configuration.MemSize = 50000
 	return NewTimemem()
 }
@@ -115,4 +125,12 @@ func NewMockMicroblock(futureTimeStamp int64) *blockchain.MicroBlock {
 		Txns:            txnList,
 		FutureTimestamp: futureTimeStamp,
 	}
+}
+
+func NewMockTxn(size int) *message.Transaction {
+	var req message.Transaction
+	value := make([]byte, size)
+	rand.Read(value)
+	req.Command.Value = value
+	return &req
 }

@@ -122,16 +122,7 @@ func (n *node) recv() {
 		}
 		switch m := m.(type) {
 		case message.Transaction:
-			m.C = make(chan message.TransactionReply, 1)
 			n.TxChan <- m
-			continue
-
-		case message.TransactionReply:
-			n.RLock()
-			r := n.forwards[m.Command.String()]
-			log.Debugf("node %v received reply %v", n.id, m)
-			n.RUnlock()
-			r.Reply(m)
 			continue
 		}
 		n.MessageChan <- m

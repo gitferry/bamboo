@@ -1,14 +1,15 @@
 package mempool
 
 import (
+	"bytes"
 	"container/list"
+	"encoding/gob"
 	"errors"
 	"github.com/gitferry/bamboo/blockchain"
 	"github.com/gitferry/bamboo/config"
 	"github.com/gitferry/bamboo/crypto"
 	"github.com/gitferry/bamboo/message"
 	"sync"
-	"unsafe"
 )
 
 type NaiveMem struct {
@@ -39,14 +40,17 @@ func NewNaiveMem() *NaiveMem {
 // then the contained transactions should be deleted
 func (nm *NaiveMem) AddTxn(txn *message.Transaction) (bool, *blockchain.MicroBlock) {
 	// get the size of the structure. txn is the pointer.
-	tranSize := unsafe.Sizeof(*txn)
-	totalSize := int(tranSize) + nm.currSize
+	var buffer bytes.Buffer
+	enc := gob.NewEncoder(&buffer)
+	enc.Encode(txn)
+	tranSize := buffer.Len()
+	totalSize := tranSize + nm.currSize
 
 	if totalSize > nm.msize {
 		//do not add the curr trans, and generate a microBlock
 		//set the currSize to curr trans, since it is the only one does not add to the microblock
 		var id crypto.Identifier
-		nm.currSize = int(tranSize)
+		nm.currSize = tranSize
 		newBlock := blockchain.NewMicroblock(id, nm.makeTxnSlice())
 		nm.txnList.PushBack(txn)
 		return true, newBlock
@@ -155,12 +159,10 @@ func (nm *NaiveMem) front() *blockchain.MicroBlock {
 
 func (nm *NaiveMem) makeTxnSlice() []*message.Transaction {
 	allTxn := make([]*message.Transaction, 0)
-	var next *list.Element
-	for e := nm.txnList.Front(); e != nil; e = next {
-		txn := e.Value.(*message.Transaction)
-		allTxn = append(allTxn, txn)
+	for nm.txnList.Len() > 0 {
+		e := nm.txnList.Front()
+		allTxn = append(allTxn, e.Value.(*message.Transaction))
 		nm.txnList.Remove(e)
-		next = e.Next()
 	}
 	return allTxn
 }

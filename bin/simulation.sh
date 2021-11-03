@@ -1,5 +1,3 @@
-#!/usr/bin/env bash
-
 SERVER_PID_FILE=server.pid
 
 SERVER_PID=$(cat "${SERVER_PID_FILE}");

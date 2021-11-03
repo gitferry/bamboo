@@ -9,7 +9,6 @@ import (
 	"math/rand"
 	"net/http"
 	"net/url"
-	"sync"
 	"time"
 )
 
@@ -18,12 +17,6 @@ const (
 	HTTPClientID  = "Id"
 	HTTPCommandID = "Cid"
 )
-
-var ppFree = sync.Pool{
-	New: func() interface{} {
-		return make(chan message.TransactionReply, 1)
-	},
-}
 
 // serve serves the http REST API request from clients
 func (n *node) http() {
@@ -67,7 +60,6 @@ func (n *node) handleRoot(w http.ResponseWriter, r *http.Request) {
 	v, _ := ioutil.ReadAll(r.Body)
 	//log.Debugf("[%v] payload is %x", n.id, v)
 	req.Command.Value = v
-	req.C = ppFree.Get().(chan message.TransactionReply)
 	req.NodeID = n.id
 	req.Timestamp = time.Now()
 	req.ID = r.RequestURI

@@ -73,7 +73,6 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 		r.Election = election.NewStatic(config.GetConfig().Master)
 	}
 	r.isByz = isByz
-	r.sm = mempool.NewNaiveMem()
 	r.pm = pacemaker.NewPacemaker(config.GetConfig().N())
 	r.estimator = NewEstimator()
 	r.start = make(chan bool)
@@ -81,6 +80,15 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 	r.committedBlocks = make(chan *blockchain.Block, 100)
 	r.forkedBlocks = make(chan *blockchain.Block, 100)
 	r.pendingBlockMap = make(map[crypto.Identifier]*blockchain.PendingBlock)
+	memType := config.GetConfig().MemType
+	switch memType {
+	case "naive":
+		r.sm = mempool.NewNaiveMem()
+	case "time":
+		r.sm = mempool.NewTimemem()
+	default:
+		r.sm = mempool.NewNaiveMem()
+	}
 	r.Register(blockchain.Proposal{}, r.HandleProposal)
 	r.Register(blockchain.MicroBlock{}, r.HandleMicroblock)
 	r.Register(blockchain.Vote{}, r.HandleVote)
@@ -155,7 +163,7 @@ func (r *Replica) HandleProposal(proposal blockchain.Proposal) {
 // it first checks if the relevant proposal is pending
 // if so, tries to complete the block
 func (r *Replica) HandleMicroblock(mb blockchain.MicroBlock) {
-	log.Debugf("[%v] received a microblock, id: %x, proposalID: %x", r.ID(), mb.Hash, mb.ProposalID)
+	log.Debugf("[%v] received a microblock, containing %v transactions, id: %x", r.ID(), len(mb.Txns), mb.Hash)
 	pd, exists := r.pendingBlockMap[mb.ProposalID]
 	if !mb.IsRequested && config.Configuration.MemType == "time" {
 		ack := message.Ack{
@@ -242,6 +250,7 @@ func (r *Replica) handleTxn(m message.Transaction) {
 		if config.Configuration.MemType == "time" {
 			mb.FutureTimestamp = time.Now().Add(r.estimator.PredictStableTime("mb")).UnixNano()
 		}
+		log.Debugf("[%v] A microblock is built, containing %v transactions", r.ID(), len(mb.Txns))
 		r.Broadcast(mb)
 	}
 	r.startSignal()
@@ -299,6 +308,7 @@ func (r *Replica) proposeBlock(view types.View) {
 		}
 	}
 	proposal := r.Safety.MakeProposal(view, payload.GenerateHashList())
+	log.Debugf("[%v] is making a proposal for view %v, containing %v microblocks, id:%x", proposal.Proposer, proposal.View, len(proposal.HashList), proposal.ID)
 	r.totalBlockSize += len(proposal.HashList)
 	r.proposedNo++
 	createEnd := time.Now()

@@ -10,6 +10,7 @@ import (
 	"github.com/gitferry/bamboo/message"
 	"github.com/gitferry/bamboo/pq"
 	"sync"
+	"unsafe"
 )
 
 type Timemem struct {
@@ -19,6 +20,7 @@ type Timemem struct {
 	bsize         int // number of microblocks in a proposal
 	msize         int // byte size of transactions in a microblock
 	memsize       int // number of microblocks in mempool
+	currSize      int // current byte size of txns
 	mu            sync.Mutex
 }
 
@@ -37,9 +39,32 @@ func NewTimemem() *Timemem {
 // AddTxn adds a transaction and returns a microblock if msize is reached
 // then the contained transactions should be deleted
 func (tm *Timemem) AddTxn(txn *message.Transaction) (bool, *blockchain.MicroBlock) {
-	success := false
-	var mb *blockchain.MicroBlock
-	return success, mb
+	// get the size of the structure. txn is the pointer.
+	tranSize := unsafe.Sizeof(*txn)
+	totalSize := int(tranSize) + tm.currSize
+
+	if totalSize > tm.msize {
+		//do not add the curr trans, and generate a microBlock
+		//set the currSize to curr trans, since it is the only one does not add to the microblock
+		var id crypto.Identifier
+		tm.currSize = int(tranSize)
+		newBlock := blockchain.NewMicroblock(id, tm.makeTxnSlice())
+		tm.txnList.PushBack(txn)
+		return true, newBlock
+
+	} else if totalSize == tm.msize {
+		//add the curr trans, and generate a microBlock
+		var id crypto.Identifier
+		allTxn := append(tm.makeTxnSlice(), txn)
+		tm.currSize = 0
+		return true, blockchain.NewMicroblock(id, allTxn)
+
+	} else {
+		//
+		tm.txnList.PushBack(txn)
+		tm.currSize = totalSize
+		return false, nil
+	}
 }
 
 // AddMicroblock adds a microblock into a priority queue
@@ -116,5 +141,17 @@ func (tm *Timemem) FillProposal(p *blockchain.Proposal) *blockchain.PendingBlock
 			missingBlocks[id] = struct{}{}
 		}
 	}
-	return blockchain.NewPendingBlock(p, missingBlocks, blockchain.NewPayload(existingBlocks))
+	return blockchain.NewPendingBlock(p, missingBlocks, existingBlocks)
+}
+
+func (tm *Timemem) makeTxnSlice() []*message.Transaction {
+	allTxn := make([]*message.Transaction, 0)
+	var next *list.Element
+	for e := tm.txnList.Front(); e != nil; e = next {
+		txn := e.Value.(*message.Transaction)
+		allTxn = append(allTxn, txn)
+		tm.txnList.Remove(e)
+		next = e.Next()
+	}
+	return allTxn
 }

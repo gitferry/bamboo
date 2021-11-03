@@ -15,7 +15,8 @@
   "multiversion": false,
   "timeout": 350,
   "bsize": 100,
-  "memsize": 50,
+  "msize": 1024,
+  "memsize": 10000,
   "fixed": false,
   "payload_size": 0,
   "delta": 1,
@@ -28,6 +29,8 @@
   "derr": 0,
   "slow": 300,
   "crash": 20000,
+  "estimate_num": 3,
+  "estimate_window": 100,
   "benchmark": {
     "T": 1200,
     "N": 0,
