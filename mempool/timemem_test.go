@@ -96,13 +96,65 @@ func TestTimemem_FillProposal2(t *testing.T) {
 	require.Equal(t, block, pendingBlock.CompleteBlock())
 }
 
-// msize = 128, add 1 transaction with payload size of 0, and not mircoblock should be generated
+// msize = 128, add 1 transaction with payload size of 0, and no mircoblock should be generated
 func TestTimemem_AddTxn1(t *testing.T) {
 	tm := NewMockTimemem()
+	tm.msize = 128
 	tx1 := NewMockTxn(0)
+	// actual byte size of a transaction is 168
 	isBuilt, mb := tm.AddTxn(tx1)
 	require.False(t, isBuilt)
 	require.Nil(t, mb)
+}
+
+// msize = 256, add 1 transaction with payload size of 0, and a mircoblock should be generated with one transaction
+func TestTimemem_AddTxn2(t *testing.T) {
+	tm := NewMockTimemem()
+	tm.msize = 256
+	tx1 := NewMockTxn(0)
+	// actual byte size of a transaction is 168
+	isBuilt, mb := tm.AddTxn(tx1)
+	require.True(t, isBuilt)
+	require.NotNil(t, mb)
+	require.Equal(t, 1, len(mb.Txns))
+}
+
+// msize = 256, add 2 transaction with payload size of 0, and two microblocks will be generated, each with one transaction, respectively
+func TestTimemem_AddTxn3(t *testing.T) {
+	tm := NewMockTimemem()
+	tm.msize = 256
+	tx1 := NewMockTxn(0)
+	tx2 := NewMockTxn(0)
+	// actual byte size of a transaction is 168
+	_, _ = tm.AddTxn(tx1)
+	isBuilt, mb := tm.AddTxn(tx2)
+	require.True(t, isBuilt)
+	require.NotNil(t, mb)
+	require.Equal(t, 1, len(mb.Txns))
+}
+
+// msize = 512, add 3 transaction with payload size of 0, and only one microblock will be generated with 2 transaction
+func TestTimemem_AddTxn4(t *testing.T) {
+	tm := NewMockTimemem()
+	tm.msize = 512
+	tx1 := NewMockTxn(0)
+	tx2 := NewMockTxn(0)
+	tx3 := NewMockTxn(0)
+	tx4 := NewMockTxn(0)
+	// actual byte size of a transaction is 168
+	isBuilt, mb := tm.AddTxn(tx1)
+	require.False(t, isBuilt)
+	require.Nil(t, mb)
+	isBuilt, mb = tm.AddTxn(tx2)
+	require.False(t, isBuilt)
+	require.Nil(t, mb)
+	isBuilt, mb = tm.AddTxn(tx3)
+	require.False(t, isBuilt)
+	require.Nil(t, mb)
+	isBuilt, mb = tm.AddTxn(tx4)
+	require.True(t, isBuilt)
+	require.NotNil(t, mb)
+	require.Equal(t, 3, len(mb.Txns))
 }
 
 func NewMockTimemem() *Timemem {

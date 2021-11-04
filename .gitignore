@@ -4,6 +4,8 @@
 *.dll
 *.so
 *.dylib
+bin/server
+bin/client
 
 # Test binary, built with `go test -c`
 *.test
@@ -12,6 +14,8 @@ latency
 *.csv
 mem_*
 cpu_*
+client.*
+server.*
 
 
 # Output of the go coverage tool, specifically when used with LiteIDE

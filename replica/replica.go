@@ -250,7 +250,6 @@ func (r *Replica) handleTxn(m message.Transaction) {
 		if config.Configuration.MemType == "time" {
 			mb.FutureTimestamp = time.Now().Add(r.estimator.PredictStableTime("mb")).UnixNano()
 		}
-		log.Debugf("[%v] A microblock is built, containing %v transactions", r.ID(), len(mb.Txns))
 		r.Broadcast(mb)
 	}
 	r.startSignal()

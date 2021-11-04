@@ -1,14 +1,13 @@
 package mempool
 
 import (
-	"bytes"
 	"container/list"
-	"encoding/gob"
 	"errors"
 	"github.com/gitferry/bamboo/blockchain"
 	"github.com/gitferry/bamboo/config"
 	"github.com/gitferry/bamboo/crypto"
 	"github.com/gitferry/bamboo/message"
+	"github.com/gitferry/bamboo/utils"
 	"sync"
 )
 
@@ -40,11 +39,12 @@ func NewNaiveMem() *NaiveMem {
 // then the contained transactions should be deleted
 func (nm *NaiveMem) AddTxn(txn *message.Transaction) (bool, *blockchain.MicroBlock) {
 	// get the size of the structure. txn is the pointer.
-	var buffer bytes.Buffer
-	enc := gob.NewEncoder(&buffer)
-	enc.Encode(txn)
-	tranSize := buffer.Len()
+	tranSize := utils.SizeOf(txn)
 	totalSize := tranSize + nm.currSize
+
+	if tranSize > nm.msize {
+		return false, nil
+	}
 
 	if totalSize > nm.msize {
 		//do not add the curr trans, and generate a microBlock
