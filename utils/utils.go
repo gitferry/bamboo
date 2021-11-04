@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"bytes"
 	"encoding/gob"
 	"fmt"
 	"math/rand"
@@ -22,6 +23,13 @@ func FindIntSlice(slice []int, val int) bool {
 		}
 	}
 	return false
+}
+
+func SizeOf(v interface{}) int {
+	var buffer bytes.Buffer
+	enc := gob.NewEncoder(&buffer)
+	enc.Encode(v)
+	return buffer.Len()
 }
 
 func RandomPick(n int, f int) []int {

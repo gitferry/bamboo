@@ -96,13 +96,27 @@ func TestTimemem_FillProposal2(t *testing.T) {
 	require.Equal(t, block, pendingBlock.CompleteBlock())
 }
 
-// msize = 128, add 1 transaction with payload size of 0, and not mircoblock should be generated
+// msize = 128, add 1 transaction with payload size of 0, and no mircoblock should be generated
 func TestTimemem_AddTxn1(t *testing.T) {
 	tm := NewMockTimemem()
+	tm.msize = 128
 	tx1 := NewMockTxn(0)
+	// actual byte size of a transaction is 168
 	isBuilt, mb := tm.AddTxn(tx1)
 	require.False(t, isBuilt)
 	require.Nil(t, mb)
+}
+
+// msize = 256, add 1 transaction with payload size of 0, and a mircoblock should be generated with one transaction
+func TestTimemem_AddTxn2(t *testing.T) {
+	tm := NewMockTimemem()
+	tm.msize = 256
+	tx1 := NewMockTxn(0)
+	// actual byte size of a transaction is 168
+	isBuilt, mb := tm.AddTxn(tx1)
+	require.True(t, isBuilt)
+	require.NotNil(t, mb)
+	require.Equal(t, 1, len(mb.Txns))
 }
 
 func NewMockTimemem() *Timemem {

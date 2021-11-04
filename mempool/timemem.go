@@ -9,8 +9,8 @@ import (
 	"github.com/gitferry/bamboo/log"
 	"github.com/gitferry/bamboo/message"
 	"github.com/gitferry/bamboo/pq"
+	"github.com/gitferry/bamboo/utils"
 	"sync"
-	"unsafe"
 )
 
 type Timemem struct {
@@ -40,14 +40,18 @@ func NewTimemem() *Timemem {
 // then the contained transactions should be deleted
 func (tm *Timemem) AddTxn(txn *message.Transaction) (bool, *blockchain.MicroBlock) {
 	// get the size of the structure. txn is the pointer.
-	tranSize := unsafe.Sizeof(*txn)
-	totalSize := int(tranSize) + tm.currSize
+	tranSize := utils.SizeOf(txn)
+	totalSize := tranSize + tm.currSize
+
+	if tranSize > tm.msize {
+		return false, nil
+	}
 
 	if totalSize > tm.msize {
 		//do not add the curr trans, and generate a microBlock
 		//set the currSize to curr trans, since it is the only one does not add to the microblock
 		var id crypto.Identifier
-		tm.currSize = int(tranSize)
+		tm.currSize = tranSize
 		newBlock := blockchain.NewMicroblock(id, tm.makeTxnSlice())
 		tm.txnList.PushBack(txn)
 		return true, newBlock
