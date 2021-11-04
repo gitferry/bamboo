@@ -42,6 +42,13 @@ func (tm *Timemem) AddTxn(txn *message.Transaction) (bool, *blockchain.MicroBloc
 	// get the size of the structure. txn is the pointer.
 	tranSize := utils.SizeOf(txn)
 	totalSize := tranSize + tm.currSize
+<<<<<<< HEAD
+=======
+
+	if tranSize > tm.msize {
+		return false, nil
+	}
+>>>>>>> 625c9600aeb0717f224b45f25071e3b87721dfaf
 
 	if tranSize > tm.msize {
 		return false, nil
