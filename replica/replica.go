@@ -150,12 +150,12 @@ func (r *Replica) HandleProposal(proposal blockchain.Proposal) {
 	} else {
 		r.pendingBlockMap[proposal.ID] = pendingBlock
 		log.Debugf("[%v] %v microblocks are missing in a pending block, id: %x", r.ID(), pendingBlock.MissingCount(), proposal.ID)
-		missingRequest := message.MissingMBRequest{
-			RequesterID:   r.ID(),
-			ProposalID:    proposal.ID,
-			MissingMBList: pendingBlock.MissingMBList(),
-		}
-		r.Send(proposal.Proposer, missingRequest)
+		//missingRequest := message.MissingMBRequest{
+		//	RequesterID:   r.ID(),
+		//	ProposalID:    proposal.ID,
+		//	MissingMBList: pendingBlock.MissingMBList(),
+		//}
+		//r.Send(proposal.Proposer, missingRequest)
 	}
 }
 
@@ -163,7 +163,8 @@ func (r *Replica) HandleProposal(proposal blockchain.Proposal) {
 // it first checks if the relevant proposal is pending
 // if so, tries to complete the block
 func (r *Replica) HandleMicroblock(mb blockchain.MicroBlock) {
-	log.Debugf("[%v] received a microblock, containing %v transactions, id: %x", r.ID(), len(mb.Txns), mb.Hash)
+	//log.Debugf("[%v] received a microblock, containing %v transactions, id: %x", r.ID(), len(mb.Txns), mb.Hash)
+	r.startSignal()
 	pd, exists := r.pendingBlockMap[mb.ProposalID]
 	if !mb.IsRequested && config.Configuration.MemType == "time" {
 		ack := message.Ack{
@@ -198,7 +199,7 @@ func (r *Replica) HandleMissingMBRequest(mbr message.MissingMBRequest) {
 			log.Debugf("[%v] a microblock is found in mempool for proposal %x", r.ID(), mbr.ProposalID)
 			r.Send(mbr.RequesterID, mb)
 		} else {
-			log.Errorf("[%v] a requested microblock for proposal %x is not found in mempool, id: %x", r.ID(), mbr.ProposalID, mb.Hash)
+			log.Errorf("[%v] a requested microblock for proposal %x is not found in mempool, id: %x", r.ID(), mbr.ProposalID, mbid)
 		}
 	}
 }
@@ -252,7 +253,7 @@ func (r *Replica) handleTxn(m message.Transaction) {
 		}
 		r.Broadcast(mb)
 	}
-	r.startSignal()
+	//r.startSignal()
 	// the first leader kicks off the protocol
 	if r.pm.GetCurView() == 0 && r.IsLeader(r.ID(), 1) {
 		log.Debugf("[%v] is going to kick off the protocol", r.ID())

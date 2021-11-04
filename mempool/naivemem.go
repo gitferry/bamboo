@@ -97,10 +97,13 @@ func (nm *NaiveMem) GeneratePayload() *blockchain.Payload {
 	} else {
 		batchSize = nm.microblocks.Len()
 	}
-	microblockList := make([]*blockchain.MicroBlock, batchSize)
+	microblockList := make([]*blockchain.MicroBlock, 0)
 
 	for i := 0; i < batchSize; i++ {
 		mb := nm.front()
+		if mb == nil {
+			break
+		}
 		microblockList = append(microblockList, mb)
 	}
 
@@ -123,8 +126,8 @@ func (nm *NaiveMem) RemoveMicroblock(id crypto.Identifier) error {
 
 // FindMicroblock finds a reffered microblock
 func (nm *NaiveMem) FindMicroblock(id crypto.Identifier) (bool, *blockchain.MicroBlock) {
-	var mb *blockchain.MicroBlock
-	return false, mb
+	mb, found := nm.microblockMap[id]
+	return found, mb
 }
 
 // FillProposal pulls microblocks from the mempool and build a pending block,
@@ -137,6 +140,14 @@ func (nm *NaiveMem) FillProposal(p *blockchain.Proposal) *blockchain.PendingBloc
 		block, found := nm.microblockMap[id]
 		if found {
 			existingBlocks = append(existingBlocks, block)
+			//for e := nm.microblocks.Front(); e != nil; e = e.Next() {
+			//	// do something with e.Value
+			//	mb := e.Value.(*blockchain.MicroBlock)
+			//	if mb == block {
+			//		nm.microblocks.Remove(e)
+			//		break
+			//	}
+			//}
 		} else {
 			missingBlocks[id] = struct{}{}
 		}

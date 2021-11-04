@@ -1,6 +1,7 @@
 package blockchain
 
 import (
+	"github.com/gitferry/bamboo/crypto/merkle"
 	"time"
 
 	"github.com/gitferry/bamboo/crypto"
@@ -81,6 +82,9 @@ func (b *Block) MicroblockList() []*MicroBlock {
 func (pl *Payload) GenerateHashList() []crypto.Identifier {
 	hashList := make([]crypto.Identifier, 0)
 	for _, mb := range pl.MicroblockList {
+		if mb == nil {
+			continue
+		}
 		hashList = append(hashList, mb.Hash)
 	}
 	return hashList
@@ -131,7 +135,11 @@ func (p *Proposal) makeID(nodeID identity.NodeID) {
 }
 
 func (mb *MicroBlock) hash() crypto.Identifier {
-	return crypto.MakeID(mb.Txns)
+	hashList := make([][]byte, 0)
+	for _, tx := range mb.Txns {
+		hashList = append(hashList, crypto.IDToByte(crypto.MakeID(tx)))
+	}
+	return crypto.MakeID(merkle.HashFromByteSlices(hashList))
 }
 
 func (pd *PendingBlock) AddMicroblock(mb *MicroBlock) *Block {
