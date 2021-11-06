@@ -58,6 +58,7 @@ type Replica struct {
 	processedNo          int
 	committedNo          int
 	pendingBlockMap      map[crypto.Identifier]*blockchain.PendingBlock
+	missingMBs           map[crypto.Identifier]crypto.Identifier // microblock hash to proposal hash
 }
 
 // NewReplica creates a new replica instance
@@ -80,6 +81,7 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 	r.committedBlocks = make(chan *blockchain.Block, 100)
 	r.forkedBlocks = make(chan *blockchain.Block, 100)
 	r.pendingBlockMap = make(map[crypto.Identifier]*blockchain.PendingBlock)
+	r.missingMBs = make(map[crypto.Identifier]crypto.Identifier)
 	memType := config.GetConfig().MemType
 	switch memType {
 	case "naive":
@@ -146,26 +148,47 @@ func (r *Replica) HandleProposal(proposal blockchain.Proposal) {
 	block := pendingBlock.CompleteBlock()
 	if block != nil {
 		log.Debugf("[%v] a block is ready, view: %v, id: %x", r.ID(), proposal.View, proposal.ID)
-		r.eventChan <- block
-	} else {
-		r.pendingBlockMap[proposal.ID] = pendingBlock
-		log.Debugf("[%v] %v microblocks are missing in a pending block, id: %x", r.ID(), pendingBlock.MissingCount(), proposal.ID)
-		//missingRequest := message.MissingMBRequest{
-		//	RequesterID:   r.ID(),
-		//	ProposalID:    proposal.ID,
-		//	MissingMBList: pendingBlock.MissingMBList(),
-		//}
-		//r.Send(proposal.Proposer, missingRequest)
+		r.eventChan <- *block
+		return
 	}
+	r.pendingBlockMap[proposal.ID] = pendingBlock
+	for _, mbid := range pendingBlock.MissingMBList() {
+		r.missingMBs[mbid] = proposal.ID
+	}
+	log.Debugf("[%v] %v microblocks are missing in a pending block, id: %x", r.ID(), pendingBlock.MissingCount(), proposal.ID)
+	//missingRequest := message.MissingMBRequest{
+	//	RequesterID:   r.ID(),
+	//	ProposalID:    proposal.ID,
+	//	MissingMBList: pendingBlock.MissingMBList(),
+	//}
+	//r.Send(proposal.Proposer, missingRequest)
 }
 
 // HandleMicroblock handles microblocks from replicas
 // it first checks if the relevant proposal is pending
 // if so, tries to complete the block
 func (r *Replica) HandleMicroblock(mb blockchain.MicroBlock) {
-	//log.Debugf("[%v] received a microblock, containing %v transactions, id: %x", r.ID(), len(mb.Txns), mb.Hash)
 	r.startSignal()
-	pd, exists := r.pendingBlockMap[mb.ProposalID]
+	//log.Debugf("[%v] received a microblock, containing %v transactions, id: %x", r.ID(), len(mb.Txns), mb.Hash)
+	proposalID, exists := r.missingMBs[mb.Hash]
+	if exists {
+		pd, exists := r.pendingBlockMap[proposalID]
+		if exists {
+			log.Debugf("[%v] received a microblock for pending proposal", r.ID(), mb.ProposalID)
+			block := pd.AddMicroblock(&mb)
+			if block != nil {
+				log.Debugf("[%v] a block is ready, view: %v, id: %x", r.ID(), pd.Proposal.View, pd.Proposal.ID)
+				delete(r.pendingBlockMap, mb.ProposalID)
+				delete(r.missingMBs, mb.Hash)
+				r.eventChan <- block
+			}
+		}
+	} else {
+		err := r.sm.AddMicroblock(&mb)
+		if err != nil {
+			log.Errorf("[%v] can not add a microblock, id: %x", r.ID(), mb.Hash)
+		}
+	}
 	if !mb.IsRequested && config.Configuration.MemType == "time" {
 		ack := message.Ack{
 			SentTime: mb.Timestamp,
@@ -175,19 +198,6 @@ func (r *Replica) HandleMicroblock(mb blockchain.MicroBlock) {
 			Type:     "mb",
 		}
 		r.Send(mb.Sender, ack)
-	}
-	if exists {
-		block := pd.AddMicroblock(&mb)
-		if block != nil {
-			log.Debugf("[%v] a block is ready, view: %v, id: %x", r.ID(), pd.Proposal.View, pd.Proposal.ID)
-			delete(r.pendingBlockMap, mb.ProposalID)
-			r.eventChan <- block
-		}
-	} else {
-		err := r.sm.AddMicroblock(&mb)
-		if err != nil {
-			log.Errorf("[%v] can not add a microblock, id: %x", r.ID(), mb.Hash)
-		}
 	}
 }
 
@@ -253,7 +263,8 @@ func (r *Replica) handleTxn(m message.Transaction) {
 		}
 		r.Broadcast(mb)
 	}
-	//r.startSignal()
+	time.Sleep(10)
+	r.startSignal()
 	// the first leader kicks off the protocol
 	if r.pm.GetCurView() == 0 && r.IsLeader(r.ID(), 1) {
 		log.Debugf("[%v] is going to kick off the protocol", r.ID())
@@ -400,6 +411,8 @@ func (r *Replica) Start() {
 			r.voteNo++
 		case pacemaker.TMO:
 			r.Safety.ProcessRemoteTmo(&v)
+		default:
+			log.Errorf("[%v] received an unknown event %v", r.ID(), v)
 		}
 	}
 }

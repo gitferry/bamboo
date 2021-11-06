@@ -140,14 +140,14 @@ func (nm *NaiveMem) FillProposal(p *blockchain.Proposal) *blockchain.PendingBloc
 		block, found := nm.microblockMap[id]
 		if found {
 			existingBlocks = append(existingBlocks, block)
-			//for e := nm.microblocks.Front(); e != nil; e = e.Next() {
-			//	// do something with e.Value
-			//	mb := e.Value.(*blockchain.MicroBlock)
-			//	if mb == block {
-			//		nm.microblocks.Remove(e)
-			//		break
-			//	}
-			//}
+			for e := nm.microblocks.Front(); e != nil; e = e.Next() {
+				// do something with e.Value
+				mb := e.Value.(*blockchain.MicroBlock)
+				if mb == block {
+					nm.microblocks.Remove(e)
+					break
+				}
+			}
 		} else {
 			missingBlocks[id] = struct{}{}
 		}
