@@ -136,7 +136,7 @@ func (lb *Lbft) ProcessVote(vote *blockchain.Vote) {
 	}
 	isBuilt, qc := lb.bc.AddVote(vote)
 	if !isBuilt {
-		log.Debugf("[%v] votes are not sufficient to build a qc, view: %v, block id: %x", lb.ID(), vote.View, vote.BlockID)
+		//log.Debugf("[%v] votes are not sufficient to build a qc, view: %v, block id: %x", lb.ID(), vote.View, vote.BlockID)
 		return
 	}
 	// send the QC to the next leader

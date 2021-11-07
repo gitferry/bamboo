@@ -152,35 +152,36 @@ func (r *Replica) HandleProposal(proposal blockchain.Proposal) {
 		return
 	}
 	r.pendingBlockMap[proposal.ID] = pendingBlock
+	log.Debugf("[%v] %v microblocks are missing in id: %x", r.ID(), pendingBlock.MissingCount(), proposal.ID)
 	for _, mbid := range pendingBlock.MissingMBList() {
 		r.missingMBs[mbid] = proposal.ID
+		log.Debugf("[%v] a microblock is missing, id: %x", r.ID(), mbid)
 	}
-	log.Debugf("[%v] %v microblocks are missing in a pending block, id: %x", r.ID(), pendingBlock.MissingCount(), proposal.ID)
-	//missingRequest := message.MissingMBRequest{
-	//	RequesterID:   r.ID(),
-	//	ProposalID:    proposal.ID,
-	//	MissingMBList: pendingBlock.MissingMBList(),
-	//}
-	//r.Send(proposal.Proposer, missingRequest)
+	missingRequest := message.MissingMBRequest{
+		RequesterID:   r.ID(),
+		ProposalID:    proposal.ID,
+		MissingMBList: pendingBlock.MissingMBList(),
+	}
+	r.Send(proposal.Proposer, missingRequest)
 }
 
 // HandleMicroblock handles microblocks from replicas
 // it first checks if the relevant proposal is pending
 // if so, tries to complete the block
 func (r *Replica) HandleMicroblock(mb blockchain.MicroBlock) {
-	r.startSignal()
-	//log.Debugf("[%v] received a microblock, containing %v transactions, id: %x", r.ID(), len(mb.Txns), mb.Hash)
+	//r.startSignal()
+	log.Debugf("[%v] received a microblock, containing %v transactions, id: %x", r.ID(), len(mb.Txns), mb.Hash)
 	proposalID, exists := r.missingMBs[mb.Hash]
 	if exists {
 		pd, exists := r.pendingBlockMap[proposalID]
 		if exists {
-			log.Debugf("[%v] received a microblock for pending proposal", r.ID(), mb.ProposalID)
+			log.Debugf("[%v] received a microblock %x for pending proposal %x", r.ID(), mb.Hash, proposalID)
 			block := pd.AddMicroblock(&mb)
 			if block != nil {
 				log.Debugf("[%v] a block is ready, view: %v, id: %x", r.ID(), pd.Proposal.View, pd.Proposal.ID)
 				delete(r.pendingBlockMap, mb.ProposalID)
 				delete(r.missingMBs, mb.Hash)
-				r.eventChan <- block
+				r.eventChan <- *block
 			}
 		}
 	} else {
@@ -256,6 +257,7 @@ func (r *Replica) handleQuery(m message.Query) {
 }
 
 func (r *Replica) handleTxn(m message.Transaction) {
+	r.startSignal()
 	isbuilt, mb := r.sm.AddTxn(&m)
 	if isbuilt {
 		if config.Configuration.MemType == "time" {
@@ -263,8 +265,6 @@ func (r *Replica) handleTxn(m message.Transaction) {
 		}
 		r.Broadcast(mb)
 	}
-	time.Sleep(10)
-	r.startSignal()
 	// the first leader kicks off the protocol
 	if r.pm.GetCurView() == 0 && r.IsLeader(r.ID(), 1) {
 		log.Debugf("[%v] is going to kick off the protocol", r.ID())
@@ -352,7 +352,7 @@ func (r *Replica) ListenLocalEvent() {
 				r.roundNo++
 				r.lastViewTime = now
 				r.eventChan <- view
-				log.Debugf("[%v] the last view lasts %v milliseconds, current view: %v", r.ID(), lasts.Milliseconds(), view)
+				//log.Debugf("[%v] the last view lasts %v milliseconds, current view: %v", r.ID(), lasts.Milliseconds(), view)
 				break L
 			case <-r.timer.C:
 				r.Safety.ProcessLocalTmo(r.pm.GetCurView())

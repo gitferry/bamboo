@@ -132,7 +132,7 @@ func (hs *HotStuff) ProcessVote(vote *blockchain.Vote) {
 	}
 	isBuilt, qc := hs.bc.AddVote(vote)
 	if !isBuilt {
-		log.Debugf("[%v] not sufficient votes to build a QC, block id: %x", hs.ID(), vote.BlockID)
+		//log.Debugf("[%v] not sufficient votes to build a QC, block id: %x", hs.ID(), vote.BlockID)
 		return
 	}
 	qc.Leader = hs.ID()

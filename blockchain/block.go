@@ -166,7 +166,7 @@ func (pd *PendingBlock) MissingCount() int {
 }
 
 func (pd *PendingBlock) MissingMBList() []crypto.Identifier {
-	missingList := make([]crypto.Identifier, pd.MissingCount())
+	missingList := make([]crypto.Identifier, 0)
 	for k, _ := range pd.MissingMap {
 		missingList = append(missingList, k)
 	}
