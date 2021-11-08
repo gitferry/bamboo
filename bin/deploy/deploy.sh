@@ -17,11 +17,11 @@ distribute(){
     do 
        ssh -t $2@${SERVER_ADDR[j-1]} mkdir bamboo
        echo -e "---- upload replica ${j}: $2@${SERVER_ADDR[j-1]} \n ----"
-       scp server ips.txt $2@${SERVER_ADDR[j-1]}:/home/$2/bamboo
+       scp server ips.txt $2@${SERVER_ADDR[j-1]}:/root/bamboo
     done
 }
 
-USERNAME="root"
+USERNAME='root'
 MAXPEERNUM=(`wc -l public_ips.txt | awk '{ print $1 }'`)
 
 # distribute files

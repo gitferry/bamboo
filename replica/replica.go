@@ -135,7 +135,7 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 func (r *Replica) HandleProposal(proposal blockchain.Proposal) {
 	r.receivedNo++
 	r.startSignal()
-	log.Debugf("[%v] received a proposal from %v, view is %v, id: %x, prevID: %x", r.ID(), proposal.Proposer, proposal.View, proposal.ID, proposal.PrevID)
+	log.Debugf("[%v] received a proposal from %v, containing %v microblocks, view is %v, id: %x, prevID: %x", r.ID(), proposal.Proposer, len(proposal.HashList), proposal.View, proposal.ID, proposal.PrevID)
 	if config.Configuration.MemType == "time" {
 		ack := message.Ack{
 			SentTime: proposal.Timestamp,
@@ -210,7 +210,6 @@ func (r *Replica) HandleMissingMBRequest(mbr message.MissingMBRequest) {
 	for _, mbid := range mbr.MissingMBList {
 		found, mb := r.sm.FindMicroblock(mbid)
 		if found {
-			log.Debugf("[%v] a microblock is found in mempool for proposal %x", r.ID(), mbr.ProposalID)
 			r.Send(mbr.RequesterID, mb)
 		} else {
 			log.Errorf("[%v] a requested microblock for proposal %x is not found in mempool, id: %x", r.ID(), mbr.ProposalID, mbid)
@@ -267,6 +266,7 @@ func (r *Replica) handleTxn(m message.Transaction) {
 		if config.Configuration.MemType == "time" {
 			mb.FutureTimestamp = time.Now().Add(r.estimator.PredictStableTime("mb")).UnixNano()
 		}
+		r.sm.AddMicroblock(mb)
 		r.Broadcast(mb)
 	}
 	// the first leader kicks off the protocol
@@ -279,18 +279,21 @@ func (r *Replica) handleTxn(m message.Transaction) {
 /* Processors */
 
 func (r *Replica) processCommittedBlock(block *blockchain.Block) {
+	var txCount int
 	if block.Proposer == r.ID() {
 		for _, mb := range block.MicroblockList() {
+			txCount += len(mb.Txns)
 			for _, txn := range mb.Txns {
 				// only record the delay of transactions from the local memory pool
 				delay := time.Now().Sub(txn.Timestamp)
 				r.totalDelay += delay
 				r.latencyNo++
+				r.totalCommittedTx++
 			}
 		}
 	}
 	r.committedNo++
-	log.Infof("[%v] the block is committed, No. of microblocks: %v, view: %v, current view: %v, id: %x", r.ID(), len(block.MicroblockList()), block.View, r.pm.GetCurView(), block.ID)
+	log.Infof("[%v] the block is committed, No. of microblocks: %v, No. of tx: %v, view: %v, current view: %v, id: %x", r.ID(), len(block.MicroblockList()), txCount, block.View, r.pm.GetCurView(), block.ID)
 }
 
 func (r *Replica) processForkedBlock(block *blockchain.Block) {

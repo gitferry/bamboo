@@ -73,14 +73,12 @@ func (nm *NaiveMem) AddTxn(txn *message.Transaction) (bool, *blockchain.MicroBlo
 // AddMicroblock adds a microblock into a FIFO queue
 // return an err if the queue is full (memsize)
 func (nm *NaiveMem) AddMicroblock(mb *blockchain.MicroBlock) error {
+	nm.mu.Lock()
+	defer nm.mu.Unlock()
 	if nm.microblocks.Len() >= nm.memsize {
 		return errors.New("the memory queue is full")
 	}
 	nm.microblocks.PushBack(mb)
-
-	nm.mu.Lock()
-	defer nm.mu.Unlock()
-
 	nm.microblockMap[mb.Hash] = mb
 	return nil
 }
