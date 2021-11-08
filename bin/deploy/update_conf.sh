@@ -9,7 +9,7 @@ update(){
     done
 }
 
-USERNAME="gaify"
+USERNAME="root"
 MAXPEERNUM=(`wc -l public_ips.txt | awk '{ print $1 }'`)
 
 # update config.json to replicas

@@ -11,7 +11,7 @@ EOF
 }
 
 add_ssh_key(){
-    SERVER_ADDR=(`cat ips.txt | awk '{ print $2 }'`)
+    SERVER_ADDR=(`cat ips.txt | awk '{ print $1 }'`)
     echo "Add your local ssh public key into all nodes"
     for (( j=1; j<=$1; j++ ))
     do
