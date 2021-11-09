@@ -6,12 +6,12 @@ kill_all_servers(){
     for data in ${SERVER_ADDR[@]}
     do
        let j+=1
-       ssh -t $1@${data} "echo ---- "success clear logs on node ${j}" --- && rm /home/${1}/bamboo/server.*"
+       ssh -t $1@${data} "echo ---- "success clear logs on node ${j}" --- && rm /${1}/bamboo/server.*"
     done
 }
 
 # NOTE!!!
-USERNAME="gaify"
+USERNAME="root"
 
 # distribute files
 kill_all_servers  $USERNAME
