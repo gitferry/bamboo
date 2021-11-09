@@ -76,7 +76,7 @@ func (hs *HotStuff) ProcessBlock(block *blockchain.Block) error {
 	}
 	curView = hs.pm.GetCurView()
 	if block.View < curView {
-		log.Warningf("[%v] received a stale proposal from %v", hs.ID(), block.Proposer)
+		log.Warningf("[%v] received a stale proposal from %v, id: %x", hs.ID(), block.Proposer, block.ID)
 		return nil
 	}
 	if !hs.Election.IsLeader(block.Proposer, block.View) {

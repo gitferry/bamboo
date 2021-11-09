@@ -124,6 +124,8 @@ func (nm *NaiveMem) RemoveMicroblock(id crypto.Identifier) error {
 
 // FindMicroblock finds a reffered microblock
 func (nm *NaiveMem) FindMicroblock(id crypto.Identifier) (bool, *blockchain.MicroBlock) {
+	nm.mu.Lock()
+	defer nm.mu.Unlock()
 	mb, found := nm.microblockMap[id]
 	return found, mb
 }
@@ -132,6 +134,8 @@ func (nm *NaiveMem) FindMicroblock(id crypto.Identifier) (bool, *blockchain.Micr
 // a pending block should include the proposal, micorblocks that already exist,
 // and a missing list if there's any
 func (nm *NaiveMem) FillProposal(p *blockchain.Proposal) *blockchain.PendingBlock {
+	nm.mu.Lock()
+	defer nm.mu.Unlock()
 	existingBlocks := make([]*blockchain.MicroBlock, 0)
 	missingBlocks := make(map[crypto.Identifier]struct{}, 0)
 	for _, id := range p.HashList {

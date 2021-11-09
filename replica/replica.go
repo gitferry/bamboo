@@ -61,6 +61,7 @@ type Replica struct {
 	committedNo          int
 	pendingBlockMap      map[crypto.Identifier]*blockchain.PendingBlock
 	missingMBs           map[crypto.Identifier]crypto.Identifier // microblock hash to proposal hash
+	receivedMBs          map[crypto.Identifier]struct{}
 }
 
 // NewReplica creates a new replica instance
@@ -84,6 +85,7 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 	r.forkedBlocks = make(chan *blockchain.Block, 100)
 	r.pendingBlockMap = make(map[crypto.Identifier]*blockchain.PendingBlock)
 	r.missingMBs = make(map[crypto.Identifier]crypto.Identifier)
+	r.receivedMBs = make(map[crypto.Identifier]struct{})
 	memType := config.GetConfig().MemType
 	switch memType {
 	case "naive":
@@ -172,6 +174,11 @@ func (r *Replica) HandleProposal(proposal blockchain.Proposal) {
 // if so, tries to complete the block
 func (r *Replica) HandleMicroblock(mb blockchain.MicroBlock) {
 	//r.startSignal()
+	_, ok := r.receivedMBs[mb.Hash]
+	if ok {
+		return
+	}
+	r.receivedMBs[mb.Hash] = struct{}{}
 	r.totalMicroblocks++
 	proposalID, exists := r.missingMBs[mb.Hash]
 	if exists {
@@ -280,16 +287,14 @@ func (r *Replica) handleTxn(m message.Transaction) {
 
 func (r *Replica) processCommittedBlock(block *blockchain.Block) {
 	var txCount int
-	if block.Proposer == r.ID() {
-		for _, mb := range block.MicroblockList() {
-			txCount += len(mb.Txns)
-			for _, txn := range mb.Txns {
-				// only record the delay of transactions from the local memory pool
-				delay := time.Now().Sub(txn.Timestamp)
-				r.totalDelay += delay
-				r.latencyNo++
-				r.totalCommittedTx++
-			}
+	for _, mb := range block.MicroblockList() {
+		txCount += len(mb.Txns)
+		for _, txn := range mb.Txns {
+			// only record the delay of transactions from the local memory pool
+			delay := time.Now().Sub(txn.Timestamp)
+			r.totalDelay += delay
+			r.latencyNo++
+			r.totalCommittedTx++
 		}
 	}
 	r.committedNo++
