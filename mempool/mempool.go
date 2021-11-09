@@ -3,6 +3,7 @@ package mempool
 import (
 	"github.com/gitferry/bamboo/config"
 	"github.com/gitferry/bamboo/message"
+	"time"
 )
 
 type MemPool struct {
@@ -19,6 +20,7 @@ func NewMemPool() *MemPool {
 }
 
 func (mp *MemPool) addNew(tx *message.Transaction) {
+	tx.Timestamp = time.Now()
 	mp.Backend.insertBack(tx)
 	mp.Backend.addToBloom(tx.ID)
 }
