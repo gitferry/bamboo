@@ -49,6 +49,7 @@ type Config struct {
 	MemType        string          `json:"mem_type"`
 	EstimateNum    int             `json:"estimate_num"`
 	EstimateWindow int             `json:"estimate_window"`
+	DefaultDelay   int             `json:"default_delay"`
 
 	hasher string
 	signer string

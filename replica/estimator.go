@@ -6,11 +6,11 @@ import (
 	"github.com/gitferry/bamboo/crypto"
 	"github.com/gitferry/bamboo/log"
 	"github.com/gitferry/bamboo/message"
+	"sort"
 	"time"
 )
 
 type Estimator struct {
-	estimateWindow    int
 	mbStableCaculator *StableCalculator
 	pStableCaculator  *StableCalculator
 	mbAckMap          map[crypto.Identifier]*AckMgr
@@ -18,35 +18,37 @@ type Estimator struct {
 }
 
 type AckMgr struct {
-	estimateNum         int
-	ackCounts           int
-	aveDuration         float64
-	accumulatedDuration time.Duration
+	estimateNum    int
+	delays         []int
+	stableDuration time.Duration
 }
 
 type StableCalculator struct {
-	stableTimeList *list.List
-	aveStableTime  float64
-	estimateWindow int
+	stableTimeList  *list.List
+	aveStableTime   time.Duration
+	totalStableTime time.Duration
+	estimateWindow  int
 }
 
 func NewStableCalculator() *StableCalculator {
 	sc := new(StableCalculator)
 	sc.stableTimeList = list.New()
+	sc.estimateWindow = config.Configuration.EstimateWindow
 	return sc
 }
 
-func (sc *StableCalculator) AddStableDuration(duration float64) {
+func (sc *StableCalculator) AddStableDuration(duration time.Duration) {
 	sc.stableTimeList.PushBack(duration)
+	front := sc.stableTimeList.Front()
+	sc.totalStableTime += duration
 	if sc.stableTimeList.Len() > sc.estimateWindow {
-		last := sc.stableTimeList.Back()
-		front := sc.stableTimeList.Front()
-		sc.aveStableTime = (sc.aveStableTime*float64(sc.estimateWindow) + last.Value.(float64) - front.Value.(float64)) / float64(sc.estimateWindow)
+		sc.totalStableTime -= front.Value.(time.Duration)
 		sc.stableTimeList.Remove(front)
 	}
+	sc.aveStableTime = time.Duration(float64(sc.totalStableTime.Nanoseconds()) / float64(sc.stableTimeList.Len()))
 }
 
-func (sc *StableCalculator) PredictedStableTime() float64 {
+func (sc *StableCalculator) PredictedStableTime() time.Duration {
 	return sc.aveStableTime
 }
 
@@ -58,7 +60,6 @@ func NewAckMgr() *AckMgr {
 
 func NewEstimator() *Estimator {
 	return &Estimator{
-		estimateWindow:    config.Configuration.EstimateWindow,
 		mbStableCaculator: NewStableCalculator(),
 		pStableCaculator:  NewStableCalculator(),
 		mbAckMap:          make(map[crypto.Identifier]*AckMgr),
@@ -66,15 +67,12 @@ func NewEstimator() *Estimator {
 	}
 }
 
-func (am *AckMgr) addAck(ack *message.Ack) (bool, float64) {
-	if am.ackCounts >= am.estimateNum {
-		return false, am.aveDuration
-	}
-	am.ackCounts++
-	am.accumulatedDuration += ack.AckTime.Sub(ack.SentTime)
-	if am.ackCounts == am.estimateNum {
-		am.aveDuration = am.accumulatedDuration.Seconds() / float64(am.ackCounts)
-		return true, am.aveDuration
+func (am *AckMgr) AddAck(ack *message.Ack) (bool, time.Duration) {
+	duration := ack.AckTime.Sub(ack.SentTime)
+	am.delays = append(am.delays, int(duration))
+	if len(am.delays) == am.estimateNum {
+		sort.Ints(am.delays)
+		return true, time.Duration(am.delays[len(am.delays)-1])
 	}
 	return false, 0
 }
@@ -86,7 +84,7 @@ func (et *Estimator) AddAck(ack *message.Ack) {
 			mbAckMgr = NewAckMgr()
 			et.mbAckMap[ack.ID] = mbAckMgr
 		}
-		isEnough, aveDur := mbAckMgr.addAck(ack)
+		isEnough, aveDur := mbAckMgr.AddAck(ack)
 		if isEnough {
 			et.mbStableCaculator.AddStableDuration(aveDur)
 		}
@@ -96,7 +94,7 @@ func (et *Estimator) AddAck(ack *message.Ack) {
 			pAckMgr = NewAckMgr()
 			et.mbAckMap[ack.ID] = pAckMgr
 		}
-		isEnough, aveDur := pAckMgr.addAck(ack)
+		isEnough, aveDur := pAckMgr.AddAck(ack)
 		if isEnough {
 			et.pStableCaculator.AddStableDuration(aveDur)
 		}
@@ -106,6 +104,15 @@ func (et *Estimator) AddAck(ack *message.Ack) {
 }
 
 func (et *Estimator) PredictStableTime(t string) time.Duration {
-	var d time.Duration
-	return d
+	var prediction time.Duration
+	if t == "mb" {
+		prediction = et.mbStableCaculator.PredictedStableTime()
+	} else {
+		prediction = et.pStableCaculator.PredictedStableTime()
+	}
+	if prediction == 0 {
+		log.Debugf("Prediction is boosting")
+		prediction = time.Duration(config.Configuration.DefaultDelay * int(time.Millisecond))
+	}
+	return prediction
 }
