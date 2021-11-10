@@ -10,13 +10,11 @@ import (
 )
 
 type Estimator struct {
-	estimateWindow      int
-	mbStableTime        time.Duration
-	pStableTime         time.Duration
-	mbAckStableTimeList *list.List
-	pAckStableTimeList  *list.List
-	mbAckMap            map[crypto.Identifier]*AckMgr
-	pAckMap             map[crypto.Identifier]*AckMgr
+	estimateWindow    int
+	mbStableCaculator *StableCalculator
+	pStableCaculator  *StableCalculator
+	mbAckMap          map[crypto.Identifier]*AckMgr
+	pAckMap           map[crypto.Identifier]*AckMgr
 }
 
 type AckMgr struct {
@@ -24,6 +22,32 @@ type AckMgr struct {
 	ackCounts           int
 	aveDuration         float64
 	accumulatedDuration time.Duration
+}
+
+type StableCalculator struct {
+	stableTimeList *list.List
+	aveStableTime  float64
+	estimateWindow int
+}
+
+func NewStableCalculator() *StableCalculator {
+	sc := new(StableCalculator)
+	sc.stableTimeList = list.New()
+	return sc
+}
+
+func (sc *StableCalculator) AddStableDuration(duration float64) {
+	sc.stableTimeList.PushBack(duration)
+	if sc.stableTimeList.Len() > sc.estimateWindow {
+		last := sc.stableTimeList.Back()
+		front := sc.stableTimeList.Front()
+		sc.aveStableTime = (sc.aveStableTime*float64(sc.estimateWindow) + last.Value.(float64) - front.Value.(float64)) / float64(sc.estimateWindow)
+		sc.stableTimeList.Remove(front)
+	}
+}
+
+func (sc *StableCalculator) PredictedStableTime() float64 {
+	return sc.aveStableTime
 }
 
 func NewAckMgr() *AckMgr {
@@ -34,11 +58,11 @@ func NewAckMgr() *AckMgr {
 
 func NewEstimator() *Estimator {
 	return &Estimator{
-		estimateWindow:      config.Configuration.EstimateWindow,
-		mbAckStableTimeList: list.New(),
-		pAckStableTimeList:  list.New(),
-		mbAckMap:            make(map[crypto.Identifier]*AckMgr),
-		pAckMap:             make(map[crypto.Identifier]*AckMgr),
+		estimateWindow:    config.Configuration.EstimateWindow,
+		mbStableCaculator: NewStableCalculator(),
+		pStableCaculator:  NewStableCalculator(),
+		mbAckMap:          make(map[crypto.Identifier]*AckMgr),
+		pAckMap:           make(map[crypto.Identifier]*AckMgr),
 	}
 }
 
@@ -64,7 +88,7 @@ func (et *Estimator) AddAck(ack *message.Ack) {
 		}
 		isEnough, aveDur := mbAckMgr.addAck(ack)
 		if isEnough {
-			et.mbAckStableTimeList.PushBack(aveDur)
+			et.mbStableCaculator.AddStableDuration(aveDur)
 		}
 	} else if ack.Type == "p" {
 		pAckMgr, exists := et.pAckMap[ack.ID]
@@ -74,7 +98,7 @@ func (et *Estimator) AddAck(ack *message.Ack) {
 		}
 		isEnough, aveDur := pAckMgr.addAck(ack)
 		if isEnough {
-			et.pAckStableTimeList.PushBack(aveDur)
+			et.pStableCaculator.AddStableDuration(aveDur)
 		}
 	} else {
 		log.Errorf("ack type not specified!")
