@@ -157,7 +157,7 @@ func TestTimemem_AddTxn4(t *testing.T) {
 	require.Equal(t, 3, len(mb.Txns))
 }
 
-func NewMockTimemem() *Timemem {
+func NewMockTimemem() *Ackmem {
 	config.Configuration.BSize = 2
 	config.Configuration.MSize = 128
 	config.Configuration.MemSize = 50000

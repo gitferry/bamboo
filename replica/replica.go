@@ -92,6 +92,8 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 		r.sm = mempool.NewNaiveMem()
 	case "time":
 		r.sm = mempool.NewTimemem()
+	case "ack":
+		r.sm = mempool.NewAckMem()
 	default:
 		r.sm = mempool.NewNaiveMem()
 	}
@@ -200,7 +202,7 @@ func (r *Replica) HandleMicroblock(mb blockchain.MicroBlock) {
 			log.Errorf("[%v] can not add a microblock, id: %x", r.ID(), mb.Hash)
 		}
 	}
-	if !mb.IsRequested && config.Configuration.MemType == "time" {
+	if !mb.IsRequested && (config.Configuration.MemType == "time" || config.Configuration.MemType == "ack") {
 		ack := message.Ack{
 			SentTime: mb.Timestamp,
 			AckTime:  time.Now(),
@@ -208,7 +210,11 @@ func (r *Replica) HandleMicroblock(mb blockchain.MicroBlock) {
 			ID:       mb.Hash,
 			Type:     "mb",
 		}
-		r.Send(mb.Sender, ack)
+		if config.Configuration.MemType == "time" {
+			r.Send(mb.Sender, ack)
+		} else {
+			r.Broadcast(ack)
+		}
 	}
 }
 
@@ -244,7 +250,11 @@ func (r *Replica) HandleTmo(tmo pacemaker.TMO) {
 
 func (r *Replica) HandleAck(ack message.Ack) {
 	//log.Debugf("[%v] received an ack message, type: %v, id: %x", r.ID(), ack.Type, ack.ID)
-	r.estimator.AddAck(&ack)
+	if config.Configuration.MemType == "time" {
+		r.estimator.AddAck(&ack)
+	} else if config.Configuration.MemType == "ack" {
+		r.sm.AddAck(&ack)
+	}
 }
 
 // handleQuery replies a query with the statistics of the node

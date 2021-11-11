@@ -2,7 +2,6 @@ package mempool
 
 import (
 	"container/list"
-	"errors"
 	"github.com/gitferry/bamboo/blockchain"
 	"github.com/gitferry/bamboo/config"
 	"github.com/gitferry/bamboo/crypto"
@@ -80,8 +79,12 @@ func (nm *NaiveMem) AddTxn(txn *message.Transaction) (bool, *blockchain.MicroBlo
 func (nm *NaiveMem) AddMicroblock(mb *blockchain.MicroBlock) error {
 	nm.mu.Lock()
 	defer nm.mu.Unlock()
-	if nm.microblocks.Len() >= nm.memsize {
-		return errors.New("the memory queue is full")
+	//if nm.microblocks.Len() >= nm.memsize {
+	//	return errors.New("the memory queue is full")
+	//}
+	_, exists := nm.microblockMap[mb.Hash]
+	if exists {
+		return nil
 	}
 	nm.microblocks.PushBack(mb)
 	nm.microblockMap[mb.Hash] = mb
@@ -160,6 +163,9 @@ func (nm *NaiveMem) FillProposal(p *blockchain.Proposal) *blockchain.PendingBloc
 		}
 	}
 	return blockchain.NewPendingBlock(p, missingBlocks, existingBlocks)
+}
+
+func (nm *NaiveMem) AddAck(ack *message.Ack) {
 }
 
 func (nm *NaiveMem) front() *blockchain.MicroBlock {

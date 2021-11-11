@@ -2,7 +2,6 @@ package mempool
 
 import (
 	"container/list"
-	"fmt"
 	"github.com/gitferry/bamboo/blockchain"
 	"github.com/gitferry/bamboo/config"
 	"github.com/gitferry/bamboo/crypto"
@@ -80,8 +79,12 @@ func (tm *Timemem) AddTxn(txn *message.Transaction) (bool, *blockchain.MicroBloc
 func (tm *Timemem) AddMicroblock(mb *blockchain.MicroBlock) error {
 	tm.mu.Lock()
 	defer tm.mu.Unlock()
-	if tm.mbpq.Len() >= tm.memsize {
-		return fmt.Errorf("mempool is full")
+	//if tm.mbpq.Len() >= tm.memsize {
+	//	return fmt.Errorf("mempool is full")
+	//}
+	_, exists := tm.microblockMap[mb.Hash]
+	if exists {
+		return nil
 	}
 	tm.mbpq.Insert(mb, mb.FutureTimestamp.UnixNano())
 	tm.microblockMap[mb.Hash] = mb
@@ -155,6 +158,9 @@ func (tm *Timemem) FillProposal(p *blockchain.Proposal) *blockchain.PendingBlock
 		}
 	}
 	return blockchain.NewPendingBlock(p, missingBlocks, existingBlocks)
+}
+
+func (tm *Timemem) AddAck(ack *message.Ack) {
 }
 
 func (tm *Timemem) makeTxnSlice() []*message.Transaction {

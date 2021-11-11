@@ -30,4 +30,6 @@ type SharedMempool interface {
 	// FillProposal pulls microblocks from the mempool and build a pending block,
 	// return missing list if there's any
 	FillProposal(p *blockchain.Proposal) *blockchain.PendingBlock
+
+	AddAck(ack *message.Ack)
 }
