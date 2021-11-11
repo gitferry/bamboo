@@ -38,6 +38,11 @@ func NewNaiveMem() *NaiveMem {
 // AddTxn adds a transaction and returns a microblock if msize is reached
 // then the contained transactions should be deleted
 func (nm *NaiveMem) AddTxn(txn *message.Transaction) (bool, *blockchain.MicroBlock) {
+	// mempool is full
+	if nm.microblocks.Len() >= nm.memsize {
+		return false, nil
+	}
+
 	// get the size of the structure. txn is the pointer.
 	tranSize := utils.SizeOf(txn)
 	totalSize := tranSize + nm.currSize

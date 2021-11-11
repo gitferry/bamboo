@@ -92,7 +92,7 @@ func (et *Estimator) AddAck(ack *message.Ack) {
 		pAckMgr, exists := et.pAckMap[ack.ID]
 		if !exists {
 			pAckMgr = NewAckMgr()
-			et.mbAckMap[ack.ID] = pAckMgr
+			et.pAckMap[ack.ID] = pAckMgr
 		}
 		isEnough, aveDur := pAckMgr.AddAck(ack)
 		if isEnough {

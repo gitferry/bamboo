@@ -11,7 +11,6 @@ import (
 	"github.com/gitferry/bamboo/pq"
 	"github.com/gitferry/bamboo/utils"
 	"sync"
-	"time"
 )
 
 type Timemem struct {
@@ -40,6 +39,11 @@ func NewTimemem() *Timemem {
 // AddTxn adds a transaction and returns a microblock if msize is reached
 // then the contained transactions should be deleted
 func (tm *Timemem) AddTxn(txn *message.Transaction) (bool, *blockchain.MicroBlock) {
+	// mempool is full
+	if tm.mbpq.Len() >= tm.memsize {
+		return false, nil
+	}
+
 	// get the size of the structure. txn is the pointer.
 	tranSize := utils.SizeOf(txn)
 	totalSize := tranSize + tm.currSize
@@ -79,7 +83,7 @@ func (tm *Timemem) AddMicroblock(mb *blockchain.MicroBlock) error {
 	if tm.mbpq.Len() >= tm.memsize {
 		return fmt.Errorf("mempool is full")
 	}
-	tm.mbpq.Insert(mb, mb.FutureTimestamp)
+	tm.mbpq.Insert(mb, mb.FutureTimestamp.UnixNano())
 	tm.microblockMap[mb.Hash] = mb
 
 	return nil
