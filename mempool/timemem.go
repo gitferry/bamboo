@@ -73,6 +73,8 @@ func (tm *Timemem) AddTxn(txn *message.Transaction) (bool, *blockchain.MicroBloc
 // AddMicroblock adds a microblock into a priority queue
 // return an err if the queue is full (memsize)
 func (tm *Timemem) AddMicroblock(mb *blockchain.MicroBlock) error {
+	tm.mu.Lock()
+	defer tm.mu.Unlock()
 	if tm.mbpq.Len() >= tm.memsize {
 		return fmt.Errorf("mempool is full")
 	}
@@ -99,7 +101,6 @@ func (tm *Timemem) GeneratePayload() *blockchain.Payload {
 			break
 		}
 		microblockList = append(microblockList, mb.(*blockchain.MicroBlock))
-		delete(tm.microblockMap, mb.(*blockchain.MicroBlock).Hash)
 	}
 	return blockchain.NewPayload(microblockList)
 }
@@ -121,6 +122,8 @@ func (tm *Timemem) RemoveMicroblock(id crypto.Identifier) error {
 
 // FindMicroblock finds a reffered microblock
 func (tm *Timemem) FindMicroblock(id crypto.Identifier) (bool, *blockchain.MicroBlock) {
+	tm.mu.Lock()
+	defer tm.mu.Unlock()
 	mb, exists := tm.microblockMap[id]
 	return exists, mb
 }
@@ -129,6 +132,8 @@ func (tm *Timemem) FindMicroblock(id crypto.Identifier) (bool, *blockchain.Micro
 // a pending block should include the proposal, micorblocks that already exist,
 // and a missing list if there's any
 func (tm *Timemem) FillProposal(p *blockchain.Proposal) *blockchain.PendingBlock {
+	tm.mu.Lock()
+	defer tm.mu.Unlock()
 	existingBlocks := make([]*blockchain.MicroBlock, 0)
 	missingBlocks := make(map[crypto.Identifier]struct{}, 0)
 	for _, id := range p.HashList {

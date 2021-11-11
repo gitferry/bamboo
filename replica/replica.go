@@ -144,7 +144,7 @@ func (r *Replica) HandleProposal(proposal blockchain.Proposal) {
 			AckTime:  time.Now(),
 			Receiver: r.ID(),
 			ID:       proposal.ID,
-			Type:     "proposal",
+			Type:     "p",
 		}
 		r.Send(proposal.Proposer, ack)
 	}
@@ -273,6 +273,7 @@ func (r *Replica) handleTxn(m message.Transaction) {
 		if config.Configuration.MemType == "time" {
 			mb.FutureTimestamp = time.Now().Add(r.estimator.PredictStableTime("mb")).UnixNano()
 		}
+		mb.Sender = r.ID()
 		r.sm.AddMicroblock(mb)
 		r.Broadcast(mb)
 	}
@@ -323,13 +324,13 @@ func (r *Replica) proposeBlock(view types.View) {
 	createStart := time.Now()
 	payload := r.sm.GeneratePayload()
 	// if we are using time-based shared mempool, wait until all the microblocks are stable
-	if config.Configuration.MemType == "time" {
-		lastTimestamp := payload.LastItem().Timestamp
-		if time.Now().Before(lastTimestamp) {
-			log.Debugf("[%v] wait for %v until the contained microblocks are stable", r.ID(), lastTimestamp.Sub(time.Now()))
-			time.Sleep(lastTimestamp.Sub(time.Now()) - r.estimator.PredictStableTime("proposal"))
-		}
-	}
+	//if config.Configuration.MemType == "time" {
+	//	lastTimestamp := payload.LastItem().Timestamp
+	//	if time.Now().Before(lastTimestamp) {
+	//		log.Debugf("[%v] wait for %v until the contained microblocks are stable", r.ID(), lastTimestamp.Sub(time.Now()))
+	//		time.Sleep(lastTimestamp.Sub(time.Now()) - r.estimator.PredictStableTime("proposal"))
+	//	}
+	//}
 	proposal := r.Safety.MakeProposal(view, payload.GenerateHashList())
 	log.Debugf("[%v] is making a proposal for view %v, containing %v microblocks, id:%x", proposal.Proposer, proposal.View, len(proposal.HashList), proposal.ID)
 	r.totalBlockSize += len(proposal.HashList)
