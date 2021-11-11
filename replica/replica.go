@@ -271,7 +271,7 @@ func (r *Replica) handleTxn(m message.Transaction) {
 	isbuilt, mb := r.sm.AddTxn(&m)
 	if isbuilt {
 		if config.Configuration.MemType == "time" {
-			mb.FutureTimestamp = time.Now().Add(r.estimator.PredictStableTime("mb")).UnixNano()
+			mb.FutureTimestamp = time.Now().Add(r.estimator.PredictStableTime("mb"))
 		}
 		mb.Sender = r.ID()
 		r.sm.AddMicroblock(mb)
@@ -324,13 +324,9 @@ func (r *Replica) proposeBlock(view types.View) {
 	createStart := time.Now()
 	payload := r.sm.GeneratePayload()
 	// if we are using time-based shared mempool, wait until all the microblocks are stable
-	//if config.Configuration.MemType == "time" {
-	//	lastTimestamp := payload.LastItem().Timestamp
-	//	if time.Now().Before(lastTimestamp) {
-	//		log.Debugf("[%v] wait for %v until the contained microblocks are stable", r.ID(), lastTimestamp.Sub(time.Now()))
-	//		time.Sleep(lastTimestamp.Sub(time.Now()) - r.estimator.PredictStableTime("proposal"))
-	//	}
-	//}
+	if config.Configuration.MemType == "time" {
+		r.waitUntilStable(payload)
+	}
 	proposal := r.Safety.MakeProposal(view, payload.GenerateHashList())
 	log.Debugf("[%v] is making a proposal for view %v, containing %v microblocks, id:%x", proposal.Proposer, proposal.View, len(proposal.HashList), proposal.ID)
 	r.totalBlockSize += len(proposal.HashList)
@@ -343,6 +339,18 @@ func (r *Replica) proposeBlock(view types.View) {
 	block := blockchain.BuildBlock(proposal, payload)
 	_ = r.Safety.ProcessBlock(block)
 	r.voteStart = time.Now()
+}
+
+func (r *Replica) waitUntilStable(payload *blockchain.Payload) {
+	lastItem := payload.LastItem()
+	if lastItem == nil {
+		return
+	}
+	wait := lastItem.FutureTimestamp.Sub(time.Now()) - r.estimator.PredictStableTime("p")
+	if wait > 0 {
+		log.Debugf("[%v] wait for %v until the contained microblocks are stable", r.ID(), wait)
+		time.Sleep(wait)
+	}
 }
 
 // ListenLocalEvent listens new view and timeout events

@@ -35,7 +35,7 @@ type MicroBlock struct {
 	Hash            crypto.Identifier
 	Txns            []*message.Transaction
 	Timestamp       time.Time
-	FutureTimestamp int64
+	FutureTimestamp time.Time
 	Sender          identity.NodeID
 	IsRequested     bool
 }
@@ -95,6 +95,9 @@ func (pl *Payload) addMicroblock(mb *MicroBlock) {
 }
 
 func (pl *Payload) LastItem() *MicroBlock {
+	if len(pl.MicroblockList) == 0 {
+		return nil
+	}
 	return pl.MicroblockList[len(pl.MicroblockList)-1]
 }
 
