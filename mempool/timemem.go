@@ -11,7 +11,6 @@ import (
 	"github.com/gitferry/bamboo/pq"
 	"github.com/gitferry/bamboo/utils"
 	"sync"
-	"time"
 )
 
 type Timemem struct {
@@ -79,7 +78,7 @@ func (tm *Timemem) AddMicroblock(mb *blockchain.MicroBlock) error {
 	if tm.mbpq.Len() >= tm.memsize {
 		return fmt.Errorf("mempool is full")
 	}
-	tm.mbpq.Insert(mb, mb.FutureTimestamp)
+	tm.mbpq.Insert(mb, mb.FutureTimestamp.UnixNano())
 	tm.microblockMap[mb.Hash] = mb
 
 	return nil

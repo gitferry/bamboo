@@ -31,13 +31,13 @@
   "crash": 20000,
   "estimate_num": 3,
   "estimate_window": 100,
-  "mem_type": "",
+  "mem_type": "time",
   "benchmark": {
     "T": 1200,
     "N": 0,
     "K": 1000,
     "W": 0.5,
-    "Throttle": 2000,
+    "Throttle": 1000
     "Concurrency": 10,
     "Distribution": "uniform",
     "LinearizabilityCheck": false,

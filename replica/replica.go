@@ -217,6 +217,7 @@ func (r *Replica) HandleMissingMBRequest(mbr message.MissingMBRequest) {
 	for _, mbid := range mbr.MissingMBList {
 		found, mb := r.sm.FindMicroblock(mbid)
 		if found {
+			mb.IsRequested = true
 			r.Send(mbr.RequesterID, mb)
 		} else {
 			log.Errorf("[%v] a requested microblock for proposal %x is not found in mempool, id: %x", r.ID(), mbr.ProposalID, mbid)
@@ -242,7 +243,7 @@ func (r *Replica) HandleTmo(tmo pacemaker.TMO) {
 }
 
 func (r *Replica) HandleAck(ack message.Ack) {
-	log.Debugf("[%v] received an ack message, type: %v, id: %x", r.ID(), ack.Type, ack.ID)
+	//log.Debugf("[%v] received an ack message, type: %v, id: %x", r.ID(), ack.Type, ack.ID)
 	r.estimator.AddAck(&ack)
 }
 
@@ -271,10 +272,14 @@ func (r *Replica) handleTxn(m message.Transaction) {
 	isbuilt, mb := r.sm.AddTxn(&m)
 	if isbuilt {
 		if config.Configuration.MemType == "time" {
-			mb.FutureTimestamp = time.Now().Add(r.estimator.PredictStableTime("mb"))
+			stableTime := r.estimator.PredictStableTime("mb")
+			//stableTime := time.Duration(0)
+			//log.Debugf("[%v] stable time for a microblock is %v", r.ID(), stableTime)
+			mb.FutureTimestamp = time.Now().Add(stableTime)
 		}
 		mb.Sender = r.ID()
 		r.sm.AddMicroblock(mb)
+		mb.Timestamp = time.Now()
 		r.Broadcast(mb)
 	}
 	// the first leader kicks off the protocol
@@ -335,6 +340,7 @@ func (r *Replica) proposeBlock(view types.View) {
 	createDuration := createEnd.Sub(createStart)
 	proposal.Timestamp = time.Now()
 	r.totalCreateDuration += createDuration
+	proposal.Timestamp = time.Now()
 	r.Broadcast(proposal)
 	block := blockchain.BuildBlock(proposal, payload)
 	_ = r.Safety.ProcessBlock(block)
@@ -346,7 +352,13 @@ func (r *Replica) waitUntilStable(payload *blockchain.Payload) {
 	if lastItem == nil {
 		return
 	}
-	wait := lastItem.FutureTimestamp.Sub(time.Now()) - r.estimator.PredictStableTime("p")
+	stableTime := r.estimator.PredictStableTime("p")
+	//stableTime := time.Duration(0)
+	wait := lastItem.FutureTimestamp.Sub(time.Now()) - stableTime
+	//log.Debugf("[%v] stable time for a proposal is %v", r.ID(), stableTime)
+	if stableTime < 0 {
+		log.Errorf("[%v] stable time for proposal is less than 0")
+	}
 	if wait > 0 {
 		log.Debugf("[%v] wait for %v until the contained microblocks are stable", r.ID(), wait)
 		time.Sleep(wait)
