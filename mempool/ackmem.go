@@ -20,6 +20,7 @@ type AckMem struct {
 	msize              int // byte size of transactions in a microblock
 	memsize            int // number of microblocks in mempool
 	currSize           int
+	threshhold         int // number of acks needed for a stable microblock
 	mu                 sync.Mutex
 }
 
