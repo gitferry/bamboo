@@ -19,7 +19,6 @@ type AckMem struct {
 	bsize              int // number of microblocks in a proposal
 	msize              int // byte size of transactions in a microblock
 	memsize            int // number of microblocks in mempool
-	ackMap             map[crypto.Identifier]int
 	currSize           int
 	threshhold         int // number of acks needed for a stable microblock
 	mu                 sync.Mutex
@@ -39,7 +38,6 @@ func NewAckMem() *AckMem {
 		stableMicroblocks:  list.New(),
 		microblockMap:      make(map[crypto.Identifier]*blockchain.MicroBlock),
 		pendingMicroblocks: make(map[crypto.Identifier]*PendingMicroblock),
-		ackMap:             make(map[crypto.Identifier]int),
 		currSize:           0,
 		txnList:            list.New(),
 	}
@@ -111,17 +109,11 @@ func (am *AckMem) AddMicroblock(mb *blockchain.MicroBlock) error {
 func (am *AckMem) AddAck(ack *message.Ack) {
 	am.mu.Lock()
 	defer am.mu.Unlock()
-	//am.pendingMicroblocks[]
-	value, exist := am.ackMap[ack.ID]
-	if exist {
-		am.ackMap[ack.ID] = value + 1
-	} else {
-		am.ackMap[ack.ID] = 1
-	}
-	if am.ackMap[ack.ID] >= am.threshhold {
-		target := am.microblockMap[ack.ID]
-		am.stableMicroblocks.PushBack(target)
-		delete(am.ackMap, ack.ID)
+	target := am.pendingMicroblocks[ack.ID]
+	target.ackMap[ack.Receiver] = struct{}{}
+	if len(target.ackMap) >= am.threshhold {
+		am.stableMicroblocks.PushBack(target.microblock)
+		delete(am.pendingMicroblocks, ack.ID)
 	}
 }
 
