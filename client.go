@@ -6,8 +6,10 @@ import (
 	"errors"
 	"io"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
 	"net/http/httputil"
+	"reflect"
 	"strconv"
 	"sync"
 
@@ -79,14 +81,14 @@ func (c *HTTPClient) Put(key db.Key, value db.Value) error {
 	return c.RESTPut(key, value)
 }
 
-//func (c *HTTPClient) GetURL(key db.Key) (identity.NodeID, string) {
-//	replicaID := config.GetConfig().Master
-//	if replicaID == "0" {
-//		keys := reflect.ValueOf(c.HTTP).MapKeys()
-//		replicaID = keys[rand.Intn(len(keys))].Interface().(identity.NodeID)
-//	}
-//	return replicaID, c.HTTP[replicaID] + "/" + strconv.Itoa(int(key))
-//}
+func (c *HTTPClient) GetURL(key db.Key) (identity.NodeID, string) {
+	replicaID := config.GetConfig().Master
+	if replicaID == "0" {
+		keys := reflect.ValueOf(c.HTTP).MapKeys()
+		replicaID = keys[rand.Intn(len(keys))].Interface().(identity.NodeID)
+	}
+	return replicaID, c.HTTP[replicaID] + "/" + strconv.Itoa(int(key))
+}
 
 // rest accesses server's REST API with url = http://ip:port/key
 // if value == nil, it's a read
@@ -133,7 +135,8 @@ func (c *HTTPClient) rest(url string, value db.Value) error {
 
 // RESTPut puts new value as http.request body and return previous value
 func (c *HTTPClient) RESTPut(key db.Key, value db.Value) error {
-	return c.AllPut(key, value)
+	//return c.AllPut(key, value)
+	return c.SinglePut(key, value)
 }
 
 func (c *HTTPClient) json(id identity.NodeID, key db.Key, value db.Value) (db.Value, error) {
@@ -220,6 +223,13 @@ func (c *HTTPClient) AllPut(key db.Key, value db.Value) error {
 		}(id.Node(), ip)
 	}
 	wait.Wait()
+	return err
+}
+
+func (c *HTTPClient) SinglePut(key db.Key, value db.Value) error {
+	var err error
+	_, ip := c.GetURL(key)
+	err = c.rest(ip, value)
 	return err
 }
 

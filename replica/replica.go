@@ -395,7 +395,7 @@ func (r *Replica) ListenLocalEvent() {
 				r.roundNo++
 				r.lastViewTime = now
 				r.eventChan <- view
-				//log.Debugf("[%v] the last view lasts %v milliseconds, current view: %v", r.ID(), lasts.Milliseconds(), view)
+				log.Debugf("[%v] the last view lasts %v milliseconds, current view: %v", r.ID(), lasts.Milliseconds(), view)
 				break L
 			case <-r.timer.C:
 				r.Safety.ProcessLocalTmo(r.pm.GetCurView())
