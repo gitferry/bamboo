@@ -36,6 +36,15 @@ bin/server
 bin/deploy/client
 bin/deploy/server
 
+bin/deploy/linux/client
+bin/deploy/linux/server
+
+bin/deploy/linux-docker/client
+bin/deploy/linux-docker/server
+
+bin/deploy/macos/client
+bin/deploy/macos/server
+
 .log
 /package-lock.json
 /node_modules/
