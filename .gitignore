@@ -23,3 +23,19 @@ client.*.log
 # vendor/
 .idea/
 .DS_Store
+
+server.pid
+client.pid
+
+client/client
+server/server
+
+bin/client
+bin/server
+
+bin/deploy/client
+bin/deploy/server
+
+.log
+/package-lock.json
+/node_modules/
