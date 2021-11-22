@@ -16,9 +16,10 @@ type AckMem struct {
 	txnList            *list.List
 	microblockMap      map[crypto.Identifier]*blockchain.MicroBlock
 	pendingMicroblocks map[crypto.Identifier]*PendingMicroblock
-	bsize              int // number of microblocks in a proposal
-	msize              int // byte size of transactions in a microblock
-	memsize            int // number of microblocks in mempool
+	ackBuffer          map[crypto.Identifier][]identity.NodeID //number of the ack received before mb arrived
+	bsize              int                                     // number of microblocks in a proposal
+	msize              int                                     // byte size of transactions in a microblock
+	memsize            int                                     // number of microblocks in mempool
 	currSize           int
 	threshhold         int // number of acks needed for a stable microblock
 	mu                 sync.Mutex
@@ -38,6 +39,7 @@ func NewAckMem() *AckMem {
 		stableMicroblocks:  list.New(),
 		microblockMap:      make(map[crypto.Identifier]*blockchain.MicroBlock),
 		pendingMicroblocks: make(map[crypto.Identifier]*PendingMicroblock),
+		ackBuffer:          make(map[crypto.Identifier][]identity.NodeID),
 		currSize:           0,
 		txnList:            list.New(),
 	}
@@ -102,6 +104,15 @@ func (am *AckMem) AddMicroblock(mb *blockchain.MicroBlock) error {
 	pm.ackMap[mb.Sender] = struct{}{}
 	am.pendingMicroblocks[mb.Hash] = pm
 	am.microblockMap[mb.Hash] = mb
+
+	//check if there are some acks of this microblock arrived before
+	buffer, received := am.ackBuffer[mb.Hash]
+	if received {
+		// if so, add these ack to the pendingblocks
+		for _, ack := range buffer {
+			am.pendingMicroblocks[mb.Hash].ackMap[ack] = struct{}{}
+		}
+	}
 	return nil
 }
 
@@ -109,11 +120,24 @@ func (am *AckMem) AddMicroblock(mb *blockchain.MicroBlock) error {
 func (am *AckMem) AddAck(ack *message.Ack) {
 	am.mu.Lock()
 	defer am.mu.Unlock()
-	target := am.pendingMicroblocks[ack.ID]
-	target.ackMap[ack.Receiver] = struct{}{}
-	if len(target.ackMap) >= am.threshhold {
-		am.stableMicroblocks.PushBack(target.microblock)
-		delete(am.pendingMicroblocks, ack.ID)
+	target, received := am.pendingMicroblocks[ack.ID]
+	//check if the ack arrives before the microblock
+	if received {
+		target.ackMap[ack.Receiver] = struct{}{}
+		if len(target.ackMap) >= am.threshhold {
+			am.stableMicroblocks.PushBack(target.microblock)
+			delete(am.pendingMicroblocks, ack.ID)
+		}
+	} else {
+		//ack arraives before microblock, record the number of ack received before microblock
+		//let the addMicroblock do the rest.
+		buffer, exist := am.ackBuffer[ack.ID]
+		if exist {
+			am.ackBuffer[ack.ID] = append(buffer, ack.Receiver)
+		} else {
+			temp := make([]identity.NodeID, 0)
+			am.ackBuffer[ack.ID] = append(temp, ack.Receiver)
+		}
 	}
 }
 
