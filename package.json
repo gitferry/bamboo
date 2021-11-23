@@ -1,0 +1,32 @@
+{
+  "name": "bamboo",
+  "version": "1.0.0",
+  "description": "**Bamboo** is a prototyping and evaluation framework that studies the next generation BFT (Byzantine fault-tolerant) protocols specific for blockchains, namely chained-BFT, or cBFT. By leveraging Bamboo, developers can prototype a brand new cBFT protocol in around 300 LoC and evaluate using rich benchmark facilities.",
+  "main": "index.js",
+  "directories": {
+    "doc": "doc"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "cz-conventional-changelog": "^3.3.0"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Grivn/bamboo.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Grivn/bamboo/issues"
+  },
+  "homepage": "https://github.com/Grivn/bamboo#readme",
+  "config": {
+    "commitizen": {
+      "path": "./node_modules/cz-conventional-changelog"
+    }
+  }
+}
