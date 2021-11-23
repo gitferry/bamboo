@@ -1,0 +1,13 @@
+{
+  "auth": {
+    "user": "root"
+  },
+  "server": {
+    "dir": "bamboo",
+    "ips_file": "public_ips.txt"
+  },
+  "client": {
+    "dir": "bamboo",
+    "ips_file": "clients.txt"
+  }
+}
