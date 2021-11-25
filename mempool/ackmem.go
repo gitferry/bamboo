@@ -36,6 +36,7 @@ func NewAckMem() *AckMem {
 		bsize:              config.GetConfig().BSize,
 		msize:              config.GetConfig().MSize,
 		memsize:            config.GetConfig().MemSize,
+		threshhold:         config.GetConfig().EstimateNum,
 		stableMicroblocks:  list.New(),
 		microblockMap:      make(map[crypto.Identifier]*blockchain.MicroBlock),
 		pendingMicroblocks: make(map[crypto.Identifier]*PendingMicroblock),

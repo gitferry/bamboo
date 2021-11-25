@@ -31,7 +31,7 @@
   "crash": 20000,
   "estimate_num": 3,
   "estimate_window": 100,
-  "mem_type": "time",
+  "mem_type": "ack",
   "benchmark": {
     "T": 1200,
     "N": 0,
