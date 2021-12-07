@@ -312,6 +312,10 @@ func (r *Replica) processCommittedBlock(block *blockchain.Block) {
 			r.latencyNo++
 			r.totalCommittedTx++
 		}
+		err := r.sm.RemoveMicroblock(mb.Hash)
+		if err != nil {
+			log.Errorf("[%v] processing committed block err: %w", err)
+		}
 	}
 	r.committedNo++
 	log.Infof("[%v] the block is committed, No. of microblocks: %v, No. of tx: %v, view: %v, current view: %v, id: %x", r.ID(), len(block.MicroblockList()), txCount, block.View, r.pm.GetCurView(), block.ID)

@@ -2,6 +2,7 @@ package mempool
 
 import (
 	"container/list"
+	"fmt"
 	"github.com/gitferry/bamboo/blockchain"
 	"github.com/gitferry/bamboo/config"
 	"github.com/gitferry/bamboo/crypto"
@@ -126,8 +127,12 @@ func (nm *NaiveMem) CheckExistence(p *blockchain.Proposal) (bool, []crypto.Ident
 
 // RemoveMicroblock removes reffered microblocks from the mempool
 func (nm *NaiveMem) RemoveMicroblock(id crypto.Identifier) error {
-	var err error
-	return err
+	_, exists := nm.microblockMap[id]
+	if exists {
+		delete(nm.microblockMap, id)
+		return nil
+	}
+	return fmt.Errorf("the microblock does not exist, id: %x", id)
 }
 
 // FindMicroblock finds a reffered microblock
