@@ -112,6 +112,10 @@ func (am *AckMem) AddMicroblock(mb *blockchain.MicroBlock) error {
 		// if so, add these ack to the pendingblocks
 		for _, ack := range buffer {
 			am.pendingMicroblocks[mb.Hash].ackMap[ack] = struct{}{}
+			if len(am.pendingMicroblocks[mb.Hash].ackMap) >= am.threshhold {
+				am.stableMicroblocks.PushBack(mb)
+				delete(am.pendingMicroblocks, mb.Hash)
+			}
 		}
 	}
 	return nil

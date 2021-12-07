@@ -10,6 +10,7 @@ import (
 	"github.com/gitferry/bamboo/utils"
 	"github.com/stretchr/testify/require"
 	"testing"
+	"time"
 )
 
 // test GeneratePayload, and FillProposal
@@ -18,10 +19,11 @@ import (
 // add microblocks with future timestamp of 1, 2, 3, 4, should pull 1, 2 into payload
 func TestTimemem_GeneratePayload1(t *testing.T) {
 	tm := NewMockTimemem()
-	mb1 := NewMockMicroblock(1)
-	mb2 := NewMockMicroblock(2)
-	mb3 := NewMockMicroblock(3)
-	mb4 := NewMockMicroblock(4)
+	timestamp := time.Now()
+	mb1 := NewMockMicroblock(timestamp.Add(1))
+	mb2 := NewMockMicroblock(timestamp.Add(2))
+	mb3 := NewMockMicroblock(timestamp.Add(3))
+	mb4 := NewMockMicroblock(timestamp.Add(4))
 	_ = tm.AddMicroblock(mb1)
 	_ = tm.AddMicroblock(mb2)
 	_ = tm.AddMicroblock(mb3)
@@ -37,10 +39,11 @@ func TestTimemem_GeneratePayload1(t *testing.T) {
 // add microblocks with future timestamp of 3, 1, 2, 4, should pull 1, 2 into payload
 func TestTimemem_GeneratePayload2(t *testing.T) {
 	tm := NewMockTimemem()
-	mb1 := NewMockMicroblock(3)
-	mb2 := NewMockMicroblock(1)
-	mb3 := NewMockMicroblock(2)
-	mb4 := NewMockMicroblock(4)
+	timestamp := time.Now()
+	mb1 := NewMockMicroblock(timestamp.Add(3))
+	mb2 := NewMockMicroblock(timestamp.Add(1))
+	mb3 := NewMockMicroblock(timestamp.Add(2))
+	mb4 := NewMockMicroblock(timestamp.Add(4))
 	_ = tm.AddMicroblock(mb1)
 	_ = tm.AddMicroblock(mb2)
 	_ = tm.AddMicroblock(mb3)
@@ -54,8 +57,9 @@ func TestTimemem_GeneratePayload2(t *testing.T) {
 // add 2 microblocks in the mempool, fill a proposal containing the two
 func TestTimemem_FillProposal1(t *testing.T) {
 	tm := NewMockTimemem()
-	mb1 := NewMockMicroblock(1)
-	mb2 := NewMockMicroblock(2)
+	timestamp := time.Now()
+	mb1 := NewMockMicroblock(timestamp.Add(1))
+	mb2 := NewMockMicroblock(timestamp.Add(2))
 	_ = tm.AddMicroblock(mb1)
 	_ = tm.AddMicroblock(mb2)
 	mbs := make([]*blockchain.MicroBlock, 0)
@@ -74,9 +78,10 @@ func TestTimemem_FillProposal1(t *testing.T) {
 // add 2 microblocks in the mempool, fill a proposal that contains another microblock besides the two
 func TestTimemem_FillProposal2(t *testing.T) {
 	tm := NewMockTimemem()
-	mb1 := NewMockMicroblock(1)
-	mb2 := NewMockMicroblock(2)
-	mb3 := NewMockMicroblock(3)
+	timestamp := time.Now()
+	mb1 := NewMockMicroblock(timestamp.Add(1))
+	mb2 := NewMockMicroblock(timestamp.Add(2))
+	mb3 := NewMockMicroblock(timestamp.Add(3))
 	_ = tm.AddMicroblock(mb1)
 	_ = tm.AddMicroblock(mb2)
 	mbs := make([]*blockchain.MicroBlock, 0)
@@ -157,14 +162,14 @@ func TestTimemem_AddTxn4(t *testing.T) {
 	require.Equal(t, 3, len(mb.Txns))
 }
 
-func NewMockTimemem() *Ackmem {
+func NewMockTimemem() *Timemem {
 	config.Configuration.BSize = 2
 	config.Configuration.MSize = 128
 	config.Configuration.MemSize = 50000
 	return NewTimemem()
 }
 
-func NewMockMicroblock(futureTimeStamp int64) *blockchain.MicroBlock {
+func NewMockMicroblock(futureTimeStamp time.Time) *blockchain.MicroBlock {
 
 	txn := &message.Transaction{
 		ID: hex.EncodeToString(crypto.IDToByte(utils.IdentifierFixture())),
@@ -176,6 +181,7 @@ func NewMockMicroblock(futureTimeStamp int64) *blockchain.MicroBlock {
 		Hash:            utils.IdentifierFixture(),
 		Txns:            txnList,
 		FutureTimestamp: futureTimeStamp,
+		Sender:          "0",
 	}
 }
 

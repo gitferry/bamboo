@@ -82,11 +82,8 @@ func (c *HTTPClient) Put(key db.Key, value db.Value) error {
 }
 
 func (c *HTTPClient) GetURL(key db.Key) (identity.NodeID, string) {
-	replicaID := config.GetConfig().Master
-	if replicaID == "0" {
-		keys := reflect.ValueOf(c.HTTP).MapKeys()
-		replicaID = keys[rand.Intn(len(keys))].Interface().(identity.NodeID)
-	}
+	keys := reflect.ValueOf(c.HTTP).MapKeys()
+	replicaID := keys[rand.Intn(len(keys))].Interface().(identity.NodeID)
 	return replicaID, c.HTTP[replicaID] + "/" + strconv.Itoa(int(key))
 }
 
