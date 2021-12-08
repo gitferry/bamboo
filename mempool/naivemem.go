@@ -127,6 +127,8 @@ func (nm *NaiveMem) CheckExistence(p *blockchain.Proposal) (bool, []crypto.Ident
 
 // RemoveMicroblock removes reffered microblocks from the mempool
 func (nm *NaiveMem) RemoveMicroblock(id crypto.Identifier) error {
+	nm.mu.Lock()
+	defer nm.mu.Unlock()
 	_, exists := nm.microblockMap[id]
 	if exists {
 		delete(nm.microblockMap, id)

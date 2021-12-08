@@ -50,6 +50,7 @@ type Replica struct {
 	totalVoteTime        time.Duration
 	totalBlockSize       int
 	totalMicroblocks     int
+	totalProposedMBs     int
 	missingMicroblocks   int
 	receivedNo           int
 	roundNo              int
@@ -59,6 +60,7 @@ type Replica struct {
 	proposedNo           int
 	processedNo          int
 	committedNo          int
+	missingCounts        map[identity.NodeID]int
 	pendingBlockMap      map[crypto.Identifier]*blockchain.PendingBlock
 	missingMBs           map[crypto.Identifier]crypto.Identifier // microblock hash to proposal hash
 	receivedMBs          map[crypto.Identifier]struct{}
@@ -86,6 +88,7 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 	r.pendingBlockMap = make(map[crypto.Identifier]*blockchain.PendingBlock)
 	r.missingMBs = make(map[crypto.Identifier]crypto.Identifier)
 	r.receivedMBs = make(map[crypto.Identifier]struct{})
+	r.missingCounts = make(map[identity.NodeID]int)
 	memType := config.GetConfig().MemType
 	switch memType {
 	case "naive":
@@ -220,6 +223,7 @@ func (r *Replica) HandleMicroblock(mb blockchain.MicroBlock) {
 
 func (r *Replica) HandleMissingMBRequest(mbr message.MissingMBRequest) {
 	log.Debugf("[%v] %d missing microblocks request is received from %v for proposal %x", r.ID(), len(mbr.MissingMBList), mbr.RequesterID, mbr.ProposalID)
+	r.missingCounts[mbr.RequesterID] += len(mbr.MissingMBList)
 	for _, mbid := range mbr.MissingMBList {
 		found, mb := r.sm.FindMicroblock(mbid)
 		if found {
@@ -271,9 +275,13 @@ func (r *Replica) handleQuery(m message.Query) {
 	r.thrus += fmt.Sprintf("Time: %v s. Throughput: %v txs/s\n", time.Now().Sub(r.startTime).Seconds(), float64(r.totalCommittedTx)/time.Now().Sub(r.tmpTime).Seconds())
 	r.totalCommittedTx = 0
 	r.tmpTime = time.Now()
+	var missingCounts string
+	for k, v := range r.missingCounts {
+		missingCounts += fmt.Sprintf("%v: %v\n", k, v)
+	}
 	//status := fmt.Sprintf("chain status is: %s\nCommitted rate is %v.\nAve. block size is %v.\nAve. trans. delay is %v ms.\nAve. creation time is %f ms.\nAve. processing time is %v ms.\nAve. vote time is %v ms.\nRequest rate is %f txs/s.\nAve. round time is %f ms.\nLatency is %f ms.\nThroughput is %f txs/s.\n", r.Safety.GetChainStatus(), committedRate, aveBlockSize, aveTransDelay, aveCreateDuration, aveProcessTime, aveVoteProcessTime, requestRate, aveRoundTime, latency, throughput)
 	//status := fmt.Sprintf("Ave. actual proposing time is %v ms.\nAve. proposing time is %v ms.\nAve. processing time is %v ms.\nAve. vote time is %v ms.\nAve. block size is %v.\nAve. round time is %v ms.\nLatency is %v ms.\n", realAveProposeTime, aveProposeTime, aveProcessTime, aveVoteProcessTime, aveBlockSize, aveRoundTime, latency)
-	status := fmt.Sprintf("Latency: %v ms\nTotal microblocks: %v\nTotal missing microblocks: %v\n%s", latency, r.totalMicroblocks, r.missingMicroblocks, r.thrus)
+	status := fmt.Sprintf("Latency: %v ms\nTotal microblocks: %v\nTotal missing microblocks: %v\nTotoal proposed microblocks:%v\nMissing counts:\n%s\n%s", latency, r.totalMicroblocks, r.missingMicroblocks, r.totalProposedMBs, missingCounts, r.thrus)
 	m.Reply(message.QueryReply{Info: status})
 }
 
@@ -314,7 +322,7 @@ func (r *Replica) processCommittedBlock(block *blockchain.Block) {
 		}
 		err := r.sm.RemoveMicroblock(mb.Hash)
 		if err != nil {
-			log.Errorf("[%v] processing committed block err: %w", err)
+			log.Debugf("[%v] processing committed block err: %w", r.ID(), err)
 		}
 	}
 	r.committedNo++
@@ -346,6 +354,7 @@ func (r *Replica) proposeBlock(view types.View) {
 	if config.Configuration.MemType == "time" {
 		r.waitUntilStable(payload)
 	}
+	r.totalProposedMBs += len(payload.MicroblockList)
 	proposal := r.Safety.MakeProposal(view, payload.GenerateHashList())
 	log.Debugf("[%v] is making a proposal for view %v, containing %v microblocks, id:%x", proposal.Proposer, proposal.View, len(proposal.HashList), proposal.ID)
 	r.totalBlockSize += len(proposal.HashList)

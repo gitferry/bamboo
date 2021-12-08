@@ -50,6 +50,8 @@ type Config struct {
 	EstimateNum    int             `json:"estimate_num"`
 	EstimateWindow int             `json:"estimate_window"`
 	DefaultDelay   int             `json:"default_delay"`
+	Gossip         bool            `json:"gossip"`
+	Fanout         int             `json:"fanout"`
 
 	hasher string
 	signer string
