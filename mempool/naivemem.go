@@ -175,6 +175,10 @@ func (nm *NaiveMem) FillProposal(p *blockchain.Proposal) *blockchain.PendingBloc
 func (nm *NaiveMem) AddAck(ack *message.Ack) {
 }
 
+func (nm *NaiveMem) IsStable(id crypto.Identifier) bool {
+	return false
+}
+
 func (nm *NaiveMem) front() *blockchain.MicroBlock {
 	if nm.microblocks.Len() == 0 {
 		return nil

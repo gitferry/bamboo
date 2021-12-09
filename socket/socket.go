@@ -148,15 +148,14 @@ func (s *socket) Recv() interface{} {
 
 func (s *socket) MulticastQuorum(quorum int, m interface{}) {
 	//log.Debugf("node %s multicasting message %+v for %d nodes", s.id, m, quorum)
-	sent := map[int]struct{}{}
+	a := make([]int, len(s.addresses))
+	for i := range a {
+		a[i] = i + 1
+	}
+	rand.Seed(time.Now().UnixNano())
+	rand.Shuffle(len(a), func(i, j int) { a[i], a[j] = a[j], a[i] })
 	for i := 0; i < quorum; i++ {
-		r := rand.Intn(len(s.addresses)) + 1
-		_, exists := sent[r]
-		if exists {
-			continue
-		}
-		s.Send(identity.NewNodeID(r), m)
-		sent[r] = struct{}{}
+		s.Send(identity.NewNodeID(a[i]), m)
 	}
 }
 

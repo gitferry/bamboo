@@ -38,6 +38,7 @@ type MicroBlock struct {
 	FutureTimestamp time.Time
 	Sender          identity.NodeID
 	IsRequested     bool
+	Hops            int
 }
 
 type Proposal struct {

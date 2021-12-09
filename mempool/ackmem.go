@@ -17,6 +17,7 @@ type AckMem struct {
 	microblockMap      map[crypto.Identifier]*blockchain.MicroBlock
 	pendingMicroblocks map[crypto.Identifier]*PendingMicroblock
 	ackBuffer          map[crypto.Identifier][]identity.NodeID //number of the ack received before mb arrived
+	stableMBs          map[crypto.Identifier]struct{}          //keeps track of stable microblocks
 	bsize              int                                     // number of microblocks in a proposal
 	msize              int                                     // byte size of transactions in a microblock
 	memsize            int                                     // number of microblocks in mempool
@@ -36,11 +37,12 @@ func NewAckMem() *AckMem {
 		bsize:              config.GetConfig().BSize,
 		msize:              config.GetConfig().MSize,
 		memsize:            config.GetConfig().MemSize,
-		threshhold:         config.GetConfig().EstimateNum,
+		threshhold:         config.GetConfig().Q,
 		stableMicroblocks:  list.New(),
 		microblockMap:      make(map[crypto.Identifier]*blockchain.MicroBlock),
 		pendingMicroblocks: make(map[crypto.Identifier]*PendingMicroblock),
 		ackBuffer:          make(map[crypto.Identifier][]identity.NodeID),
+		stableMBs:          make(map[crypto.Identifier]struct{}),
 		currSize:           0,
 		txnList:            list.New(),
 	}
@@ -111,9 +113,11 @@ func (am *AckMem) AddMicroblock(mb *blockchain.MicroBlock) error {
 	if received {
 		// if so, add these ack to the pendingblocks
 		for _, ack := range buffer {
-			am.pendingMicroblocks[mb.Hash].ackMap[ack] = struct{}{}
-			if len(am.pendingMicroblocks[mb.Hash].ackMap) >= am.threshhold {
+			//am.pendingMicroblocks[mb.Hash].ackMap[ack] = struct{}{}
+			pm.ackMap[ack] = struct{}{}
+			if len(pm.ackMap) >= am.threshhold {
 				am.stableMicroblocks.PushBack(mb)
+				am.stableMBs[mb.Hash] = struct{}{}
 				delete(am.pendingMicroblocks, mb.Hash)
 			}
 		}
@@ -131,6 +135,7 @@ func (am *AckMem) AddAck(ack *message.Ack) {
 		target.ackMap[ack.Receiver] = struct{}{}
 		if len(target.ackMap) >= am.threshhold {
 			am.stableMicroblocks.PushBack(target.microblock)
+			am.stableMBs[target.microblock.Hash] = struct{}{}
 			delete(am.pendingMicroblocks, ack.ID)
 		}
 	} else {
@@ -181,8 +186,17 @@ func (am *AckMem) CheckExistence(p *blockchain.Proposal) (bool, []crypto.Identif
 
 // RemoveMicroblock removes reffered microblocks from the mempool
 func (am *AckMem) RemoveMicroblock(id crypto.Identifier) error {
-	var err error
-	return err
+	am.mu.Lock()
+	defer am.mu.Unlock()
+	_, exists := am.microblockMap[id]
+	if exists {
+		delete(am.microblockMap, id)
+	}
+	_, exists = am.stableMBs[id]
+	if exists {
+		delete(am.microblockMap, id)
+	}
+	return nil
 }
 
 // FindMicroblock finds a reffered microblock
@@ -223,6 +237,14 @@ func (am *AckMem) FillProposal(p *blockchain.Proposal) *blockchain.PendingBlock 
 		}
 	}
 	return blockchain.NewPendingBlock(p, missingBlocks, existingBlocks)
+}
+
+func (am *AckMem) IsStable(id crypto.Identifier) bool {
+	_, exists := am.stableMBs[id]
+	if exists {
+		return true
+	}
+	return false
 }
 
 func (am *AckMem) front() *blockchain.MicroBlock {

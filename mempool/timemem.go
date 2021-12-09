@@ -160,6 +160,10 @@ func (tm *Timemem) FillProposal(p *blockchain.Proposal) *blockchain.PendingBlock
 	return blockchain.NewPendingBlock(p, missingBlocks, existingBlocks)
 }
 
+func (tm *Timemem) IsStable(id crypto.Identifier) bool {
+	return false
+}
+
 func (tm *Timemem) AddAck(ack *message.Ack) {
 }
 

@@ -60,6 +60,8 @@ type Replica struct {
 	proposedNo           int
 	processedNo          int
 	committedNo          int
+	totalHops            int
+	totalCommittedMBs    int
 	missingCounts        map[identity.NodeID]int
 	pendingBlockMap      map[crypto.Identifier]*blockchain.PendingBlock
 	missingMBs           map[crypto.Identifier]crypto.Identifier // microblock hash to proposal hash
@@ -205,6 +207,23 @@ func (r *Replica) HandleMicroblock(mb blockchain.MicroBlock) {
 			log.Errorf("[%v] can not add a microblock, id: %x", r.ID(), mb.Hash)
 		}
 	}
+	// gossip
+	// if a quorum of acks is not reached, gossip the microblock
+	if config.Configuration.Gossip == true {
+		mb.Hops += 1
+		if config.Configuration.MemType == "naive" {
+			if mb.Hops <= config.Configuration.R {
+				r.MulticastQuorum(config.Configuration.Fanout, mb)
+			}
+		} else if config.Configuration.MemType == "ack" {
+			if !r.sm.IsStable(mb.Hash) {
+				mb.Hops += 1
+				r.MulticastQuorum(config.Configuration.Fanout, mb)
+			}
+		}
+	}
+
+	// ack
 	if !mb.IsRequested && (config.Configuration.MemType == "time" || config.Configuration.MemType == "ack") {
 		ack := message.Ack{
 			SentTime: mb.Timestamp,
@@ -258,6 +277,14 @@ func (r *Replica) HandleAck(ack message.Ack) {
 		r.estimator.AddAck(&ack)
 	} else if config.Configuration.MemType == "ack" {
 		r.sm.AddAck(&ack)
+		found, _ := r.sm.FindMicroblock(ack.ID)
+		if !found {
+			missingRequest := message.MissingMBRequest{
+				RequesterID:   r.ID(),
+				MissingMBList: []crypto.Identifier{ack.ID},
+			}
+			r.Send(ack.Receiver, missingRequest)
+		}
 	}
 }
 
@@ -275,13 +302,15 @@ func (r *Replica) handleQuery(m message.Query) {
 	r.thrus += fmt.Sprintf("Time: %v s. Throughput: %v txs/s\n", time.Now().Sub(r.startTime).Seconds(), float64(r.totalCommittedTx)/time.Now().Sub(r.tmpTime).Seconds())
 	r.totalCommittedTx = 0
 	r.tmpTime = time.Now()
+	aveRoundTime := float64(r.totalRoundTime.Milliseconds()) / float64(r.roundNo)
+	aveHops := float64(r.totalHops) / float64(r.totalCommittedMBs)
 	var missingCounts string
 	for k, v := range r.missingCounts {
 		missingCounts += fmt.Sprintf("%v: %v\n", k, v)
 	}
 	//status := fmt.Sprintf("chain status is: %s\nCommitted rate is %v.\nAve. block size is %v.\nAve. trans. delay is %v ms.\nAve. creation time is %f ms.\nAve. processing time is %v ms.\nAve. vote time is %v ms.\nRequest rate is %f txs/s.\nAve. round time is %f ms.\nLatency is %f ms.\nThroughput is %f txs/s.\n", r.Safety.GetChainStatus(), committedRate, aveBlockSize, aveTransDelay, aveCreateDuration, aveProcessTime, aveVoteProcessTime, requestRate, aveRoundTime, latency, throughput)
 	//status := fmt.Sprintf("Ave. actual proposing time is %v ms.\nAve. proposing time is %v ms.\nAve. processing time is %v ms.\nAve. vote time is %v ms.\nAve. block size is %v.\nAve. round time is %v ms.\nLatency is %v ms.\n", realAveProposeTime, aveProposeTime, aveProcessTime, aveVoteProcessTime, aveBlockSize, aveRoundTime, latency)
-	status := fmt.Sprintf("Latency: %v ms\nTotal microblocks: %v\nTotal missing microblocks: %v\nTotoal proposed microblocks:%v\nMissing counts:\n%s\n%s", latency, r.totalMicroblocks, r.missingMicroblocks, r.totalProposedMBs, missingCounts, r.thrus)
+	status := fmt.Sprintf("Ave. View Time: %v\nLatency: %v ms\nTotal microblocks: %v\nTotal missing microblocks: %v\nTotoal proposed microblocks:%v\nAve. hops:%v\nMissing counts:\n%s\n%s", aveRoundTime, latency, r.totalMicroblocks, r.missingMicroblocks, r.totalProposedMBs, aveHops, missingCounts, r.thrus)
 	m.Reply(message.QueryReply{Info: status})
 }
 
@@ -298,7 +327,12 @@ func (r *Replica) handleTxn(m message.Transaction) {
 		mb.Sender = r.ID()
 		r.sm.AddMicroblock(mb)
 		mb.Timestamp = time.Now()
-		r.Broadcast(mb)
+		if config.Configuration.Gossip == true {
+			mb.Hops += 1
+			r.MulticastQuorum(config.Configuration.Fanout, mb)
+		} else {
+			r.Broadcast(mb)
+		}
 	}
 	// the first leader kicks off the protocol
 	if r.pm.GetCurView() == 0 && r.IsLeader(r.ID(), 1) {
@@ -311,6 +345,7 @@ func (r *Replica) handleTxn(m message.Transaction) {
 
 func (r *Replica) processCommittedBlock(block *blockchain.Block) {
 	var txCount int
+	r.totalCommittedMBs += len(block.MicroblockList())
 	for _, mb := range block.MicroblockList() {
 		txCount += len(mb.Txns)
 		for _, txn := range mb.Txns {
@@ -320,10 +355,11 @@ func (r *Replica) processCommittedBlock(block *blockchain.Block) {
 			r.latencyNo++
 			r.totalCommittedTx++
 		}
-		err := r.sm.RemoveMicroblock(mb.Hash)
-		if err != nil {
-			log.Debugf("[%v] processing committed block err: %w", r.ID(), err)
-		}
+		r.totalHops += mb.Hops
+		//err := r.sm.RemoveMicroblock(mb.Hash)
+		//if err != nil {
+		//	log.Debugf("[%v] processing committed block err: %w", r.ID(), err)
+		//}
 	}
 	r.committedNo++
 	log.Infof("[%v] the block is committed, No. of microblocks: %v, No. of tx: %v, view: %v, current view: %v, id: %x", r.ID(), len(block.MicroblockList()), txCount, block.View, r.pm.GetCurView(), block.ID)

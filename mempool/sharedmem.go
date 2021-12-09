@@ -32,4 +32,6 @@ type SharedMempool interface {
 	FillProposal(p *blockchain.Proposal) *blockchain.PendingBlock
 
 	AddAck(ack *message.Ack)
+
+	IsStable(id crypto.Identifier) bool
 }

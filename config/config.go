@@ -52,6 +52,8 @@ type Config struct {
 	DefaultDelay   int             `json:"default_delay"`
 	Gossip         bool            `json:"gossip"`
 	Fanout         int             `json:"fanout"`
+	Q              int             `json:"q"` // the number of acks to be considered stable
+	R              int             `json:"r"` // max hops of gossip
 
 	hasher string
 	signer string

@@ -57,7 +57,6 @@ type Ack struct {
 	SentTime time.Time
 	AckTime  time.Time
 	BackTime time.Time
-	Sender   identity.NodeID
 	Receiver identity.NodeID
 	ID       crypto.Identifier
 	Type     string
