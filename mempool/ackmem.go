@@ -240,6 +240,8 @@ func (am *AckMem) FillProposal(p *blockchain.Proposal) *blockchain.PendingBlock 
 }
 
 func (am *AckMem) IsStable(id crypto.Identifier) bool {
+	am.mu.Lock()
+	defer am.mu.Unlock()
 	_, exists := am.stableMBs[id]
 	if exists {
 		return true

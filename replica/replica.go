@@ -62,6 +62,7 @@ type Replica struct {
 	committedNo          int
 	totalHops            int
 	totalCommittedMBs    int
+	totalRedundantMBs    int
 	missingCounts        map[identity.NodeID]int
 	pendingBlockMap      map[crypto.Identifier]*blockchain.PendingBlock
 	missingMBs           map[crypto.Identifier]crypto.Identifier // microblock hash to proposal hash
@@ -99,8 +100,6 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 		r.sm = mempool.NewTimemem()
 	case "ack":
 		r.sm = mempool.NewAckMem()
-	default:
-		r.sm = mempool.NewNaiveMem()
 	}
 	r.Register(blockchain.Proposal{}, r.HandleProposal)
 	r.Register(blockchain.MicroBlock{}, r.HandleMicroblock)
@@ -183,12 +182,14 @@ func (r *Replica) HandleMicroblock(mb blockchain.MicroBlock) {
 	//r.startSignal()
 	_, ok := r.receivedMBs[mb.Hash]
 	if ok {
+		r.totalRedundantMBs++
 		return
 	}
 	r.receivedMBs[mb.Hash] = struct{}{}
 	r.totalMicroblocks++
 	proposalID, exists := r.missingMBs[mb.Hash]
 	if exists {
+		log.Debugf("[%v] a missing mb for proposal is found", r.ID())
 		pd, exists := r.pendingBlockMap[proposalID]
 		if exists {
 			log.Debugf("[%v] received a microblock %x for pending proposal %x", r.ID(), mb.Hash, proposalID)
@@ -208,7 +209,7 @@ func (r *Replica) HandleMicroblock(mb blockchain.MicroBlock) {
 		}
 	}
 	// gossip
-	// if a quorum of acks is not reached, gossip the microblock
+	//if a quorum of acks is not reached, gossip the microblock
 	if config.Configuration.Gossip == true {
 		mb.Hops += 1
 		if config.Configuration.MemType == "naive" {
@@ -216,7 +217,7 @@ func (r *Replica) HandleMicroblock(mb blockchain.MicroBlock) {
 				r.MulticastQuorum(config.Configuration.Fanout, mb)
 			}
 		} else if config.Configuration.MemType == "ack" {
-			if !r.sm.IsStable(mb.Hash) {
+			if !r.sm.IsStable(mb.Hash) && mb.Hops <= config.Configuration.R {
 				mb.Hops += 1
 				r.MulticastQuorum(config.Configuration.Fanout, mb)
 			}
@@ -241,7 +242,7 @@ func (r *Replica) HandleMicroblock(mb blockchain.MicroBlock) {
 }
 
 func (r *Replica) HandleMissingMBRequest(mbr message.MissingMBRequest) {
-	log.Debugf("[%v] %d missing microblocks request is received from %v for proposal %x", r.ID(), len(mbr.MissingMBList), mbr.RequesterID, mbr.ProposalID)
+	log.Debugf("[%v] %d missing microblocks request is received from %v", r.ID(), len(mbr.MissingMBList), mbr.RequesterID)
 	r.missingCounts[mbr.RequesterID] += len(mbr.MissingMBList)
 	for _, mbid := range mbr.MissingMBList {
 		found, mb := r.sm.FindMicroblock(mbid)
@@ -249,7 +250,7 @@ func (r *Replica) HandleMissingMBRequest(mbr message.MissingMBRequest) {
 			mb.IsRequested = true
 			r.Send(mbr.RequesterID, mb)
 		} else {
-			log.Errorf("[%v] a requested microblock for proposal %x is not found in mempool, id: %x", r.ID(), mbr.ProposalID, mbid)
+			log.Errorf("[%v] a requested microblock is not found in mempool, id: %x", r.ID(), mbid)
 		}
 	}
 }
@@ -273,19 +274,7 @@ func (r *Replica) HandleTmo(tmo pacemaker.TMO) {
 
 func (r *Replica) HandleAck(ack message.Ack) {
 	//log.Debugf("[%v] received an ack message, type: %v, id: %x", r.ID(), ack.Type, ack.ID)
-	if config.Configuration.MemType == "time" {
-		r.estimator.AddAck(&ack)
-	} else if config.Configuration.MemType == "ack" {
-		r.sm.AddAck(&ack)
-		found, _ := r.sm.FindMicroblock(ack.ID)
-		if !found {
-			missingRequest := message.MissingMBRequest{
-				RequesterID:   r.ID(),
-				MissingMBList: []crypto.Identifier{ack.ID},
-			}
-			r.Send(ack.Receiver, missingRequest)
-		}
-	}
+	r.eventChan <- ack
 }
 
 // handleQuery replies a query with the statistics of the node
@@ -310,7 +299,7 @@ func (r *Replica) handleQuery(m message.Query) {
 	}
 	//status := fmt.Sprintf("chain status is: %s\nCommitted rate is %v.\nAve. block size is %v.\nAve. trans. delay is %v ms.\nAve. creation time is %f ms.\nAve. processing time is %v ms.\nAve. vote time is %v ms.\nRequest rate is %f txs/s.\nAve. round time is %f ms.\nLatency is %f ms.\nThroughput is %f txs/s.\n", r.Safety.GetChainStatus(), committedRate, aveBlockSize, aveTransDelay, aveCreateDuration, aveProcessTime, aveVoteProcessTime, requestRate, aveRoundTime, latency, throughput)
 	//status := fmt.Sprintf("Ave. actual proposing time is %v ms.\nAve. proposing time is %v ms.\nAve. processing time is %v ms.\nAve. vote time is %v ms.\nAve. block size is %v.\nAve. round time is %v ms.\nLatency is %v ms.\n", realAveProposeTime, aveProposeTime, aveProcessTime, aveVoteProcessTime, aveBlockSize, aveRoundTime, latency)
-	status := fmt.Sprintf("Ave. View Time: %v\nLatency: %v ms\nTotal microblocks: %v\nTotal missing microblocks: %v\nTotoal proposed microblocks:%v\nAve. hops:%v\nMissing counts:\n%s\n%s", aveRoundTime, latency, r.totalMicroblocks, r.missingMicroblocks, r.totalProposedMBs, aveHops, missingCounts, r.thrus)
+	status := fmt.Sprintf("Ave. View Time: %v\nLatency: %v ms\nRedundant microblocks:%v\nTotal microblocks: %v\nTotal missing microblocks: %v\nTotoal proposed microblocks:%v\nAve. hops:%v\nMissing counts:\n%s\n%s", aveRoundTime, latency, r.totalRedundantMBs, r.totalMicroblocks, r.missingMicroblocks, r.totalProposedMBs, aveHops, missingCounts, r.thrus)
 	m.Reply(message.QueryReply{Info: status})
 }
 
@@ -381,6 +370,22 @@ func (r *Replica) processNewView(newView types.View) {
 		return
 	}
 	r.proposeBlock(newView)
+}
+
+func (r *Replica) processAcks(ack *message.Ack) {
+	if config.Configuration.MemType == "time" {
+		r.estimator.AddAck(ack)
+	} else if config.Configuration.MemType == "ack" {
+		r.sm.AddAck(ack)
+		found, _ := r.sm.FindMicroblock(ack.ID)
+		if !found {
+			missingRequest := message.MissingMBRequest{
+				RequesterID:   r.ID(),
+				MissingMBList: []crypto.Identifier{ack.ID},
+			}
+			r.Send(ack.Receiver, missingRequest)
+		}
+	}
 }
 
 func (r *Replica) proposeBlock(view types.View) {
@@ -501,6 +506,8 @@ func (r *Replica) Start() {
 			processingDuration := time.Now().Sub(startProcessTime)
 			r.totalVoteTime += processingDuration
 			r.voteNo++
+		case message.Ack:
+			r.processAcks(&v)
 		case pacemaker.TMO:
 			r.Safety.ProcessRemoteTmo(&v)
 		default:

@@ -152,6 +152,7 @@ func (s *socket) MulticastQuorum(quorum int, m interface{}) {
 	for i := range a {
 		a[i] = i + 1
 	}
+	a = append(a[:s.id.Node()-1], a[s.id.Node():]...)
 	rand.Seed(time.Now().UnixNano())
 	rand.Shuffle(len(a), func(i, j int) { a[i], a[j] = a[j], a[i] })
 	for i := 0; i < quorum; i++ {
