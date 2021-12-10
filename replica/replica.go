@@ -184,7 +184,9 @@ func (r *Replica) HandleMicroblock(mb blockchain.MicroBlock) {
 	_, ok := r.receivedMBs[mb.Hash]
 	if ok {
 		r.totalRedundantMBs++
-		return
+		if !mb.IsRequested {
+			return
+		}
 	}
 	r.receivedMBs[mb.Hash] = struct{}{}
 	r.totalMicroblocks++
