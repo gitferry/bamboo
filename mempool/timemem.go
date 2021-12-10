@@ -5,6 +5,7 @@ import (
 	"github.com/gitferry/bamboo/blockchain"
 	"github.com/gitferry/bamboo/config"
 	"github.com/gitferry/bamboo/crypto"
+	"github.com/gitferry/bamboo/identity"
 	"github.com/gitferry/bamboo/log"
 	"github.com/gitferry/bamboo/message"
 	"github.com/gitferry/bamboo/pq"
@@ -165,6 +166,10 @@ func (tm *Timemem) IsStable(id crypto.Identifier) bool {
 }
 
 func (tm *Timemem) AddAck(ack *message.Ack) {
+}
+
+func (tm *Timemem) AckList(id crypto.Identifier) []identity.NodeID {
+	return nil
 }
 
 func (tm *Timemem) makeTxnSlice() []*message.Transaction {

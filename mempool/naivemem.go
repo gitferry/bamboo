@@ -6,6 +6,7 @@ import (
 	"github.com/gitferry/bamboo/blockchain"
 	"github.com/gitferry/bamboo/config"
 	"github.com/gitferry/bamboo/crypto"
+	"github.com/gitferry/bamboo/identity"
 	"github.com/gitferry/bamboo/message"
 	"github.com/gitferry/bamboo/utils"
 	"sync"
@@ -173,6 +174,10 @@ func (nm *NaiveMem) FillProposal(p *blockchain.Proposal) *blockchain.PendingBloc
 }
 
 func (nm *NaiveMem) AddAck(ack *message.Ack) {
+}
+
+func (nm *NaiveMem) AckList(id crypto.Identifier) []identity.NodeID {
+	return nil
 }
 
 func (nm *NaiveMem) IsStable(id crypto.Identifier) bool {

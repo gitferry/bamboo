@@ -3,6 +3,7 @@ package mempool
 import (
 	"github.com/gitferry/bamboo/blockchain"
 	"github.com/gitferry/bamboo/crypto"
+	"github.com/gitferry/bamboo/identity"
 	"github.com/gitferry/bamboo/message"
 )
 
@@ -34,4 +35,6 @@ type SharedMempool interface {
 	AddAck(ack *message.Ack)
 
 	IsStable(id crypto.Identifier) bool
+
+	AckList(id crypto.Identifier) []identity.NodeID
 }

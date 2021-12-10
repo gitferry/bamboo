@@ -25,6 +25,29 @@ func FindIntSlice(slice []int, val int) bool {
 	return false
 }
 
+func PickRandomNodes(sentNodes []identity.NodeID) []identity.NodeID {
+	// delete sent nodes
+	b := make([]identity.NodeID, 0)
+	for i := 0; i < len(config.Configuration.Addrs); i++ {
+		should := true
+		for _, id := range sentNodes {
+			if i == id.Node()-1 {
+				should = false
+				break
+			}
+		}
+		if should {
+			b = append(b, identity.NewNodeID(i+1))
+		}
+	}
+	if len(b) <= config.Configuration.Fanout {
+		return b
+	}
+	rand.Seed(time.Now().UnixNano())
+	rand.Shuffle(len(b), func(i, j int) { b[i], b[j] = b[j], b[i] })
+	return b[:config.Configuration.Fanout]
+}
+
 func SizeOf(v interface{}) int {
 	var buffer bytes.Buffer
 	enc := gob.NewEncoder(&buffer)

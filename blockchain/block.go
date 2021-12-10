@@ -2,6 +2,8 @@ package blockchain
 
 import (
 	"github.com/gitferry/bamboo/crypto/merkle"
+	"github.com/kelindar/bitmap"
+	"strconv"
 	"time"
 
 	"github.com/gitferry/bamboo/crypto"
@@ -38,6 +40,7 @@ type MicroBlock struct {
 	FutureTimestamp time.Time
 	Sender          identity.NodeID
 	IsRequested     bool
+	Bitmap          bitmap.Bitmap
 	Hops            int
 }
 
@@ -100,6 +103,22 @@ func (pl *Payload) LastItem() *MicroBlock {
 		return nil
 	}
 	return pl.MicroblockList[len(pl.MicroblockList)-1]
+}
+
+func (mb *MicroBlock) FindSentNodes() []identity.NodeID {
+	nodes := make([]identity.NodeID, 0)
+	mb.Bitmap.Range(func(x uint32) {
+		nodes = append(nodes, identity.NodeID(strconv.Itoa(int(x))))
+		return
+	})
+
+	return nodes
+}
+
+func (mb *MicroBlock) AddSentNodes(nodes []identity.NodeID) {
+	for _, id := range nodes {
+		mb.Bitmap.Set(uint32(id.Node()))
+	}
 }
 
 // BuildBlock fills microblocks to make a block

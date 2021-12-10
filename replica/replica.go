@@ -4,6 +4,7 @@ import (
 	"encoding/gob"
 	"fmt"
 	"github.com/gitferry/bamboo/crypto"
+	"github.com/gitferry/bamboo/utils"
 	"time"
 
 	"go.uber.org/atomic"
@@ -214,12 +215,11 @@ func (r *Replica) HandleMicroblock(mb blockchain.MicroBlock) {
 		mb.Hops += 1
 		if config.Configuration.MemType == "naive" {
 			if mb.Hops <= config.Configuration.R {
-				r.MulticastQuorum(config.Configuration.Fanout, mb)
+				r.MulticastQuorum(r.pickFanoutNodes(&mb), mb)
 			}
 		} else if config.Configuration.MemType == "ack" {
 			if !r.sm.IsStable(mb.Hash) && mb.Hops <= config.Configuration.R {
-				mb.Hops += 1
-				r.MulticastQuorum(config.Configuration.Fanout, mb)
+				r.MulticastQuorum(r.pickFanoutNodes(&mb), mb)
 			}
 		}
 	}
@@ -274,7 +274,8 @@ func (r *Replica) HandleTmo(tmo pacemaker.TMO) {
 
 func (r *Replica) HandleAck(ack message.Ack) {
 	//log.Debugf("[%v] received an ack message, type: %v, id: %x", r.ID(), ack.Type, ack.ID)
-	r.eventChan <- ack
+	//r.eventChan <- ack
+	r.processAcks(&ack)
 }
 
 // handleQuery replies a query with the statistics of the node
@@ -318,7 +319,7 @@ func (r *Replica) handleTxn(m message.Transaction) {
 		mb.Timestamp = time.Now()
 		if config.Configuration.Gossip == true {
 			mb.Hops += 1
-			r.MulticastQuorum(config.Configuration.Fanout, mb)
+			r.MulticastQuorum(r.pickFanoutNodes(mb), mb)
 		} else {
 			r.Broadcast(mb)
 		}
@@ -328,6 +329,15 @@ func (r *Replica) handleTxn(m message.Transaction) {
 		log.Debugf("[%v] is going to kick off the protocol", r.ID())
 		r.pm.AdvanceView(0)
 	}
+}
+
+func (r *Replica) pickFanoutNodes(mb *blockchain.MicroBlock) []identity.NodeID {
+	sentNodes := mb.FindSentNodes()
+	nodes := utils.PickRandomNodes(sentNodes)
+	mb.AddSentNodes(nodes)
+	mb.AddSentNodes(r.sm.AckList(mb.Hash))
+	mb.AddSentNodes([]identity.NodeID{r.ID()})
+	return nodes
 }
 
 /* Processors */
@@ -378,7 +388,7 @@ func (r *Replica) processAcks(ack *message.Ack) {
 	} else if config.Configuration.MemType == "ack" {
 		r.sm.AddAck(ack)
 		found, _ := r.sm.FindMicroblock(ack.ID)
-		if !found {
+		if !found && r.sm.IsStable(ack.ID) {
 			missingRequest := message.MissingMBRequest{
 				RequesterID:   r.ID(),
 				MissingMBList: []crypto.Identifier{ack.ID},
@@ -506,8 +516,6 @@ func (r *Replica) Start() {
 			processingDuration := time.Now().Sub(startProcessTime)
 			r.totalVoteTime += processingDuration
 			r.voteNo++
-		case message.Ack:
-			r.processAcks(&v)
 		case pacemaker.TMO:
 			r.Safety.ProcessRemoteTmo(&v)
 		default:

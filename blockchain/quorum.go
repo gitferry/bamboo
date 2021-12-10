@@ -66,7 +66,7 @@ func (q *Quorum) Add(vote *Vote) (bool, *QC) {
 	if q.superMajority(vote.BlockID) {
 		aggSig, signers, err := q.getSigs(vote.BlockID)
 		if err != nil {
-			log.Warningf("cannot generate a valid qc, view: %v, block id: %x: %w", vote.View, vote.BlockID, err)
+			//log.Warningf("cannot generate a valid qc, view: %v, block id: %x: %w", vote.View, vote.BlockID, err)
 		}
 		qc := &QC{
 			View:    vote.View,

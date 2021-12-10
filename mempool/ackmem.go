@@ -249,6 +249,20 @@ func (am *AckMem) IsStable(id crypto.Identifier) bool {
 	return false
 }
 
+func (am *AckMem) AckList(id crypto.Identifier) []identity.NodeID {
+	am.mu.Lock()
+	defer am.mu.Unlock()
+	pmb, exists := am.pendingMicroblocks[id]
+	if exists {
+		nodes := make([]identity.NodeID, 0, len(pmb.ackMap))
+		for k, _ := range pmb.ackMap {
+			nodes = append(nodes, k)
+		}
+		return nodes
+	}
+	return nil
+}
+
 func (am *AckMem) front() *blockchain.MicroBlock {
 	if am.stableMicroblocks.Len() == 0 {
 		return nil
