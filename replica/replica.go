@@ -184,17 +184,11 @@ func (r *Replica) HandleMicroblock(mb blockchain.MicroBlock) {
 	_, ok := r.receivedMBs[mb.Hash]
 	if ok {
 		r.totalRedundantMBs++
-		if !mb.IsRequested {
-			return
-		}
+		return
 	}
 	r.receivedMBs[mb.Hash] = struct{}{}
 	r.totalMicroblocks++
 	proposalID, exists := r.missingMBs[mb.Hash]
-	err := r.sm.AddMicroblock(&mb)
-	if err != nil {
-		log.Errorf("[%v] can not add a microblock, id: %x", r.ID(), mb.Hash)
-	}
 	if exists {
 		log.Debugf("[%v] a missing mb for proposal is found", r.ID())
 		pd, exists := r.pendingBlockMap[proposalID]
@@ -208,6 +202,11 @@ func (r *Replica) HandleMicroblock(mb blockchain.MicroBlock) {
 				delete(r.missingMBs, mb.Hash)
 				r.eventChan <- *block
 			}
+		}
+	} else {
+		err := r.sm.AddMicroblock(&mb)
+		if err != nil {
+			log.Errorf("[%v] can not add a microblock, id: %x", r.ID(), mb.Hash)
 		}
 	}
 	// gossip
@@ -388,14 +387,14 @@ func (r *Replica) processAcks(ack *message.Ack) {
 		r.estimator.AddAck(ack)
 	} else if config.Configuration.MemType == "ack" {
 		r.sm.AddAck(ack)
-		found, _ := r.sm.FindMicroblock(ack.ID)
-		if !found && r.sm.IsStable(ack.ID) {
-			missingRequest := message.MissingMBRequest{
-				RequesterID:   r.ID(),
-				MissingMBList: []crypto.Identifier{ack.ID},
-			}
-			r.Send(ack.Receiver, missingRequest)
-		}
+		//found, _ := r.sm.FindMicroblock(ack.ID)
+		//if !found && r.sm.IsStable(ack.ID) {
+		//	missingRequest := message.MissingMBRequest{
+		//		RequesterID:   r.ID(),
+		//		MissingMBList: []crypto.Identifier{ack.ID},
+		//	}
+		//	r.Send(ack.Receiver, missingRequest)
+		//}
 	}
 }
 
