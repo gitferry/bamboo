@@ -189,6 +189,10 @@ func (r *Replica) HandleMicroblock(mb blockchain.MicroBlock) {
 	r.receivedMBs[mb.Hash] = struct{}{}
 	r.totalMicroblocks++
 	proposalID, exists := r.missingMBs[mb.Hash]
+	err := r.sm.AddMicroblock(&mb)
+	if err != nil {
+		log.Errorf("[%v] can not add a microblock, id: %x", r.ID(), mb.Hash)
+	}
 	if exists {
 		log.Debugf("[%v] a missing mb for proposal is found", r.ID())
 		pd, exists := r.pendingBlockMap[proposalID]
@@ -202,11 +206,6 @@ func (r *Replica) HandleMicroblock(mb blockchain.MicroBlock) {
 				delete(r.missingMBs, mb.Hash)
 				r.eventChan <- *block
 			}
-		}
-	} else {
-		err := r.sm.AddMicroblock(&mb)
-		if err != nil {
-			log.Errorf("[%v] can not add a microblock, id: %x", r.ID(), mb.Hash)
 		}
 	}
 	// gossip
