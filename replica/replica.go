@@ -186,6 +186,7 @@ func (r *Replica) HandleMicroblock(mb blockchain.MicroBlock) {
 		r.totalRedundantMBs++
 		return
 	}
+	//log.Debugf("[%v] received a microblock, id: %x", r.ID(), mb.Hash)
 	r.receivedMBs[mb.Hash] = struct{}{}
 	r.totalMicroblocks++
 	proposalID, exists := r.missingMBs[mb.Hash]
@@ -387,14 +388,14 @@ func (r *Replica) processAcks(ack *message.Ack) {
 		r.estimator.AddAck(ack)
 	} else if config.Configuration.MemType == "ack" {
 		r.sm.AddAck(ack)
-		//found, _ := r.sm.FindMicroblock(ack.ID)
-		//if !found && r.sm.IsStable(ack.ID) {
-		//	missingRequest := message.MissingMBRequest{
-		//		RequesterID:   r.ID(),
-		//		MissingMBList: []crypto.Identifier{ack.ID},
-		//	}
-		//	r.Send(ack.Receiver, missingRequest)
-		//}
+		found, _ := r.sm.FindMicroblock(ack.ID)
+		if !found && r.sm.IsStable(ack.ID) {
+			missingRequest := message.MissingMBRequest{
+				RequesterID:   r.ID(),
+				MissingMBList: []crypto.Identifier{ack.ID},
+			}
+			r.Send(ack.Receiver, missingRequest)
+		}
 	}
 }
 

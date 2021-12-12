@@ -116,9 +116,11 @@ func (am *AckMem) AddMicroblock(mb *blockchain.MicroBlock) error {
 			//am.pendingMicroblocks[mb.Hash].ackMap[ack] = struct{}{}
 			pm.ackMap[ack] = struct{}{}
 			if len(pm.ackMap) >= am.threshhold {
-				am.stableMicroblocks.PushBack(mb)
-				am.stableMBs[mb.Hash] = struct{}{}
-				delete(am.pendingMicroblocks, mb.Hash)
+				if _, exists = am.stableMBs[mb.Hash]; !exists {
+					am.stableMicroblocks.PushBack(mb)
+					am.stableMBs[mb.Hash] = struct{}{}
+					delete(am.pendingMicroblocks, mb.Hash)
+				}
 			}
 		}
 	}
@@ -134,12 +136,14 @@ func (am *AckMem) AddAck(ack *message.Ack) {
 	if received {
 		target.ackMap[ack.Receiver] = struct{}{}
 		if len(target.ackMap) >= am.threshhold {
-			am.stableMicroblocks.PushBack(target.microblock)
-			am.stableMBs[target.microblock.Hash] = struct{}{}
-			delete(am.pendingMicroblocks, ack.ID)
+			if _, exists := am.stableMBs[target.microblock.Hash]; !exists {
+				am.stableMicroblocks.PushBack(target.microblock)
+				am.stableMBs[target.microblock.Hash] = struct{}{}
+				delete(am.pendingMicroblocks, ack.ID)
+			}
 		}
 	} else {
-		//ack arraives before microblock, record the number of ack received before microblock
+		//ack arrives before microblock, record the number of ack received before microblock
 		//let the addMicroblock do the rest.
 		buffer, exist := am.ackBuffer[ack.ID]
 		if exist {
