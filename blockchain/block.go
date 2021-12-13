@@ -133,6 +133,7 @@ func NewMicroblock(proposalID crypto.Identifier, txnList []*message.Transaction)
 	mb := new(MicroBlock)
 	mb.ProposalID = proposalID
 	mb.Txns = txnList
+	mb.Timestamp = time.Now()
 	mb.Hash = mb.hash()
 	return mb
 }
@@ -162,6 +163,7 @@ func (mb *MicroBlock) hash() crypto.Identifier {
 	for _, tx := range mb.Txns {
 		hashList = append(hashList, crypto.IDToByte(crypto.MakeID(tx)))
 	}
+	hashList = append(hashList, []byte(mb.Timestamp.String()))
 	return crypto.MakeID(merkle.HashFromByteSlices(hashList))
 }
 
