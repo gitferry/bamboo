@@ -389,7 +389,7 @@ func (r *Replica) processAcks(ack *message.Ack) {
 	} else if config.Configuration.MemType == "ack" {
 		r.sm.AddAck(ack)
 		found, _ := r.sm.FindMicroblock(ack.ID)
-		if !found && r.sm.IsStable(ack.ID) {
+		if !found {
 			missingRequest := message.MissingMBRequest{
 				RequesterID:   r.ID(),
 				MissingMBList: []crypto.Identifier{ack.ID},
