@@ -402,6 +402,10 @@ func (r *Replica) processAcks(ack *message.Ack) {
 func (r *Replica) proposeBlock(view types.View) {
 	createStart := time.Now()
 	payload := r.sm.GeneratePayload()
+	log.Debugf("[%v] a new payload contains:", r.ID())
+	for _, mb := range payload.MicroblockList {
+		log.Debugf("[%v] id: %x", r.ID(), mb.Hash)
+	}
 	// if we are using time-based shared mempool, wait until all the microblocks are stable
 	if config.Configuration.MemType == "time" {
 		r.waitUntilStable(payload)

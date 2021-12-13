@@ -6,6 +6,7 @@ import (
 	"github.com/gitferry/bamboo/config"
 	"github.com/gitferry/bamboo/crypto"
 	"github.com/gitferry/bamboo/identity"
+	"github.com/gitferry/bamboo/log"
 	"github.com/gitferry/bamboo/message"
 	"github.com/gitferry/bamboo/utils"
 	"sync"
@@ -105,7 +106,6 @@ func (am *AckMem) AddMicroblock(mb *blockchain.MicroBlock) error {
 		ackMap:     make(map[identity.NodeID]struct{}),
 	}
 	pm.ackMap[mb.Sender] = struct{}{}
-	am.pendingMicroblocks[mb.Hash] = pm
 	am.microblockMap[mb.Hash] = mb
 
 	//check if there are some acks of this microblock arrived before
@@ -115,13 +115,15 @@ func (am *AckMem) AddMicroblock(mb *blockchain.MicroBlock) error {
 		for _, ack := range buffer {
 			//am.pendingMicroblocks[mb.Hash].ackMap[ack] = struct{}{}
 			pm.ackMap[ack] = struct{}{}
-			if len(pm.ackMap) >= am.threshhold {
-				if _, exists = am.stableMBs[mb.Hash]; !exists {
-					am.stableMicroblocks.PushBack(mb)
-					am.stableMBs[mb.Hash] = struct{}{}
-					delete(am.pendingMicroblocks, mb.Hash)
-				}
+		}
+		if len(pm.ackMap) >= am.threshhold {
+			if _, exists = am.stableMBs[mb.Hash]; !exists {
+				am.stableMicroblocks.PushBack(mb)
+				am.stableMBs[mb.Hash] = struct{}{}
+				log.Debugf("microblock id: %x becomes stable from buffer", mb.Hash)
 			}
+		} else {
+			am.pendingMicroblocks[mb.Hash] = pm
 		}
 	}
 	return nil
@@ -174,6 +176,7 @@ func (am *AckMem) GeneratePayload() *blockchain.Payload {
 		if mb == nil {
 			break
 		}
+		log.Debugf("microblock id: %x is deleted from mempool when proposing", mb.Hash)
 		microblockList = append(microblockList, mb)
 	}
 
@@ -226,6 +229,7 @@ func (am *AckMem) FillProposal(p *blockchain.Proposal) *blockchain.PendingBlock 
 			_, found = am.pendingMicroblocks[id]
 			if found {
 				delete(am.pendingMicroblocks, id)
+				log.Debugf("microblock id: %x is deleted from pending when filling", id)
 				break
 			}
 			for e := am.stableMicroblocks.Front(); e != nil; e = e.Next() {
@@ -233,6 +237,7 @@ func (am *AckMem) FillProposal(p *blockchain.Proposal) *blockchain.PendingBlock 
 				mb := e.Value.(*blockchain.MicroBlock)
 				if mb == block {
 					am.stableMicroblocks.Remove(e)
+					log.Debugf("microblock id: %x is deleted from stable when filling", mb.Hash)
 					break
 				}
 			}
