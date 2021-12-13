@@ -150,6 +150,33 @@ func TestAckMem_FillProposal2(t *testing.T) {
 	require.Equal(t, 0, len(pl2.MicroblockList))
 }
 
+// test fill proposal from a stable block and a pending block
+func TestAckMem_FillProposal3(t *testing.T) {
+	am := NewMockAckmem()
+	timestamp := time.Now()
+	mb1 := NewMockMicroblock(timestamp.Add(1))
+	err := am.AddMicroblock(mb1)
+	require.Nil(t, err)
+	mb2 := NewMockMicroblock(timestamp.Add(1))
+	err = am.AddMicroblock(mb2)
+	require.Nil(t, err)
+	ack1 := NewMockAck(mb1.Hash, "1")
+	ack2 := NewMockAck(mb1.Hash, "2")
+	require.Equal(t, 2, len(am.pendingMicroblocks))
+	am.AddAck(ack1)
+	am.AddAck(ack2)
+	require.Equal(t, 1, am.stableMicroblocks.Len())
+	require.Equal(t, 1, len(am.pendingMicroblocks))
+	pl := blockchain.NewPayload([]*blockchain.MicroBlock{mb1, mb2})
+	p := &blockchain.Proposal{
+		HashList: pl.GenerateHashList(),
+	}
+	pd := am.FillProposal(p)
+	require.Equal(t, 0, am.stableMicroblocks.Len())
+	require.Equal(t, 0, len(am.pendingMicroblocks))
+	require.Equal(t, 0, pd.MissingCount())
+}
+
 func NewMockAck(identifier crypto.Identifier, receiver identity.NodeID) *message.Ack {
 	return &message.Ack{
 		ID:       identifier,

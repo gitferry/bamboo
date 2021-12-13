@@ -125,6 +125,8 @@ func (am *AckMem) AddMicroblock(mb *blockchain.MicroBlock) error {
 		} else {
 			am.pendingMicroblocks[mb.Hash] = pm
 		}
+	} else {
+		am.pendingMicroblocks[mb.Hash] = pm
 	}
 	return nil
 }
@@ -223,25 +225,26 @@ func (am *AckMem) FillProposal(p *blockchain.Proposal) *blockchain.PendingBlock 
 	existingBlocks := make([]*blockchain.MicroBlock, 0)
 	missingBlocks := make(map[crypto.Identifier]struct{}, 0)
 	for _, id := range p.HashList {
-		block, found := am.microblockMap[id]
-		if found {
-			existingBlocks = append(existingBlocks, block)
-			_, found = am.pendingMicroblocks[id]
-			if found {
-				delete(am.pendingMicroblocks, id)
-				log.Debugf("microblock id: %x is deleted from pending when filling", id)
+		found := false
+		_, exists := am.pendingMicroblocks[id]
+		if exists {
+			found = true
+			existingBlocks = append(existingBlocks, am.pendingMicroblocks[id].microblock)
+			delete(am.pendingMicroblocks, id)
+			log.Debugf("microblock id: %x is deleted from pending when filling", id)
+		}
+		for e := am.stableMicroblocks.Front(); e != nil; e = e.Next() {
+			// do something with e.Value
+			mb := e.Value.(*blockchain.MicroBlock)
+			if mb.Hash == id {
+				existingBlocks = append(existingBlocks, mb)
+				found = true
+				am.stableMicroblocks.Remove(e)
+				log.Debugf("microblock id: %x is deleted from stable when filling", mb.Hash)
 				break
 			}
-			for e := am.stableMicroblocks.Front(); e != nil; e = e.Next() {
-				// do something with e.Value
-				mb := e.Value.(*blockchain.MicroBlock)
-				if mb == block {
-					am.stableMicroblocks.Remove(e)
-					log.Debugf("microblock id: %x is deleted from stable when filling", mb.Hash)
-					break
-				}
-			}
-		} else {
+		}
+		if !found {
 			missingBlocks[id] = struct{}{}
 		}
 	}
