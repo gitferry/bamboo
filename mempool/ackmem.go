@@ -6,7 +6,6 @@ import (
 	"github.com/gitferry/bamboo/config"
 	"github.com/gitferry/bamboo/crypto"
 	"github.com/gitferry/bamboo/identity"
-	"github.com/gitferry/bamboo/log"
 	"github.com/gitferry/bamboo/message"
 	"github.com/gitferry/bamboo/utils"
 	"sync"
@@ -120,7 +119,7 @@ func (am *AckMem) AddMicroblock(mb *blockchain.MicroBlock) error {
 			if _, exists = am.stableMBs[mb.Hash]; !exists {
 				am.stableMicroblocks.PushBack(mb)
 				am.stableMBs[mb.Hash] = struct{}{}
-				log.Debugf("microblock id: %x becomes stable from buffer", mb.Hash)
+				//log.Debugf("microblock id: %x becomes stable from buffer", mb.Hash)
 			}
 		} else {
 			am.pendingMicroblocks[mb.Hash] = pm
@@ -178,7 +177,7 @@ func (am *AckMem) GeneratePayload() *blockchain.Payload {
 		if mb == nil {
 			break
 		}
-		log.Debugf("microblock id: %x is deleted from mempool when proposing", mb.Hash)
+		//log.Debugf("microblock id: %x is deleted from mempool when proposing", mb.Hash)
 		microblockList = append(microblockList, mb)
 	}
 
@@ -231,7 +230,7 @@ func (am *AckMem) FillProposal(p *blockchain.Proposal) *blockchain.PendingBlock 
 			found = true
 			existingBlocks = append(existingBlocks, am.pendingMicroblocks[id].microblock)
 			delete(am.pendingMicroblocks, id)
-			log.Debugf("microblock id: %x is deleted from pending when filling", id)
+			//log.Debugf("microblock id: %x is deleted from pending when filling", id)
 		}
 		for e := am.stableMicroblocks.Front(); e != nil; e = e.Next() {
 			// do something with e.Value
@@ -240,7 +239,7 @@ func (am *AckMem) FillProposal(p *blockchain.Proposal) *blockchain.PendingBlock 
 				existingBlocks = append(existingBlocks, mb)
 				found = true
 				am.stableMicroblocks.Remove(e)
-				log.Debugf("microblock id: %x is deleted from stable when filling", mb.Hash)
+				//log.Debugf("microblock id: %x is deleted from stable when filling", mb.Hash)
 				break
 			}
 		}
