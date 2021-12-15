@@ -356,10 +356,10 @@ func (r *Replica) processCommittedBlock(block *blockchain.Block) {
 			r.totalCommittedTx++
 		}
 		r.totalHops += mb.Hops
-		//err := r.sm.RemoveMicroblock(mb.Hash)
-		//if err != nil {
-		//	log.Debugf("[%v] processing committed block err: %w", r.ID(), err)
-		//}
+		err := r.sm.RemoveMicroblock(mb.Hash)
+		if err != nil {
+			log.Debugf("[%v] processing committed block err: %w", r.ID(), err)
+		}
 	}
 	r.committedNo++
 	log.Infof("[%v] the block is committed, No. of microblocks: %v, No. of tx: %v, view: %v, current view: %v, id: %x", r.ID(), len(block.MicroblockList()), txCount, block.View, r.pm.GetCurView(), block.ID)
@@ -389,7 +389,7 @@ func (r *Replica) processAcks(ack *message.Ack) {
 	} else if config.Configuration.MemType == "ack" {
 		r.sm.AddAck(ack)
 		found, _ := r.sm.FindMicroblock(ack.ID)
-		if !found {
+		if !found && r.sm.IsStable(ack.ID) {
 			missingRequest := message.MissingMBRequest{
 				RequesterID:   r.ID(),
 				MissingMBList: []crypto.Identifier{ack.ID},

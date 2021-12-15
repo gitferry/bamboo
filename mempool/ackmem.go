@@ -7,7 +7,6 @@ import (
 	"github.com/gitferry/bamboo/crypto"
 	"github.com/gitferry/bamboo/identity"
 	"github.com/gitferry/bamboo/message"
-	"github.com/gitferry/bamboo/utils"
 	"sync"
 )
 
@@ -57,7 +56,7 @@ func (am *AckMem) AddTxn(txn *message.Transaction) (bool, *blockchain.MicroBlock
 	}
 
 	// get the size of the structure. txn is the pointer.
-	tranSize := utils.SizeOf(txn)
+	tranSize := 169 + config.Configuration.PayloadSize
 	totalSize := tranSize + am.currSize
 
 	if tranSize > am.msize {
