@@ -1,0 +1,46 @@
+Ave. View Time: 232.3251879699248
+Latency: 3412.1769902877604 ms
+Redundant microblocks:12
+Total microblocks: 6546
+Total missing microblocks: 12
+Totoal proposed microblocks:16
+Ave. hops:0
+Missing counts:
+109: 1
+
+Time: 14.212462572 s. Throughput: 13292.84037121185 txs/s
+Time: 21.231890917 s. Throughput: 13487.008177476031 txs/s
+Time: 32.830237044 s. Throughput: 16597.200516580615 txs/s
+Time: 37.264032151 s. Throughput: 20147.998092974343 txs/s
+Time: 44.864204616 s. Throughput: 16223.095745407996 txs/s
+Time: 53.58119369 s. Throughput: 16237.844101912377 txs/s
+Time: 65.56603622 s. Throughput: 15394.399444005949 txs/s
+Time: 75.722941809 s. Throughput: 19385.737190280932 txs/s
+Time: 82.88190689300001 s. Throughput: 16467.897881143945 txs/s
+Time: 97.728515479 s. Throughput: 17423.123203498897 txs/s
+Time: 108.449869178 s. Throughput: 18452.99487543037 txs/s
+Time: 118.308080032 s. Throughput: 15966.207424908594 txs/s
+Time: 123.701090909 s. Throughput: 20056.361907461156 txs/s
+
+Ave. View Time: 120.59424603174604
+Latency: 1303.5450108444165 ms
+Redundant microblocks:9
+Total microblocks: 13147
+Total missing microblocks: 9
+Totoal proposed microblocks:0
+Ave. hops:0
+Missing counts:
+
+Time: 102.205414061 s. Throughput: 17002.98377411078 txs/s
+Time: 106.199544456 s. Throughput: 17780.108164142333 txs/s
+Time: 108.036214246 s. Throughput: 17413.093314518974 txs/s
+Time: 109.015182415 s. Throughput: 15053.73447221258 txs/s
+Time: 110.396256209 s. Throughput: 17595.062576937806 txs/s
+Time: 111.547454463 s. Throughput: 18110.806154616042 txs/s
+Time: 112.946474848 s. Throughput: 16472.3347884184 txs/s
+Time: 114.120550279 s. Throughput: 17090.971803593064 txs/s
+Time: 115.384566973 s. Throughput: 15503.013341256736 txs/s
+Time: 116.424991011 s. Throughput: 15671.636981681932 txs/s
+Time: 117.506000642 s. Throughput: 21318.132145575753 txs/s
+Time: 120.557567966 s. Throughput: 16543.32372419964 txs/s
+Time: 121.567399252 s. Throughput: 18630.016167502945 txs/s

@@ -1,0 +1,180 @@
+Ave. View Time: 60.457066407200195
+Latency: 3508.459485426835 ms
+Redundant microblocks:7908
+Total microblocks: 4312
+Total missing microblocks: 194
+Totoal proposed microblocks:31
+Ave. hops:4.887917146144995
+Missing counts:
+58: 2
+51: 2
+5: 1
+56: 3
+21: 3
+94: 1
+97: 2
+81: 3
+8: 2
+48: 1
+35: 3
+46: 3
+29: 2
+93: 1
+86: 3
+43: 1
+18: 1
+25: 6
+54: 1
+96: 2
+77: 3
+98: 3
+12: 1
+6: 1
+85: 1
+33: 4
+49: 3
+88: 3
+99: 3
+70: 1
+4: 1
+61: 1
+19: 2
+3: 4
+87: 3
+34: 3
+23: 1
+22: 1
+89: 1
+30: 4
+10: 2
+84: 5
+95: 1
+72: 1
+24: 1
+16: 3
+45: 4
+90: 2
+20: 2
+100: 2
+65: 1
+91: 1
+47: 2
+92: 2
+37: 2
+50: 3
+60: 2
+69: 2
+74: 1
+62: 3
+80: 3
+38: 3
+41: 2
+63: 3
+55: 2
+2: 1
+53: 3
+75: 2
+71: 2
+40: 2
+17: 2
+44: 1
+28: 1
+67: 1
+78: 2
+73: 2
+66: 5
+79: 2
+
+Time: 3.1463863659999998 s. Throughput: 0 txs/s
+Time: 7.336410581 s. Throughput: 72290.820626298 txs/s
+Time: 13.045872063 s. Throughput: 53052.328984561704 txs/s
+Time: 20.560422132 s. Throughput: 60865.829215105725 txs/s
+Time: 27.503008139 s. Throughput: 65007.80179756861 txs/s
+Time: 39.299186188 s. Throughput: 51355.70171674986 txs/s
+Time: 57.871184628 s. Throughput: 55941.602043712286 txs/s
+Time: 86.649568134 s. Throughput: 54941.87514810605 txs/s
+Time: 102.119544108 s. Throughput: 54627.838137575 txs/s
+Time: 121.494647594 s. Throughput: 55655.15179056978 txs/s
+Time: 135.964001264 s. Throughput: 46473.27899134126 txs/s
+Time: 140.795697998 s. Throughput: 52032.924370336594 txs/s
+Time: 176.496276665 s. Throughput: 53112.71301117087 txs/s
+Time: 216.496239993 s. Throughput: 50660.07915942413 txs/s
+Time: 228.023236277 s. Throughput: 52554.913158514384 txs/s
+Time: 248.760434199 s. Throughput: 50392.80527567325 txs/s
+
+
+
+payload = 128
+
+Ave. View Time: 53.950389794472
+Latency: 1695.11581713333 ms
+Redundant microblocks:5575
+Total microblocks: 2685
+Total missing microblocks: 84
+Totoal proposed microblocks:28
+Ave. hops:5.056910569105691
+Missing counts:
+93: 2
+35: 1
+48: 3
+22: 1
+73: 1
+77: 1
+69: 1
+19: 2
+100: 3
+2: 1
+54: 2
+91: 1
+14: 1
+98: 1
+3: 1
+83: 3
+28: 1
+34: 1
+23: 1
+55: 1
+44: 1
+9: 2
+94: 2
+27: 1
+81: 2
+31: 1
+41: 2
+51: 1
+15: 2
+33: 2
+7: 1
+13: 1
+43: 1
+67: 1
+11: 1
+78: 1
+38: 1
+87: 2
+70: 1
+79: 2
+74: 2
+4: 1
+92: 2
+10: 1
+53: 1
+65: 2
+6: 3
+32: 1
+63: 3
+37: 1
+95: 1
+45: 3
+76: 1
+
+Time: 2.802948808 s. Throughput: 11781.877634063214 txs/s
+Time: 10.323813749 s. Throughput: 10474.332276525072 txs/s
+Time: 26.969759922 s. Throughput: 13370.706305354639 txs/s
+Time: 31.299996966 s. Throughput: 12075.104177240773 txs/s
+Time: 36.669026501 s. Throughput: 12045.390949638331 txs/s
+Time: 41.259762268 s. Throughput: 13712.857252943631 txs/s
+Time: 47.620652925 s. Throughput: 11356.910648341485 txs/s
+Time: 50.526699528 s. Throughput: 12547.65417209238 txs/s
+Time: 56.775157265 s. Throughput: 11396.148760732767 txs/s
+Time: 76.149940632 s. Throughput: 12215.469683855526 txs/s

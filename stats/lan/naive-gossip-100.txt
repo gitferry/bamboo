@@ -1,0 +1,45 @@
+naive-gossip; bsize=50, msize=512000; payloadsize=0; fanout=5; q=50; 10;
+
+Ave. View Time: 18.44719068831729
+Latency: 1858.7367946022573 ms
+Redundant microblocks:14729
+Total microblocks: 3665
+Total missing microblocks: 73
+Totoal proposed microblocks:24
+Ave. hops:4.207455429497569
+Missing counts:
+59: 1
+33: 1
+40: 1
+15: 1
+96: 1
+82: 1
+29: 1
+54: 1
+99: 1
+79: 1
+69: 1
+83: 1
+58: 1
+5: 1
+11: 1
+19: 2
+51: 1
+34: 1
+
+Time: 4.012090567 s. Throughput: 66537.13110816455 txs/s
+Time: 10.499517975 s. Throughput: 43871.96146729952 txs/s
+Time: 17.852065383 s. Throughput: 95625.43559231193 txs/s
+Time: 26.715542057 s. Throughput: 68246.07476608054 txs/s
+Time: 34.122162404 s. Throughput: 71642.16121159264 txs/s
+Time: 40.389957016 s. Throughput: 84659.20777148381 txs/s
+Time: 45.408221255 s. Throughput: 52869.534386256746 txs/s
+Time: 47.151773042 s. Throughput: 152168.78809999596 txs/s
+Time: 48.867045733 s. Throughput: 0 txs/s
+Time: 50.651252925 s. Throughput: 148701.10556987778 txs/s
+Time: 53.259266805 s. Throughput: 37615.72690113867 txs/s
+Time: 59.83937327 s. Throughput: 89216.42764966087 txs/s
+Time: 63.459512656 s. Throughput: 100638.67424039548 txs/s
+Time: 70.906735243 s. Throughput: 71966.34425561196 txs/s
+Time: 78.665545984 s. Throughput: 68052.48394611331 txs/s
+Time: 128.384221219 s. Throughput: 79755.2274491541 txs/s

@@ -160,6 +160,9 @@ func (s *socket) MulticastQuorum(nodes []identity.NodeID, m interface{}) {
 	//}
 
 	for _, id := range nodes {
+		if id == s.id {
+			continue
+		}
 		s.Send(id, m)
 	}
 }
