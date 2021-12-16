@@ -190,20 +190,6 @@ func (r *Replica) HandleMicroblock(mb blockchain.MicroBlock) {
 		r.totalRedundantMBs++
 		return
 	}
-	// gossip
-	//if a quorum of acks is not reached, gossip the microblock
-	if config.Configuration.Gossip == true {
-		mb.Hops += 1
-		if config.Configuration.MemType == "naive" {
-			if mb.Hops <= config.Configuration.R {
-				go r.MulticastQuorum(r.pickFanoutNodes(&mb), mb)
-			}
-		} else if config.Configuration.MemType == "ack" {
-			if !r.sm.IsStable(mb.Hash) && mb.Hops <= config.Configuration.R {
-				go r.MulticastQuorum(r.pickFanoutNodes(&mb), mb)
-			}
-		}
-	}
 	//log.Debugf("[%v] received a microblock, id: %x", r.ID(), mb.Hash)
 	r.receivedMBs[mb.Hash] = struct{}{}
 	r.totalMicroblocks++
@@ -228,6 +214,21 @@ func (r *Replica) HandleMicroblock(mb blockchain.MicroBlock) {
 		err := r.sm.AddMicroblock(&mb)
 		if err != nil {
 			log.Errorf("[%v] can not add a microblock, id: %x", r.ID(), mb.Hash)
+		}
+	}
+
+	// gossip
+	//if a quorum of acks is not reached, gossip the microblock
+	if config.Configuration.Gossip == true {
+		mb.Hops += 1
+		if config.Configuration.MemType == "naive" {
+			if mb.Hops <= config.Configuration.R {
+				go r.MulticastQuorum(r.pickFanoutNodes(&mb), mb)
+			}
+		} else if config.Configuration.MemType == "ack" {
+			if !r.sm.IsStable(mb.Hash) && mb.Hops <= config.Configuration.R {
+				go r.MulticastQuorum(r.pickFanoutNodes(&mb), mb)
+			}
 		}
 	}
 
@@ -323,14 +324,14 @@ func (r *Replica) handleTxn(m message.Transaction) {
 		}
 		mb.Sender = r.ID()
 		mb.Timestamp = time.Now()
+		r.sm.AddMicroblock(mb)
+		r.totalMicroblocks++
 		if config.Configuration.Gossip == false {
 			r.Broadcast(mb)
 		} else {
 			mb.Hops++
 			go r.MulticastQuorum(r.pickFanoutNodes(mb), mb)
 		}
-		r.sm.AddMicroblock(mb)
-		r.totalMicroblocks++
 	}
 	// the first leader kicks off the protocol
 	if r.pm.GetCurView() == 0 && r.IsLeader(r.ID(), 1) {
