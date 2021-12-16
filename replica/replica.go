@@ -192,11 +192,11 @@ func (r *Replica) HandleMicroblock(mb blockchain.MicroBlock) {
 		mb.Hops += 1
 		if config.Configuration.MemType == "naive" {
 			if mb.Hops <= config.Configuration.R {
-				r.MulticastQuorum(r.pickFanoutNodes(&mb), mb)
+				go r.MulticastQuorum(r.pickFanoutNodes(&mb), mb)
 			}
 		} else if config.Configuration.MemType == "ack" {
 			if !r.sm.IsStable(mb.Hash) && mb.Hops <= config.Configuration.R {
-				r.MulticastQuorum(r.pickFanoutNodes(&mb), mb)
+				go r.MulticastQuorum(r.pickFanoutNodes(&mb), mb)
 			}
 		}
 	}
@@ -319,8 +319,13 @@ func (r *Replica) handleTxn(m message.Transaction) {
 		mb.Timestamp = time.Now()
 		if config.Configuration.Gossip == false {
 			r.Broadcast(mb)
+		} else {
+			mb.Hops++
+			go r.MulticastQuorum(r.pickFanoutNodes(mb), mb)
 		}
 		r.sm.AddMicroblock(mb)
+		r.receivedMBs[mb.Hash] = struct{}{}
+		r.totalMicroblocks++
 	}
 	// the first leader kicks off the protocol
 	if r.pm.GetCurView() == 0 && r.IsLeader(r.ID(), 1) {
