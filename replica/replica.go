@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/gitferry/bamboo/crypto"
 	"github.com/gitferry/bamboo/utils"
+	"sync"
 	"time"
 
 	"go.uber.org/atomic"
@@ -68,6 +69,7 @@ type Replica struct {
 	pendingBlockMap      map[crypto.Identifier]*blockchain.PendingBlock
 	missingMBs           map[crypto.Identifier]crypto.Identifier // microblock hash to proposal hash
 	receivedMBs          map[crypto.Identifier]struct{}
+	mu                   sync.Mutex
 }
 
 // NewReplica creates a new replica instance
@@ -164,10 +166,12 @@ func (r *Replica) HandleProposal(proposal blockchain.Proposal) {
 	}
 	r.pendingBlockMap[proposal.ID] = pendingBlock
 	log.Debugf("[%v] %v microblocks are missing in id: %x", r.ID(), pendingBlock.MissingCount(), proposal.ID)
+	r.mu.Lock()
 	for _, mbid := range pendingBlock.MissingMBList() {
 		r.missingMBs[mbid] = proposal.ID
 		log.Debugf("[%v] a microblock is missing, id: %x", r.ID(), mbid)
 	}
+	r.mu.Unlock()
 	missingRequest := message.MissingMBRequest{
 		RequesterID:   r.ID(),
 		ProposalID:    proposal.ID,
@@ -203,7 +207,9 @@ func (r *Replica) HandleMicroblock(mb blockchain.MicroBlock) {
 	//log.Debugf("[%v] received a microblock, id: %x", r.ID(), mb.Hash)
 	r.receivedMBs[mb.Hash] = struct{}{}
 	r.totalMicroblocks++
+	r.mu.Lock()
 	proposalID, exists := r.missingMBs[mb.Hash]
+	r.mu.Unlock()
 	if exists {
 		log.Debugf("[%v] a missing mb for proposal is found", r.ID())
 		pd, exists := r.pendingBlockMap[proposalID]
@@ -324,7 +330,6 @@ func (r *Replica) handleTxn(m message.Transaction) {
 			go r.MulticastQuorum(r.pickFanoutNodes(mb), mb)
 		}
 		r.sm.AddMicroblock(mb)
-		r.receivedMBs[mb.Hash] = struct{}{}
 		r.totalMicroblocks++
 	}
 	// the first leader kicks off the protocol
