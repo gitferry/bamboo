@@ -6,7 +6,6 @@ import (
 	"github.com/gitferry/bamboo/crypto"
 	"time"
 
-	"github.com/gitferry/bamboo/config"
 	"github.com/gitferry/bamboo/db"
 	"github.com/gitferry/bamboo/identity"
 )
@@ -18,7 +17,6 @@ func init() {
 	gob.Register(Read{})
 	gob.Register(ReadReply{})
 	gob.Register(Register{})
-	gob.Register(config.Config{})
 }
 
 /***************************

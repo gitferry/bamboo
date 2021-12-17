@@ -4,7 +4,6 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"errors"
-	"github.com/gitferry/bamboo/config"
 	"github.com/gitferry/bamboo/identity"
 )
 
@@ -62,12 +61,12 @@ func (sr *StaticRand) Read(x []byte) (int, error) {
 	return sr.Node(), nil
 }
 
-func SetKeys() error {
-	keys = make([]PrivateKey, config.GetConfig().N())
-	pubKeys = make([]PublicKey, config.GetConfig().N())
+func SetKeys(n int) error {
+	keys = make([]PrivateKey, n)
+	pubKeys = make([]PublicKey, n)
 	var err error
-	for i := 0; i < config.GetConfig().N(); i++ {
-		keys[i], err = GenerateKey(config.GetConfig().GetSignatureScheme(), identity.NewNodeID(i+1))
+	for i := 0; i < n; i++ {
+		keys[i], err = GenerateKey("ECDSA_P256", identity.NewNodeID(i+1))
 		if err != nil {
 			return err
 		}

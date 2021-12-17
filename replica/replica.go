@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/gitferry/bamboo/crypto"
 	"github.com/gitferry/bamboo/utils"
-	"sync"
 	"time"
 
 	"go.uber.org/atomic"
@@ -69,7 +68,6 @@ type Replica struct {
 	pendingBlockMap      map[crypto.Identifier]*blockchain.PendingBlock
 	missingMBs           map[crypto.Identifier]crypto.Identifier // microblock hash to proposal hash
 	receivedMBs          map[crypto.Identifier]struct{}
-	mu                   sync.Mutex
 }
 
 // NewReplica creates a new replica instance
@@ -166,12 +164,10 @@ func (r *Replica) HandleProposal(proposal blockchain.Proposal) {
 	}
 	r.pendingBlockMap[proposal.ID] = pendingBlock
 	log.Debugf("[%v] %v microblocks are missing in id: %x", r.ID(), pendingBlock.MissingCount(), proposal.ID)
-	r.mu.Lock()
 	for _, mbid := range pendingBlock.MissingMBList() {
 		r.missingMBs[mbid] = proposal.ID
 		log.Debugf("[%v] a microblock is missing, id: %x", r.ID(), mbid)
 	}
-	r.mu.Unlock()
 	missingRequest := message.MissingMBRequest{
 		RequesterID:   r.ID(),
 		ProposalID:    proposal.ID,
@@ -207,9 +203,7 @@ func (r *Replica) HandleMicroblock(mb blockchain.MicroBlock) {
 	//log.Debugf("[%v] received a microblock, id: %x", r.ID(), mb.Hash)
 	r.receivedMBs[mb.Hash] = struct{}{}
 	r.totalMicroblocks++
-	r.mu.Lock()
 	proposalID, exists := r.missingMBs[mb.Hash]
-	r.mu.Unlock()
 	if exists {
 		log.Debugf("[%v] a missing mb for proposal is found", r.ID())
 		pd, exists := r.pendingBlockMap[proposalID]
@@ -364,10 +358,10 @@ func (r *Replica) processCommittedBlock(block *blockchain.Block) {
 			r.totalCommittedTx++
 		}
 		r.totalHops += mb.Hops
-		err := r.sm.RemoveMicroblock(mb.Hash)
-		if err != nil {
-			log.Debugf("[%v] processing committed block err: %w", r.ID(), err)
-		}
+		//err := r.sm.RemoveMicroblock(mb.Hash)
+		//if err != nil {
+		//	log.Debugf("[%v] processing committed block err: %w", r.ID(), err)
+		//}
 	}
 	r.committedNo++
 	log.Infof("[%v] the block is committed, No. of microblocks: %v, No. of tx: %v, view: %v, current view: %v, id: %x",
@@ -420,6 +414,10 @@ func (r *Replica) proposeBlock(view types.View) {
 	r.totalProposedMBs += len(payload.MicroblockList)
 	proposal := r.Safety.MakeProposal(view, payload.GenerateHashList())
 	log.Debugf("[%v] is making a proposal for view %v, containing %v microblocks, id:%x", proposal.Proposer, proposal.View, len(proposal.HashList), proposal.ID)
+	log.Debugf("[%v] contained microblocks are", r.ID())
+	for _, id := range proposal.HashList {
+		log.Debugf("[%v] id: %x", r.ID(), id)
+	}
 	r.totalBlockSize += len(proposal.HashList)
 	r.proposedNo++
 	createEnd := time.Now()

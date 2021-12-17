@@ -5,6 +5,7 @@ import (
 	"encoding/gob"
 	"errors"
 	"flag"
+	"github.com/gitferry/bamboo/blockchain"
 	"net"
 	"net/url"
 	"strings"
@@ -48,8 +49,8 @@ func NewTransport(addr string) Transport {
 
 	transport := &transport{
 		uri:   uri,
-		send:  make(chan interface{}, 10240),
-		recv:  make(chan interface{}, 10240),
+		send:  make(chan interface{}, 1024),
+		recv:  make(chan interface{}, 1024),
 		close: make(chan struct{}),
 	}
 
@@ -80,7 +81,16 @@ type transport struct {
 }
 
 func (t *transport) Send(m interface{}) {
-	t.send <- m
+	switch m := m.(type) {
+	case blockchain.Proposal:
+		log.Debugf("a p")
+		t.send <- m
+	case blockchain.Vote:
+		log.Debugf("a v")
+	default:
+		log.Debugf("a c msg: %v", m)
+		t.send <- m
+	}
 }
 
 func (t *transport) Recv() interface{} {

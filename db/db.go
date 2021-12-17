@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/gitferry/bamboo/config"
 	"github.com/gitferry/bamboo/identity"
 )
 
@@ -70,10 +69,9 @@ type database struct {
 // NewDatabase returns database that impelements Database interface
 func NewDatabase() Database {
 	return &database{
-		data:         make(map[Key]Value),
-		version:      0,
-		multiversion: config.Configuration.MultiVersion,
-		history:      make(map[Key][]Value),
+		data:    make(map[Key]Value),
+		version: 0,
+		history: make(map[Key][]Value),
 	}
 }
 

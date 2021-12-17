@@ -30,7 +30,7 @@ func initReplica(id identity.NodeID, isByz bool) {
 func main() {
 	bamboo.Init()
 	// the private and public keys are generated here
-	errCrypto := crypto.SetKeys()
+	errCrypto := crypto.SetKeys(config.Configuration.N())
 	if errCrypto != nil {
 		log.Fatal("Could not generate keys:", errCrypto)
 	}

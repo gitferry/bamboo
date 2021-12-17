@@ -129,7 +129,6 @@ func (s *socket) Send(to identity.NodeID, m interface{}) {
 		}()
 		return
 	}
-
 	t.Send(m)
 	//log.Debugf("[%v] message %v is sent to %v", s.id, m, to)
 }
