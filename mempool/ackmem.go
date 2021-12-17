@@ -118,6 +118,7 @@ func (am *AckMem) AddMicroblock(mb *blockchain.MicroBlock) error {
 			if _, exists = am.stableMBs[mb.Hash]; !exists {
 				am.stableMicroblocks.PushBack(mb)
 				am.stableMBs[mb.Hash] = struct{}{}
+				delete(am.pendingMicroblocks, mb.Hash)
 				//log.Debugf("microblock id: %x becomes stable from buffer", mb.Hash)
 			}
 		} else {

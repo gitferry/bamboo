@@ -190,6 +190,20 @@ func (r *Replica) HandleMicroblock(mb blockchain.MicroBlock) {
 		r.totalRedundantMBs++
 		return
 	}
+	// gossip
+	//if a quorum of acks is not reached, gossip the microblock
+	if config.Configuration.Gossip == true {
+		mb.Hops += 1
+		if config.Configuration.MemType == "naive" {
+			if mb.Hops <= config.Configuration.R {
+				go r.MulticastQuorum(r.pickFanoutNodes(&mb), mb)
+			}
+		} else if config.Configuration.MemType == "ack" {
+			if !r.sm.IsStable(mb.Hash) && mb.Hops <= config.Configuration.R {
+				go r.MulticastQuorum(r.pickFanoutNodes(&mb), mb)
+			}
+		}
+	}
 	//log.Debugf("[%v] received a microblock, id: %x", r.ID(), mb.Hash)
 	r.receivedMBs[mb.Hash] = struct{}{}
 	r.totalMicroblocks++
@@ -215,36 +229,20 @@ func (r *Replica) HandleMicroblock(mb blockchain.MicroBlock) {
 		if err != nil {
 			log.Errorf("[%v] can not add a microblock, id: %x", r.ID(), mb.Hash)
 		}
-	}
-
-	// gossip
-	//if a quorum of acks is not reached, gossip the microblock
-	if config.Configuration.Gossip == true {
-		mb.Hops += 1
-		if config.Configuration.MemType == "naive" {
-			if mb.Hops <= config.Configuration.R {
-				go r.MulticastQuorum(r.pickFanoutNodes(&mb), mb)
+		// ack
+		if !mb.IsRequested && (config.Configuration.MemType == "time" || config.Configuration.MemType == "ack") {
+			ack := message.Ack{
+				SentTime: mb.Timestamp,
+				AckTime:  time.Now(),
+				Receiver: r.ID(),
+				ID:       mb.Hash,
+				Type:     "mb",
 			}
-		} else if config.Configuration.MemType == "ack" {
-			if !r.sm.IsStable(mb.Hash) && mb.Hops <= config.Configuration.R {
-				go r.MulticastQuorum(r.pickFanoutNodes(&mb), mb)
+			if config.Configuration.MemType == "time" {
+				r.Send(mb.Sender, ack)
+			} else {
+				r.Broadcast(ack)
 			}
-		}
-	}
-
-	// ack
-	if !mb.IsRequested && (config.Configuration.MemType == "time" || config.Configuration.MemType == "ack") {
-		ack := message.Ack{
-			SentTime: mb.Timestamp,
-			AckTime:  time.Now(),
-			Receiver: r.ID(),
-			ID:       mb.Hash,
-			Type:     "mb",
-		}
-		if config.Configuration.MemType == "time" {
-			r.Send(mb.Sender, ack)
-		} else {
-			r.Broadcast(ack)
 		}
 	}
 }
@@ -297,7 +295,8 @@ func (r *Replica) handleQuery(m message.Query) {
 	//aveRoundTime := float64(r.totalRoundTime.Milliseconds()) / float64(r.roundNo)
 	//aveProposeTime := aveRoundTime - aveProcessTime - aveVoteProcessTime
 	latency := float64(r.totalDelay.Milliseconds()) / float64(r.latencyNo)
-	r.thrus += fmt.Sprintf("Time: %v s. Throughput: %v txs/s\n", time.Now().Sub(r.startTime).Seconds(), float64(r.totalCommittedTx)/time.Now().Sub(r.tmpTime).Seconds())
+	r.thrus += fmt.Sprintf("Time: %v s. Throughput: %v txs/s\n",
+		time.Now().Sub(r.startTime).Seconds(), float64(r.totalCommittedTx)/time.Now().Sub(r.tmpTime).Seconds())
 	r.totalCommittedTx = 0
 	r.tmpTime = time.Now()
 	aveRoundTime := float64(r.totalRoundTime.Milliseconds()) / float64(r.roundNo)
@@ -308,7 +307,8 @@ func (r *Replica) handleQuery(m message.Query) {
 	}
 	//status := fmt.Sprintf("chain status is: %s\nCommitted rate is %v.\nAve. block size is %v.\nAve. trans. delay is %v ms.\nAve. creation time is %f ms.\nAve. processing time is %v ms.\nAve. vote time is %v ms.\nRequest rate is %f txs/s.\nAve. round time is %f ms.\nLatency is %f ms.\nThroughput is %f txs/s.\n", r.Safety.GetChainStatus(), committedRate, aveBlockSize, aveTransDelay, aveCreateDuration, aveProcessTime, aveVoteProcessTime, requestRate, aveRoundTime, latency, throughput)
 	//status := fmt.Sprintf("Ave. actual proposing time is %v ms.\nAve. proposing time is %v ms.\nAve. processing time is %v ms.\nAve. vote time is %v ms.\nAve. block size is %v.\nAve. round time is %v ms.\nLatency is %v ms.\n", realAveProposeTime, aveProposeTime, aveProcessTime, aveVoteProcessTime, aveBlockSize, aveRoundTime, latency)
-	status := fmt.Sprintf("Ave. View Time: %v\nLatency: %v ms\nRedundant microblocks:%v\nTotal microblocks: %v\nTotal missing microblocks: %v\nTotoal proposed microblocks:%v\nAve. hops:%v\nMissing counts:\n%s\n%s", aveRoundTime, latency, r.totalRedundantMBs, r.totalMicroblocks, r.missingMicroblocks, r.totalProposedMBs, aveHops, missingCounts, r.thrus)
+	status := fmt.Sprintf("Ave. View Time: %v\nLatency: %v ms\nRedundant microblocks:%v\nTotal microblocks: %v\nTotal missing microblocks: %v\nTotoal proposed microblocks:%v\nAve. hops:%v\nMissing counts:\n%s\n%s",
+		aveRoundTime, latency, r.totalRedundantMBs, r.totalMicroblocks, r.missingMicroblocks, r.totalProposedMBs, aveHops, missingCounts, r.thrus)
 	m.Reply(message.QueryReply{Info: status})
 }
 
@@ -330,7 +330,7 @@ func (r *Replica) handleTxn(m message.Transaction) {
 			r.Broadcast(mb)
 		} else {
 			mb.Hops++
-			go r.MulticastQuorum(r.pickFanoutNodes(mb), mb)
+			r.MulticastQuorum(r.pickFanoutNodes(mb), mb)
 		}
 	}
 	// the first leader kicks off the protocol
@@ -370,7 +370,8 @@ func (r *Replica) processCommittedBlock(block *blockchain.Block) {
 		}
 	}
 	r.committedNo++
-	log.Infof("[%v] the block is committed, No. of microblocks: %v, No. of tx: %v, view: %v, current view: %v, id: %x", r.ID(), len(block.MicroblockList()), txCount, block.View, r.pm.GetCurView(), block.ID)
+	log.Infof("[%v] the block is committed, No. of microblocks: %v, No. of tx: %v, view: %v, current view: %v, id: %x",
+		r.ID(), len(block.MicroblockList()), txCount, block.View, r.pm.GetCurView(), block.ID)
 }
 
 func (r *Replica) processForkedBlock(block *blockchain.Block) {
@@ -403,6 +404,8 @@ func (r *Replica) processAcks(ack *message.Ack) {
 				MissingMBList: []crypto.Identifier{ack.ID},
 			}
 			r.Send(ack.Receiver, missingRequest)
+			log.Debugf("[%v] has received enough acks, but not received the microblock id: %x, fetch from %v",
+				r.ID(), ack.ID, ack.Receiver)
 		}
 	}
 }
