@@ -39,39 +39,40 @@ type Replica struct {
 	eventChan       chan interface{}
 
 	/* for monitoring node statistics */
-	thrus                string
-	lastViewTime         time.Time
-	startTime            time.Time
-	tmpTime              time.Time
-	voteStart            time.Time
-	totalCreateDuration  time.Duration
-	totalProcessDuration time.Duration
-	totalProposeDuration time.Duration
-	totalDelay           time.Duration
-	totalRoundTime       time.Duration
-	totalVoteTime        time.Duration
-	totalBlockSize       int
-	totalMicroblocks     int
-	totalProposedMBs     int
-	missingMicroblocks   int
-	receivedNo           int
-	roundNo              int
-	voteNo               int
-	totalCommittedTx     int
-	latencyNo            int
-	proposedNo           int
-	processedNo          int
-	committedNo          int
-	totalHops            int
-	totalCommittedMBs    int
-	totalRedundantMBs    int
-	missingCounts        map[identity.NodeID]int
-	pendingBlockMap      map[crypto.Identifier]*blockchain.PendingBlock
-	missingMBs           map[crypto.Identifier]crypto.Identifier // microblock hash to proposal hash
-	receivedMBs          map[crypto.Identifier]struct{}
-	selfMBChan           chan blockchain.MicroBlock
-	otherMBChan          chan blockchain.MicroBlock
-	limiter              *limiter.Bucket
+	thrus                  string
+	lastViewTime           time.Time
+	startTime              time.Time
+	tmpTime                time.Time
+	voteStart              time.Time
+	totalCreateDuration    time.Duration
+	totalProcessDuration   time.Duration
+	totalProposeDuration   time.Duration
+	totalDisseminationTime time.Duration
+	totalDelay             time.Duration
+	totalRoundTime         time.Duration
+	totalVoteTime          time.Duration
+	totalBlockSize         int
+	totalMicroblocks       int
+	totalProposedMBs       int
+	missingMicroblocks     int
+	receivedNo             int
+	roundNo                int
+	voteNo                 int
+	totalCommittedTx       int
+	latencyNo              int
+	proposedNo             int
+	processedNo            int
+	committedNo            int
+	totalHops              int
+	totalCommittedMBs      int
+	totalRedundantMBs      int
+	missingCounts          map[identity.NodeID]int
+	pendingBlockMap        map[crypto.Identifier]*blockchain.PendingBlock
+	missingMBs             map[crypto.Identifier]crypto.Identifier // microblock hash to proposal hash
+	receivedMBs            map[crypto.Identifier]struct{}
+	selfMBChan             chan blockchain.MicroBlock
+	otherMBChan            chan blockchain.MicroBlock
+	limiter                *limiter.Bucket
 }
 
 // NewReplica creates a new replica instance
@@ -151,6 +152,7 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 func (r *Replica) HandleProposal(proposal blockchain.Proposal) {
 	r.receivedNo++
 	r.startSignal()
+	r.totalProposeDuration += time.Now().Sub(proposal.Timestamp)
 	log.Debugf("[%v] received a proposal from %v, containing %v microblocks, view is %v, id: %x, prevID: %x", r.ID(), proposal.Proposer, len(proposal.HashList), proposal.View, proposal.ID, proposal.PrevID)
 	if config.Configuration.MemType == "time" {
 		ack := message.Ack{
@@ -193,6 +195,10 @@ func (r *Replica) HandleMicroblock(mb blockchain.MicroBlock) {
 		r.totalRedundantMBs++
 		return
 	}
+	r.totalDisseminationTime += time.Now().Sub(mb.Timestamp)
+	r.receivedMBs[mb.Hash] = struct{}{}
+	r.totalMicroblocks++
+
 	// gossip
 	//if a quorum of acks is not reached, gossip the microblock
 	if config.Configuration.Gossip == true {
@@ -210,8 +216,6 @@ func (r *Replica) HandleMicroblock(mb blockchain.MicroBlock) {
 		//}
 	}
 	//log.Debugf("[%v] received a microblock, id: %x", r.ID(), mb.Hash)
-	r.receivedMBs[mb.Hash] = struct{}{}
-	r.totalMicroblocks++
 	proposalID, exists := r.missingMBs[mb.Hash]
 	if exists {
 		log.Debugf("[%v] a missing mb for proposal is found", r.ID())
@@ -268,6 +272,8 @@ func (r *Replica) HandleVote(vote blockchain.Vote) {
 	if vote.View < r.pm.GetCurView() {
 		return
 	}
+	r.totalVoteTime += time.Now().Sub(vote.Timestamp)
+	r.voteNo++
 	r.startSignal()
 	log.Debugf("[%v] received a vote frm %v, blockID is %x", r.ID(), vote.Voter, vote.BlockID)
 	r.eventChan <- vote
@@ -304,14 +310,17 @@ func (r *Replica) handleQuery(m message.Query) {
 	r.tmpTime = time.Now()
 	aveRoundTime := float64(r.totalRoundTime.Milliseconds()) / float64(r.roundNo)
 	aveHops := float64(r.totalHops) / float64(r.totalCommittedMBs)
+	aveProposeTime := float64(r.totalProposeDuration.Milliseconds()) / float64(r.receivedNo)
+	aveDisseminationTime := float64(r.totalDisseminationTime.Milliseconds()) / float64(r.totalMicroblocks)
+	aveVoteTime := float64(r.totalVoteTime.Milliseconds()) / float64(r.voteNo)
 	var missingCounts string
 	for k, v := range r.missingCounts {
 		missingCounts += fmt.Sprintf("%v: %v\n", k, v)
 	}
 	//status := fmt.Sprintf("chain status is: %s\nCommitted rate is %v.\nAve. block size is %v.\nAve. trans. delay is %v ms.\nAve. creation time is %f ms.\nAve. processing time is %v ms.\nAve. vote time is %v ms.\nRequest rate is %f txs/s.\nAve. round time is %f ms.\nLatency is %f ms.\nThroughput is %f txs/s.\n", r.Safety.GetChainStatus(), committedRate, aveBlockSize, aveTransDelay, aveCreateDuration, aveProcessTime, aveVoteProcessTime, requestRate, aveRoundTime, latency, throughput)
 	//status := fmt.Sprintf("Ave. actual proposing time is %v ms.\nAve. proposing time is %v ms.\nAve. processing time is %v ms.\nAve. vote time is %v ms.\nAve. block size is %v.\nAve. round time is %v ms.\nLatency is %v ms.\n", realAveProposeTime, aveProposeTime, aveProcessTime, aveVoteProcessTime, aveBlockSize, aveRoundTime, latency)
-	status := fmt.Sprintf("Ave. View Time: %v\nLatency: %v ms\nRedundant microblocks:%v\nTotal microblocks: %v\nTotal missing microblocks: %v\nTotoal proposed microblocks:%v\nAve. hops:%v\nMissing counts:\n%s\n%s",
-		aveRoundTime, latency, r.totalRedundantMBs, r.totalMicroblocks, r.missingMicroblocks, r.totalProposedMBs, aveHops, missingCounts, r.thrus)
+	status := fmt.Sprintf("Ave. View Time: %vms\nAve. Propose Time: %vms\nAve. Dissemination Time: %vms\nAve. Vote Time: %vms\nLatency: %v ms\nRedundant microblocks:%v\nTotal microblocks: %v\nTotal missing microblocks: %v\nTotoal proposed microblocks:%v\nAve. hops:%v\nMissing counts:\n%s\n%s",
+		aveRoundTime, aveProposeTime, aveDisseminationTime, aveVoteTime, latency, r.totalRedundantMBs, r.totalMicroblocks, r.missingMicroblocks, r.totalProposedMBs, aveHops, missingCounts, r.thrus)
 	m.Reply(message.QueryReply{Info: status})
 }
 
@@ -326,8 +335,8 @@ func (r *Replica) handleTxn(m message.Transaction) {
 			mb.FutureTimestamp = time.Now().Add(stableTime)
 		}
 		mb.Sender = r.ID()
-		mb.Timestamp = time.Now()
 		r.sm.AddMicroblock(mb)
+		mb.Timestamp = time.Now()
 		r.totalMicroblocks++
 		if config.Configuration.Gossip == false {
 			r.Broadcast(mb)
@@ -466,7 +475,6 @@ func (r *Replica) proposeBlock(view types.View) {
 	r.proposedNo++
 	createEnd := time.Now()
 	createDuration := createEnd.Sub(createStart)
-	proposal.Timestamp = time.Now()
 	r.totalCreateDuration += createDuration
 	proposal.Timestamp = time.Now()
 	r.Broadcast(proposal)
@@ -504,7 +512,7 @@ func (r *Replica) ListenLocalEvent() {
 			select {
 			case view := <-r.pm.EnteringViewEvent():
 				if view >= 2 {
-					r.totalVoteTime += time.Now().Sub(r.voteStart)
+					//r.totalVoteTime += time.Now().Sub(r.voteStart)
 				}
 				// measure round time
 				now := time.Now()
@@ -560,17 +568,16 @@ func (r *Replica) Start() {
 			r.processNewView(v)
 		case blockchain.Block:
 			startProcessTime := time.Now()
-			r.totalProposeDuration += startProcessTime.Sub(v.Timestamp)
 			_ = r.Safety.ProcessBlock(&v)
 			r.totalProcessDuration += time.Now().Sub(startProcessTime)
 			r.voteStart = time.Now()
 			r.processedNo++
 		case blockchain.Vote:
-			startProcessTime := time.Now()
+			//startProcessTime := time.Now()
 			r.Safety.ProcessVote(&v)
-			processingDuration := time.Now().Sub(startProcessTime)
-			r.totalVoteTime += processingDuration
-			r.voteNo++
+			//processingDuration := time.Now().Sub(startProcessTime)
+			//r.totalVoteTime += processingDuration
+			//r.voteNo++
 		case pacemaker.TMO:
 			r.Safety.ProcessRemoteTmo(&v)
 		default:

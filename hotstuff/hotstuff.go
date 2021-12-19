@@ -3,6 +3,7 @@ package hotstuff
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/gitferry/bamboo/blockchain"
 	"github.com/gitferry/bamboo/config"
@@ -107,6 +108,7 @@ func (hs *HotStuff) ProcessBlock(block *blockchain.Block) error {
 		hs.ProcessVote(vote)
 	} else {
 		log.Debugf("[%v] vote is sent to %v, id: %x", hs.ID(), voteAggregator, vote.BlockID)
+		vote.Timestamp = time.Now()
 		hs.Send(voteAggregator, vote)
 	}
 	b, ok := hs.bufferedBlocks[block.View]

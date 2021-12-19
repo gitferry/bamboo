@@ -2,6 +2,7 @@ package blockchain
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/gitferry/bamboo/crypto"
 	"github.com/gitferry/bamboo/identity"
@@ -11,8 +12,9 @@ import (
 
 type Vote struct {
 	types.View
-	Voter   identity.NodeID
-	BlockID crypto.Identifier
+	Voter     identity.NodeID
+	BlockID   crypto.Identifier
+	Timestamp time.Time
 	crypto.Signature
 }
 
