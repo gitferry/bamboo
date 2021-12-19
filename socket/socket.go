@@ -61,7 +61,7 @@ func NewSocket(id identity.NodeID, addrs map[identity.NodeID]string) Socket {
 		flaky:     make(map[identity.NodeID]float64),
 	}
 
-	socket.nodes[id] = transport.NewTransport(addrs[id])
+	socket.nodes[id] = transport.NewTransport(addrs[id], config.Configuration.FillInterval, config.Configuration.Capacity)
 	socket.nodes[id].Listen()
 
 	return socket
@@ -95,7 +95,7 @@ func (s *socket) Send(to identity.NodeID, m interface{}) {
 			log.Errorf("socket does not have address of node %s", to)
 			return
 		}
-		t = transport.NewTransport(address)
+		t = transport.NewTransport(address, config.Configuration.FillInterval, config.Configuration.Capacity)
 		err := utils.Retry(t.Dial, 100, time.Duration(50)*time.Millisecond)
 		if err != nil {
 			panic(err)

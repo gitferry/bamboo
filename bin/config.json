@@ -32,8 +32,10 @@
   "estimate_num": 3,
   "estimate_window": 100,
   "mem_type": "ack",
-  "gossip": false,
+  "gossip": true,
   "fanout": 2,
+  "fillInterval": 1,
+  "capacity": 1000,
   "q": 3,
   "r": 5,
   "benchmark": {

@@ -6,12 +6,13 @@ import (
 	"errors"
 	"flag"
 	"github.com/gitferry/bamboo/blockchain"
+	"github.com/gitferry/bamboo/limiter"
+	"github.com/gitferry/bamboo/log"
 	"net"
 	"net/url"
 	"strings"
 	"sync"
-
-	"github.com/gitferry/bamboo/log"
+	"time"
 )
 
 var Scheme = flag.String("transport", "tcp", "transport scheme (tcp, udp, chan), default tcp")
@@ -38,7 +39,7 @@ type Transport interface {
 }
 
 // NewTransport creates new transport object with url
-func NewTransport(addr string) Transport {
+func NewTransport(addr string, fillInterval int, capacity int) Transport {
 	if !strings.Contains(addr, "://") {
 		addr = *Scheme + "://" + addr
 	}
@@ -48,10 +49,11 @@ func NewTransport(addr string) Transport {
 	}
 
 	transport := &transport{
-		uri:   uri,
-		send:  make(chan interface{}, 1024),
-		recv:  make(chan interface{}, 1024),
-		close: make(chan struct{}),
+		uri:         uri,
+		send:        make(chan interface{}, 1024),
+		recv:        make(chan interface{}, 1024),
+		tokenBucket: limiter.NewBucket(time.Duration(fillInterval)*time.Millisecond, int64(capacity)),
+		close:       make(chan struct{}),
 	}
 
 	switch uri.Scheme {
@@ -74,21 +76,21 @@ func NewTransport(addr string) Transport {
 }
 
 type transport struct {
-	uri   *url.URL
-	send  chan interface{}
-	recv  chan interface{}
-	close chan struct{}
+	uri         *url.URL
+	send        chan interface{}
+	recv        chan interface{}
+	tokenBucket *limiter.Bucket
+	close       chan struct{}
 }
 
 func (t *transport) Send(m interface{}) {
-	switch m := m.(type) {
-	case blockchain.Proposal:
-		log.Debugf("a p")
+	switch m.(type) {
+	case blockchain.MicroBlock:
+		tt := t.tokenBucket.Take(1)
+		time.Sleep(tt)
+		log.Debugf("should sleep %v", tt)
 		t.send <- m
-	case blockchain.Vote:
-		log.Debugf("a v")
 	default:
-		log.Debugf("a c msg: %v", m)
 		t.send <- m
 	}
 }
