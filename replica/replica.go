@@ -4,6 +4,7 @@ import (
 	"encoding/gob"
 	"fmt"
 	"github.com/gitferry/bamboo/crypto"
+	"github.com/gitferry/bamboo/limiter"
 	"github.com/gitferry/bamboo/utils"
 	"time"
 
@@ -68,6 +69,9 @@ type Replica struct {
 	pendingBlockMap      map[crypto.Identifier]*blockchain.PendingBlock
 	missingMBs           map[crypto.Identifier]crypto.Identifier // microblock hash to proposal hash
 	receivedMBs          map[crypto.Identifier]struct{}
+	selfMBChan           chan blockchain.MicroBlock
+	otherMBChan          chan blockchain.MicroBlock
+	limiter              *limiter.Bucket
 }
 
 // NewReplica creates a new replica instance
@@ -93,6 +97,9 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 	r.missingMBs = make(map[crypto.Identifier]crypto.Identifier)
 	r.receivedMBs = make(map[crypto.Identifier]struct{})
 	r.missingCounts = make(map[identity.NodeID]int)
+	r.selfMBChan = make(chan blockchain.MicroBlock, 1024)
+	r.otherMBChan = make(chan blockchain.MicroBlock, 1024)
+	r.limiter = limiter.NewBucket(time.Duration(config.Configuration.FillInterval)*time.Millisecond, int64(config.Configuration.Capacity))
 	memType := config.GetConfig().MemType
 	switch memType {
 	case "naive":
@@ -189,16 +196,18 @@ func (r *Replica) HandleMicroblock(mb blockchain.MicroBlock) {
 	// gossip
 	//if a quorum of acks is not reached, gossip the microblock
 	if config.Configuration.Gossip == true {
-		mb.Hops += 1
-		if config.Configuration.MemType == "naive" {
-			if mb.Hops <= config.Configuration.R {
-				go r.MulticastQuorum(r.pickFanoutNodes(&mb), mb)
-			}
-		} else if config.Configuration.MemType == "ack" {
-			if !r.sm.IsStable(mb.Hash) && mb.Hops <= config.Configuration.R {
-				go r.MulticastQuorum(r.pickFanoutNodes(&mb), mb)
-			}
-		}
+		mb.Hops++
+		r.otherMBChan <- mb
+		log.Debugf("[%v] an other mb is added", r.ID())
+		//if config.Configuration.MemType == "naive" {
+		//	if mb.Hops <= config.Configuration.R {
+		//		go r.MulticastQuorum(r.pickFanoutNodes(&mb), mb)
+		//	}
+		//} else if config.Configuration.MemType == "ack" {
+		//	if !r.sm.IsStable(mb.Hash) && mb.Hops <= config.Configuration.R {
+		//		go r.MulticastQuorum(r.pickFanoutNodes(&mb), mb)
+		//	}
+		//}
 	}
 	//log.Debugf("[%v] received a microblock, id: %x", r.ID(), mb.Hash)
 	r.receivedMBs[mb.Hash] = struct{}{}
@@ -324,13 +333,48 @@ func (r *Replica) handleTxn(m message.Transaction) {
 			r.Broadcast(mb)
 		} else {
 			mb.Hops++
-			r.MulticastQuorum(r.pickFanoutNodes(mb), mb)
+			r.selfMBChan <- *mb
+			log.Debugf("a self mb is added")
+			//r.MulticastQuorum(r.pickFanoutNodes(mb), mb)
 		}
 	}
 	// the first leader kicks off the protocol
 	if r.pm.GetCurView() == 0 && r.IsLeader(r.ID(), 1) {
 		log.Debugf("[%v] is going to kick off the protocol", r.ID())
 		r.pm.AdvanceView(0)
+	}
+}
+
+func (r *Replica) gossip() {
+	for {
+		tt := r.limiter.Take(int64(config.Configuration.Fanout))
+		log.Debugf("[%v] wait for %vms to do the next gossip", r.ID(), tt.Milliseconds())
+		time.Sleep(tt)
+	L:
+		for {
+			select {
+			case mb := <-r.selfMBChan:
+				log.Debugf("[%v] is going to gossip a self mb", r.ID())
+				r.MulticastQuorum(r.pickFanoutNodes(&mb), mb)
+				break L
+			default:
+				select {
+				case mb := <-r.selfMBChan:
+					log.Debugf("[%v] is going to gossip a self mb", r.ID())
+					r.MulticastQuorum(r.pickFanoutNodes(&mb), mb)
+					break L
+				case mb := <-r.otherMBChan:
+					if !r.sm.IsStable(mb.Hash) {
+						log.Debugf("[%v] is going to gossip an other mb", r.ID())
+						r.MulticastQuorum(r.pickFanoutNodes(&mb), mb)
+						break L
+					} else {
+						continue
+					}
+				}
+			}
+		}
+
 	}
 }
 
@@ -504,6 +548,7 @@ func (r *Replica) startSignal() {
 // Start starts event loop
 func (r *Replica) Start() {
 	go r.Run()
+	go r.gossip()
 	// wait for the start signal
 	<-r.start
 	go r.ListenLocalEvent()
