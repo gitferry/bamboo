@@ -66,6 +66,7 @@ type Replica struct {
 	totalHops              int
 	totalCommittedMBs      int
 	totalRedundantMBs      int
+	totalReceivedTxs       int
 	missingCounts          map[identity.NodeID]int
 	pendingBlockMap        map[crypto.Identifier]*blockchain.PendingBlock
 	missingMBs             map[crypto.Identifier]crypto.Identifier // microblock hash to proposal hash
@@ -304,10 +305,11 @@ func (r *Replica) handleQuery(m message.Query) {
 	//aveRoundTime := float64(r.totalRoundTime.Milliseconds()) / float64(r.roundNo)
 	//aveProposeTime := aveRoundTime - aveProcessTime - aveVoteProcessTime
 	latency := float64(r.totalDelay.Milliseconds()) / float64(r.latencyNo)
-	r.thrus += fmt.Sprintf("Time: %v s. Throughput: %v txs/s\n",
-		time.Now().Sub(r.startTime).Seconds(), float64(r.totalCommittedTx)/time.Now().Sub(r.tmpTime).Seconds())
-	r.totalCommittedTx = 0
-	r.tmpTime = time.Now()
+	r.thrus = fmt.Sprintf("Time: %v s. Throughput: %v txs/s\n",
+		time.Now().Sub(r.startTime).Seconds(), float64(r.totalCommittedTx)/time.Now().Sub(r.startTime).Seconds())
+	//r.totalCommittedTx = 0
+	//r.tmpTime = time.Now()
+	aveTxRate := float64(r.totalReceivedTxs) / time.Now().Sub(r.startTime).Seconds()
 	aveRoundTime := float64(r.totalRoundTime.Milliseconds()) / float64(r.roundNo)
 	aveHops := float64(r.totalHops) / float64(r.totalCommittedMBs)
 	aveProposeTime := float64(r.totalProposeDuration.Milliseconds()) / float64(r.receivedNo)
@@ -319,14 +321,15 @@ func (r *Replica) handleQuery(m message.Query) {
 	}
 	//status := fmt.Sprintf("chain status is: %s\nCommitted rate is %v.\nAve. block size is %v.\nAve. trans. delay is %v ms.\nAve. creation time is %f ms.\nAve. processing time is %v ms.\nAve. vote time is %v ms.\nRequest rate is %f txs/s.\nAve. round time is %f ms.\nLatency is %f ms.\nThroughput is %f txs/s.\n", r.Safety.GetChainStatus(), committedRate, aveBlockSize, aveTransDelay, aveCreateDuration, aveProcessTime, aveVoteProcessTime, requestRate, aveRoundTime, latency, throughput)
 	//status := fmt.Sprintf("Ave. actual proposing time is %v ms.\nAve. proposing time is %v ms.\nAve. processing time is %v ms.\nAve. vote time is %v ms.\nAve. block size is %v.\nAve. round time is %v ms.\nLatency is %v ms.\n", realAveProposeTime, aveProposeTime, aveProcessTime, aveVoteProcessTime, aveBlockSize, aveRoundTime, latency)
-	status := fmt.Sprintf("Ave. View Time: %vms\nAve. Propose Time: %vms\nAve. Dissemination Time: %vms\nAve. Vote Time: %vms\nLatency: %v ms\nRedundant microblocks:%v\nTotal microblocks: %v\nTotal missing microblocks: %v\nTotoal proposed microblocks:%v\nAve. hops:%v\nMissing counts:\n%s\n%s",
-		aveRoundTime, aveProposeTime, aveDisseminationTime, aveVoteTime, latency, r.totalRedundantMBs, r.totalMicroblocks, r.missingMicroblocks, r.totalProposedMBs, aveHops, missingCounts, r.thrus)
+	status := fmt.Sprintf("Ave. View Time: %vms\nAve. Propose Time: %vms\nAve. Dissemination Time: %vms\nAve. Vote Time: %vms\nAve. Tx Rate: %v\nLatency: %v ms\nRedundant microblocks:%v\nTotal microblocks: %v\nTotal missing microblocks: %v\nTotoal proposed microblocks:%v\nAve. hops:%v\n%sMissing counts:\n%s\n",
+		aveRoundTime, aveProposeTime, aveDisseminationTime, aveVoteTime, aveTxRate, latency, r.totalRedundantMBs, r.totalMicroblocks, r.missingMicroblocks, r.totalProposedMBs, aveHops, r.thrus, missingCounts)
 	m.Reply(message.QueryReply{Info: status})
 }
 
 func (r *Replica) handleTxn(m message.Transaction) {
 	r.startSignal()
 	isbuilt, mb := r.sm.AddTxn(&m)
+	r.totalReceivedTxs++
 	if isbuilt {
 		if config.Configuration.MemType == "time" {
 			stableTime := r.estimator.PredictStableTime("mb")
