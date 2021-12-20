@@ -179,7 +179,6 @@ func (am *AckMem) GeneratePayload() *blockchain.Payload {
 		}
 		//log.Debugf("microblock id: %x is deleted from mempool when proposing", mb.Hash)
 		microblockList = append(microblockList, mb)
-		am.microblockMap[mb.Hash] = mb
 	}
 
 	return blockchain.NewPayload(microblockList)

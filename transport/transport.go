@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"time"
 )
 
 var Scheme = flag.String("transport", "tcp", "transport scheme (tcp, udp, chan), default tcp")
@@ -31,12 +32,16 @@ type Transport interface {
 	// Listen waits for connections, non-blocking once listener starts
 	Listen()
 
+	SendBitps() int64
+
+	RecvBitps() int64
+
 	// Close closes send channel and stops listener
 	Close()
 }
 
 // NewTransport creates new transport object with url
-func NewTransport(addr string, fillInterval int, capacity int) Transport {
+func NewTransport(addr string) Transport {
 	if !strings.Contains(addr, "://") {
 		addr = *Scheme + "://" + addr
 	}
@@ -72,10 +77,14 @@ func NewTransport(addr string, fillInterval int, capacity int) Transport {
 }
 
 type transport struct {
-	uri   *url.URL
-	send  chan interface{}
-	recv  chan interface{}
-	close chan struct{}
+	uri              *url.URL
+	send             chan interface{}
+	recv             chan interface{}
+	startSendingTime time.Time
+	startRecvTime    time.Time
+	totalSentBits    int64
+	totalRecvBits    int64
+	close            chan struct{}
 }
 
 func (t *transport) Send(m interface{}) {
@@ -100,6 +109,7 @@ func (t *transport) Dial() error {
 	if err != nil {
 		return err
 	}
+	t.startSendingTime = time.Now()
 
 	go func(conn net.Conn) {
 		// w := bufio.NewWriter(conn)
@@ -111,10 +121,22 @@ func (t *transport) Dial() error {
 			if err != nil {
 				log.Error(err)
 			}
+			var buf bytes.Buffer
+			enc := gob.NewEncoder(&buf)
+			enc.Encode(&m)
+			t.totalSentBits += int64(buf.Len())
 		}
 	}(conn)
 
 	return nil
+}
+
+func (t *transport) SendBitps() int64 {
+	return int64(float64(t.totalSentBits) / time.Now().Sub(t.startSendingTime).Seconds())
+}
+
+func (t *transport) RecvBitps() int64 {
+	return int64(float64(t.totalRecvBits) / time.Now().Sub(t.startRecvTime).Seconds())
 }
 
 /******************************
@@ -130,6 +152,7 @@ func (t *tcp) Listen() {
 	if err != nil {
 		log.Fatal("TCP Listener error: ", err)
 	}
+	t.startRecvTime = time.Now()
 
 	go func(listener net.Listener) {
 		defer listener.Close()
@@ -150,6 +173,13 @@ func (t *tcp) Listen() {
 					case <-t.close:
 						return
 					default:
+						//_, err := conn.Read(packet)
+						//if err != nil {
+						//	log.Error(err)
+						//	continue
+						//}
+						//r := bytes.NewReader(packet)
+						//t.totalRecvBits += int64(r.Len()) * 8
 						var m interface{}
 						err := decoder.Decode(&m)
 						if err != nil {
@@ -157,10 +187,13 @@ func (t *tcp) Listen() {
 							continue
 						}
 						t.recv <- m
+						var buf bytes.Buffer
+						enc := gob.NewEncoder(&buf)
+						enc.Encode(&m)
+						t.totalRecvBits += int64(buf.Len())
 					}
 				}
 			}(conn)
-
 		}
 	}(listener)
 }
@@ -182,6 +215,8 @@ func (u *udp) Dial() error {
 		return err
 	}
 
+	u.startSendingTime = time.Now()
+
 	go func(conn *net.UDPConn) {
 		// packet := make([]byte, 1500)
 		// w := bytes.NewBuffer(packet)
@@ -192,6 +227,7 @@ func (u *udp) Dial() error {
 			if err != nil {
 				log.Error(err)
 			}
+			u.totalSentBits += int64(w.Len()) * 8
 			w.Reset()
 		}
 	}(conn)
@@ -208,6 +244,7 @@ func (u *udp) Listen() {
 	if err != nil {
 		log.Fatal("UDP Listener error: ", err)
 	}
+	u.startRecvTime = time.Now()
 	go func(conn *net.UDPConn) {
 		packet := make([]byte, 1500)
 		defer conn.Close()
@@ -222,6 +259,7 @@ func (u *udp) Listen() {
 					continue
 				}
 				r := bytes.NewReader(packet)
+				u.totalRecvBits += int64(r.Len()) * 8
 				var m interface{}
 				gob.NewDecoder(r).Decode(&m)
 				u.recv <- m
@@ -252,6 +290,7 @@ func (c *channel) Dial() error {
 	if !ok {
 		return errors.New("server not ready")
 	}
+	c.startSendingTime = time.Now()
 	go func(conn chan<- interface{}) {
 		for m := range c.send {
 			conn <- m
@@ -264,6 +303,7 @@ func (c *channel) Listen() {
 	chansLock.Lock()
 	defer chansLock.Unlock()
 	chans[c.uri.Host] = make(chan interface{}, 1024)
+	c.startRecvTime = time.Now()
 	go func(conn <-chan interface{}) {
 		for {
 			select {

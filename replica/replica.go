@@ -194,7 +194,9 @@ func (r *Replica) HandleMicroblock(mb blockchain.MicroBlock) {
 	_, ok := r.receivedMBs[mb.Hash]
 	if ok {
 		r.totalRedundantMBs++
-		return
+		if !mb.IsRequested {
+			return
+		}
 	}
 	r.totalDisseminationTime += time.Now().Sub(mb.Timestamp)
 	r.receivedMBs[mb.Hash] = struct{}{}
@@ -202,10 +204,10 @@ func (r *Replica) HandleMicroblock(mb blockchain.MicroBlock) {
 
 	// gossip
 	//if a quorum of acks is not reached, gossip the microblock
-	if config.Configuration.Gossip == true {
+	if config.Configuration.Gossip == true && !mb.IsRequested {
 		mb.Hops++
 		r.otherMBChan <- mb
-		log.Debugf("[%v] an other mb is added", r.ID())
+		//log.Debugf("[%v] an other mb is added", r.ID())
 		//if config.Configuration.MemType == "naive" {
 		//	if mb.Hops <= config.Configuration.R {
 		//		go r.MulticastQuorum(r.pickFanoutNodes(&mb), mb)
@@ -256,10 +258,11 @@ func (r *Replica) HandleMicroblock(mb blockchain.MicroBlock) {
 }
 
 func (r *Replica) HandleMissingMBRequest(mbr message.MissingMBRequest) {
-	log.Debugf("[%v] %d missing microblocks request is received from %v", r.ID(), len(mbr.MissingMBList), mbr.RequesterID)
+	log.Debugf("[%v] %d missing microblocks request is received from %v, missing mbs are:", r.ID(), len(mbr.MissingMBList), mbr.RequesterID)
 	r.missingCounts[mbr.RequesterID] += len(mbr.MissingMBList)
 	for _, mbid := range mbr.MissingMBList {
 		found, mb := r.sm.FindMicroblock(mbid)
+		log.Debugf("[%v] id: %x", r.ID(), mbid)
 		if found {
 			mb.IsRequested = true
 			r.Send(mbr.RequesterID, mb)
@@ -321,13 +324,14 @@ func (r *Replica) handleQuery(m message.Query) {
 	}
 	//status := fmt.Sprintf("chain status is: %s\nCommitted rate is %v.\nAve. block size is %v.\nAve. trans. delay is %v ms.\nAve. creation time is %f ms.\nAve. processing time is %v ms.\nAve. vote time is %v ms.\nRequest rate is %f txs/s.\nAve. round time is %f ms.\nLatency is %f ms.\nThroughput is %f txs/s.\n", r.Safety.GetChainStatus(), committedRate, aveBlockSize, aveTransDelay, aveCreateDuration, aveProcessTime, aveVoteProcessTime, requestRate, aveRoundTime, latency, throughput)
 	//status := fmt.Sprintf("Ave. actual proposing time is %v ms.\nAve. proposing time is %v ms.\nAve. processing time is %v ms.\nAve. vote time is %v ms.\nAve. block size is %v.\nAve. round time is %v ms.\nLatency is %v ms.\n", realAveProposeTime, aveProposeTime, aveProcessTime, aveVoteProcessTime, aveBlockSize, aveRoundTime, latency)
-	status := fmt.Sprintf("Ave. View Time: %vms\nAve. Propose Time: %vms\nAve. Dissemination Time: %vms\nAve. Vote Time: %vms\nAve. Tx Rate: %v\nLatency: %v ms\nRedundant microblocks:%v\nTotal microblocks: %v\nTotal missing microblocks: %v\nTotoal proposed microblocks:%v\nAve. hops:%v\n%sMissing counts:\n%s\n",
-		aveRoundTime, aveProposeTime, aveDisseminationTime, aveVoteTime, aveTxRate, latency, r.totalRedundantMBs, r.totalMicroblocks, r.missingMicroblocks, r.totalProposedMBs, aveHops, r.thrus, missingCounts)
+	status := fmt.Sprintf("Ave. View Time: %vms\nAve. Propose Time: %vms\nAve. Dissemination Time: %vms\nAve. Vote Time: %vms\nAve. Tx Rate: %v\nLatency: %v ms\nRedundant microblocks:%v\nTotal microblocks: %v\nTotal missing microblocks: %v\nTotoal proposed microblocks:%v\nAve. hops:%v\n%sSend Rate: %v\nRecv Rate: %v\nMissing counts:\n%s\n",
+		aveRoundTime, aveProposeTime, aveDisseminationTime, aveVoteTime, aveTxRate, latency, r.totalRedundantMBs, r.totalMicroblocks, r.missingMicroblocks, r.totalProposedMBs, aveHops, r.thrus, r.SendRate(), r.RecvRate(), missingCounts)
 	m.Reply(message.QueryReply{Info: status})
 }
 
 func (r *Replica) handleTxn(m message.Transaction) {
 	r.startSignal()
+	m.Timestamp = time.Now()
 	isbuilt, mb := r.sm.AddTxn(&m)
 	r.totalReceivedTxs++
 	if isbuilt {
@@ -346,7 +350,7 @@ func (r *Replica) handleTxn(m message.Transaction) {
 		} else {
 			mb.Hops++
 			r.selfMBChan <- *mb
-			log.Debugf("a self mb is added")
+			//log.Debugf("a self mb is added")
 			//r.MulticastQuorum(r.pickFanoutNodes(mb), mb)
 		}
 	}
@@ -360,24 +364,24 @@ func (r *Replica) handleTxn(m message.Transaction) {
 func (r *Replica) gossip() {
 	for {
 		tt := r.limiter.Take(int64(config.Configuration.Fanout))
-		log.Debugf("[%v] wait for %vms to do the next gossip", r.ID(), tt.Milliseconds())
+		//log.Debugf("[%v] wait for %vms to do the next gossip", r.ID(), tt.Milliseconds())
 		time.Sleep(tt)
 	L:
 		for {
 			select {
 			case mb := <-r.selfMBChan:
-				log.Debugf("[%v] is going to gossip a self mb", r.ID())
+				//log.Debugf("[%v] is going to gossip a self mb", r.ID())
 				r.MulticastQuorum(r.pickFanoutNodes(&mb), mb)
 				break L
 			default:
 				select {
 				case mb := <-r.selfMBChan:
-					log.Debugf("[%v] is going to gossip a self mb", r.ID())
+					//log.Debugf("[%v] is going to gossip a self mb", r.ID())
 					r.MulticastQuorum(r.pickFanoutNodes(&mb), mb)
 					break L
 				case mb := <-r.otherMBChan:
 					if !r.sm.IsStable(mb.Hash) {
-						log.Debugf("[%v] is going to gossip an other mb", r.ID())
+						//log.Debugf("[%v] is going to gossip an other mb", r.ID())
 						r.MulticastQuorum(r.pickFanoutNodes(&mb), mb)
 						break L
 					} else {

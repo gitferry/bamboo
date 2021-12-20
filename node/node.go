@@ -1,6 +1,7 @@
 package node
 
 import (
+	"github.com/gitferry/bamboo/blockchain"
 	"net/http"
 	"reflect"
 	"sync"
@@ -33,6 +34,7 @@ type node struct {
 	//Database
 	MessageChan chan interface{}
 	TxChan      chan interface{}
+	MBChan      chan interface{}
 	handles     map[string]reflect.Value
 	server      *http.Server
 	isByz       bool
@@ -51,6 +53,7 @@ func NewNode(id identity.NodeID, isByz bool) Node {
 		//Database:    NewDatabase(),
 		MessageChan: make(chan interface{}, config.Configuration.ChanBufferSize),
 		TxChan:      make(chan interface{}, config.Configuration.ChanBufferSize),
+		MBChan:      make(chan interface{}, config.Configuration.ChanBufferSize),
 		handles:     make(map[string]reflect.Value),
 		forwards:    make(map[string]*message.Transaction),
 	}
@@ -95,6 +98,7 @@ func (n *node) Run() {
 		go n.handle()
 		go n.recv()
 		go n.txn()
+		go n.microblock()
 	}
 	n.http()
 }
@@ -103,6 +107,19 @@ func (n *node) txn() {
 	for {
 		tx := <-n.TxChan
 		v := reflect.ValueOf(tx)
+		name := v.Type().String()
+		f, exists := n.handles[name]
+		if !exists {
+			log.Fatalf("no registered handle function for message type %v", name)
+		}
+		f.Call([]reflect.Value{v})
+	}
+}
+
+func (n *node) microblock() {
+	for {
+		mb := <-n.MBChan
+		v := reflect.ValueOf(mb)
 		name := v.Type().String()
 		f, exists := n.handles[name]
 		if !exists {
@@ -121,11 +138,13 @@ func (n *node) recv() {
 			continue
 		}
 		switch m := m.(type) {
+		case blockchain.MicroBlock:
+			n.MBChan <- m
 		case message.Transaction:
 			n.TxChan <- m
-			continue
+		default:
+			n.MessageChan <- m
 		}
-		n.MessageChan <- m
 	}
 }
 

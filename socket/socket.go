@@ -34,6 +34,9 @@ type Socket interface {
 	Slow(id identity.NodeID, d int, t int)      // delays every message send to NodeID for d ms and last for t seconds
 	Flaky(id identity.NodeID, p float64, t int) // drop message by chance p for t seconds
 	Crash(t int)                                // node crash for t seconds
+
+	SendRate() int64
+	RecvRate() int64
 }
 
 type socket struct {
@@ -61,10 +64,22 @@ func NewSocket(id identity.NodeID, addrs map[identity.NodeID]string) Socket {
 		flaky:     make(map[identity.NodeID]float64),
 	}
 
-	socket.nodes[id] = transport.NewTransport(addrs[id], config.Configuration.FillInterval, config.Configuration.Capacity)
+	socket.nodes[id] = transport.NewTransport(addrs[id])
 	socket.nodes[id].Listen()
 
 	return socket
+}
+
+func (s *socket) SendRate() int64 {
+	var totalRate int64
+	for _, t := range s.nodes {
+		totalRate += t.SendBitps()
+	}
+	return totalRate
+}
+
+func (s *socket) RecvRate() int64 {
+	return s.nodes[s.id].RecvBitps()
 }
 
 func (s *socket) Send(to identity.NodeID, m interface{}) {
@@ -95,7 +110,7 @@ func (s *socket) Send(to identity.NodeID, m interface{}) {
 			log.Errorf("socket does not have address of node %s", to)
 			return
 		}
-		t = transport.NewTransport(address, config.Configuration.FillInterval, config.Configuration.Capacity)
+		t = transport.NewTransport(address)
 		err := utils.Retry(t.Dial, 100, time.Duration(50)*time.Millisecond)
 		if err != nil {
 			panic(err)
