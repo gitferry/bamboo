@@ -194,9 +194,7 @@ func (r *Replica) HandleMicroblock(mb blockchain.MicroBlock) {
 	_, ok := r.receivedMBs[mb.Hash]
 	if ok {
 		r.totalRedundantMBs++
-		if !mb.IsRequested {
-			return
-		}
+		return
 	}
 	r.totalDisseminationTime += time.Now().Sub(mb.Timestamp)
 	r.receivedMBs[mb.Hash] = struct{}{}

@@ -58,7 +58,6 @@ func (n *node) handleRoot(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	v, _ := ioutil.ReadAll(r.Body)
-	log.Debugf("[%v] a request payload is %v bytes", n.id, len(v))
 	req.Command.Value = v
 	req.NodeID = n.id
 	req.Timestamp = time.Now()
