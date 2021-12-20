@@ -35,8 +35,8 @@ type Socket interface {
 	Flaky(id identity.NodeID, p float64, t int) // drop message by chance p for t seconds
 	Crash(t int)                                // node crash for t seconds
 
-	SendRate() int64
-	RecvRate() int64
+	SendRate() float64
+	RecvRate() float64
 }
 
 type socket struct {
@@ -70,16 +70,18 @@ func NewSocket(id identity.NodeID, addrs map[identity.NodeID]string) Socket {
 	return socket
 }
 
-func (s *socket) SendRate() int64 {
+// in Mbps
+func (s *socket) SendRate() float64 {
 	var totalRate int64
 	for _, t := range s.nodes {
-		totalRate += t.SendBitps()
+		totalRate += t.SendBitsCount()
 	}
-	return totalRate
+	return float64(totalRate) / 1024 / 1024
 }
 
-func (s *socket) RecvRate() int64 {
-	return s.nodes[s.id].RecvBitps()
+// in Mbps
+func (s *socket) RecvRate() float64 {
+	return float64(s.nodes[s.id].RecvBitsCount()) / 1024 / 1024
 }
 
 func (s *socket) Send(to identity.NodeID, m interface{}) {

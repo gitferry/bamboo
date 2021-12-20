@@ -32,9 +32,9 @@ type Transport interface {
 	// Listen waits for connections, non-blocking once listener starts
 	Listen()
 
-	SendBitps() int64
+	SendBitsCount() int64
 
-	RecvBitps() int64
+	RecvBitsCount() int64
 
 	// Close closes send channel and stops listener
 	Close()
@@ -124,18 +124,18 @@ func (t *transport) Dial() error {
 			var buf bytes.Buffer
 			enc := gob.NewEncoder(&buf)
 			enc.Encode(&m)
-			t.totalSentBits += int64(buf.Len())
+			t.totalSentBits += int64(buf.Len()) * 8
 		}
 	}(conn)
 
 	return nil
 }
 
-func (t *transport) SendBitps() int64 {
+func (t *transport) SendBitsCount() int64 {
 	return int64(float64(t.totalSentBits) / time.Now().Sub(t.startSendingTime).Seconds())
 }
 
-func (t *transport) RecvBitps() int64 {
+func (t *transport) RecvBitsCount() int64 {
 	return int64(float64(t.totalRecvBits) / time.Now().Sub(t.startRecvTime).Seconds())
 }
 
@@ -173,13 +173,6 @@ func (t *tcp) Listen() {
 					case <-t.close:
 						return
 					default:
-						//_, err := conn.Read(packet)
-						//if err != nil {
-						//	log.Error(err)
-						//	continue
-						//}
-						//r := bytes.NewReader(packet)
-						//t.totalRecvBits += int64(r.Len()) * 8
 						var m interface{}
 						err := decoder.Decode(&m)
 						if err != nil {
@@ -190,7 +183,7 @@ func (t *tcp) Listen() {
 						var buf bytes.Buffer
 						enc := gob.NewEncoder(&buf)
 						enc.Encode(&m)
-						t.totalRecvBits += int64(buf.Len())
+						t.totalRecvBits += int64(buf.Len()) * 8
 					}
 				}
 			}(conn)
