@@ -318,14 +318,15 @@ func (r *Replica) handleQuery(m message.Query) {
 	aveProposeTime := float64(r.totalProposeDuration.Milliseconds()) / float64(r.receivedNo)
 	aveDisseminationTime := float64(r.totalDisseminationTime.Milliseconds()) / float64(r.totalMicroblocks)
 	aveVoteTime := float64(r.totalVoteTime.Milliseconds()) / float64(r.voteNo)
+	mbRate := float64(r.totalMicroblocks) / time.Now().Sub(r.startTime).Seconds()
 	var missingCounts string
 	for k, v := range r.missingCounts {
 		missingCounts += fmt.Sprintf("%v: %v\n", k, v)
 	}
 	//status := fmt.Sprintf("chain status is: %s\nCommitted rate is %v.\nAve. block size is %v.\nAve. trans. delay is %v ms.\nAve. creation time is %f ms.\nAve. processing time is %v ms.\nAve. vote time is %v ms.\nRequest rate is %f txs/s.\nAve. round time is %f ms.\nLatency is %f ms.\nThroughput is %f txs/s.\n", r.Safety.GetChainStatus(), committedRate, aveBlockSize, aveTransDelay, aveCreateDuration, aveProcessTime, aveVoteProcessTime, requestRate, aveRoundTime, latency, throughput)
 	//status := fmt.Sprintf("Ave. actual proposing time is %v ms.\nAve. proposing time is %v ms.\nAve. processing time is %v ms.\nAve. vote time is %v ms.\nAve. block size is %v.\nAve. round time is %v ms.\nLatency is %v ms.\n", realAveProposeTime, aveProposeTime, aveProcessTime, aveVoteProcessTime, aveBlockSize, aveRoundTime, latency)
-	status := fmt.Sprintf("Ave. View Time: %vms\nAve. Propose Time: %vms\nAve. Dissemination Time: %vms\nAve. Vote Time: %vms\nAve. Tx Rate: %v\nLatency: %v ms\nRedundant microblocks:%v\nTotal microblocks: %v\nTotal missing microblocks: %v\nTotoal proposed microblocks:%v\nAve. hops:%v\n%sSend Rate: %v Mbps\nRecv Rate: %v Mbps\nMissing counts:\n%s\n",
-		aveRoundTime, aveProposeTime, aveDisseminationTime, aveVoteTime, aveTxRate, latency, r.totalRedundantMBs, r.totalMicroblocks, r.missingMicroblocks, r.totalProposedMBs, aveHops, r.thrus, r.SendRate(), r.RecvRate(), missingCounts)
+	status := fmt.Sprintf("Ave. View Time: %vms\nAve. Propose Time: %vms\nAve. Dissemination Time: %vms\nAve. Vote Time: %vms\nAve. Tx Rate: %v\nAve. MB Rate: %v\nLatency: %v ms\nRedundant microblocks:%v\nTotal microblocks: %v\nTotal missing microblocks: %v\nTotoal proposed microblocks:%v\nAve. hops:%v\n%sSend Rate: %v Mbps\nRecv Rate: %v Mbps\nMissing counts:\n%s\n",
+		aveRoundTime, aveProposeTime, aveDisseminationTime, aveVoteTime, aveTxRate, mbRate, latency, r.totalRedundantMBs, r.totalMicroblocks, r.missingMicroblocks, r.totalProposedMBs, aveHops, r.thrus, r.SendRate(), r.RecvRate(), missingCounts)
 	m.Reply(message.QueryReply{Info: status})
 }
 
