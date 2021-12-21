@@ -7,7 +7,6 @@ import (
 	"github.com/gitferry/bamboo/config"
 	"github.com/gitferry/bamboo/crypto"
 	"github.com/gitferry/bamboo/identity"
-	"github.com/gitferry/bamboo/log"
 	"github.com/gitferry/bamboo/message"
 	"github.com/gitferry/bamboo/utils"
 	"sync"
@@ -43,11 +42,11 @@ func NewNaiveMem() *NaiveMem {
 func (nm *NaiveMem) AddTxn(txn *message.Transaction) (bool, *blockchain.MicroBlock) {
 	// mempool is full
 	if nm.RemainingTx() >= int64(nm.memsize) {
-		log.Warningf("mempool's tx list is full")
+		//log.Warningf("mempool's tx list is full")
 		return false, nil
 	}
 	if nm.RemainingMB() >= int64(nm.memsize) {
-		log.Warningf("mempool's mb list is full")
+		//log.Warningf("mempool's mb list is full")
 		return false, nil
 	}
 

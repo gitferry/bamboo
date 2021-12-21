@@ -180,12 +180,12 @@ func (r *Replica) HandleProposal(proposal blockchain.Proposal) {
 		r.missingMBs[mbid] = proposal.ID
 		log.Debugf("[%v] a microblock is missing, id: %x", r.ID(), mbid)
 	}
-	missingRequest := message.MissingMBRequest{
-		RequesterID:   r.ID(),
-		ProposalID:    proposal.ID,
-		MissingMBList: pendingBlock.MissingMBList(),
-	}
-	r.Send(proposal.Proposer, missingRequest)
+	//missingRequest := message.MissingMBRequest{
+	//	RequesterID:   r.ID(),
+	//	ProposalID:    proposal.ID,
+	//	MissingMBList: pendingBlock.MissingMBList(),
+	//}
+	//r.Send(proposal.Proposer, missingRequest)
 }
 
 // HandleMicroblock handles microblocks from replicas
@@ -364,35 +364,33 @@ func (r *Replica) handleTxn(m message.Transaction) {
 }
 
 func (r *Replica) gossip() {
+	//for {
+	//	tt := r.limiter.Take(int64(config.Configuration.Fanout))
+	//	log.Debugf("[%v] wait for %vms to do the next gossip", r.ID(), tt.Milliseconds())
+	//	time.Sleep(tt)
+	//L:
 	for {
-		tt := r.limiter.Take(int64(config.Configuration.Fanout))
-		//log.Debugf("[%v] wait for %vms to do the next gossip", r.ID(), tt.Milliseconds())
-		time.Sleep(tt)
-	L:
-		for {
+		select {
+		case mb := <-r.selfMBChan:
+			//log.Debugf("[%v] is going to gossip a self mb", r.ID())
+			r.MulticastQuorum(r.pickFanoutNodes(&mb), mb)
+			//break L
+		default:
 			select {
 			case mb := <-r.selfMBChan:
 				//log.Debugf("[%v] is going to gossip a self mb", r.ID())
 				r.MulticastQuorum(r.pickFanoutNodes(&mb), mb)
-				break L
-			default:
-				select {
-				case mb := <-r.selfMBChan:
-					//log.Debugf("[%v] is going to gossip a self mb", r.ID())
+				//break L
+			case mb := <-r.otherMBChan:
+				if !r.sm.IsStable(mb.Hash) {
+					//log.Debugf("[%v] is going to gossip an other mb", r.ID())
 					r.MulticastQuorum(r.pickFanoutNodes(&mb), mb)
-					break L
-				case mb := <-r.otherMBChan:
-					if !r.sm.IsStable(mb.Hash) {
-						//log.Debugf("[%v] is going to gossip an other mb", r.ID())
-						r.MulticastQuorum(r.pickFanoutNodes(&mb), mb)
-						break L
-					} else {
-						continue
-					}
+					//break L
+				} else {
+					continue
 				}
 			}
 		}
-
 	}
 }
 
@@ -475,7 +473,7 @@ func (r *Replica) proposeBlock(view types.View) {
 	}
 	r.totalProposedMBs += len(payload.MicroblockList)
 	proposal := r.Safety.MakeProposal(view, payload.GenerateHashList())
-	log.Debugf("[%v] is making a proposal for view %v, containing %v microblocks, id:%x", proposal.Proposer, proposal.View, len(proposal.HashList), proposal.ID)
+	log.Debugf("[%v] is making a proposal for view %v, containing %v microblocks, %v left,id:%x", proposal.Proposer, proposal.View, len(proposal.HashList), r.sm.RemainingMB(), proposal.ID)
 	log.Debugf("[%v] contained microblocks are", r.ID())
 	for _, id := range proposal.HashList {
 		log.Debugf("[%v] id: %x", r.ID(), id)
