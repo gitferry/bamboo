@@ -41,4 +41,8 @@ type SharedMempool interface {
 	TotalTx() int64
 
 	RemainingTx() int64
+
+	TotalMB() int64
+
+	RemainingMB() int64
 }

@@ -6,6 +6,7 @@ import (
 	"github.com/gitferry/bamboo/config"
 	"github.com/gitferry/bamboo/crypto"
 	"github.com/gitferry/bamboo/identity"
+	"github.com/gitferry/bamboo/log"
 	"github.com/gitferry/bamboo/message"
 	"github.com/gitferry/bamboo/utils"
 	"sync"
@@ -53,7 +54,12 @@ func NewAckMem() *AckMem {
 // then the contained transactions should be deleted
 func (am *AckMem) AddTxn(txn *message.Transaction) (bool, *blockchain.MicroBlock) {
 	// mempool is full
-	if am.txnList.Len()+1 > am.memsize {
+	if am.RemainingTx() >= int64(am.memsize) {
+		log.Warningf("mempool's tx list is full")
+		return false, nil
+	}
+	if am.RemainingMB() >= int64(am.memsize) {
+		log.Warningf("mempool's mb is full")
 		return false, nil
 	}
 	am.totalTx++
@@ -269,6 +275,18 @@ func (am *AckMem) TotalTx() int64 {
 
 func (am *AckMem) RemainingTx() int64 {
 	return int64(am.txnList.Len())
+}
+
+func (am *AckMem) TotalMB() int64 {
+	am.mu.Lock()
+	defer am.mu.Unlock()
+	return int64(len(am.microblockMap))
+}
+
+func (am *AckMem) RemainingMB() int64 {
+	am.mu.Lock()
+	defer am.mu.Unlock()
+	return int64(len(am.pendingMicroblocks) + am.stableMicroblocks.Len())
 }
 
 func (am *AckMem) AckList(id crypto.Identifier) []identity.NodeID {
