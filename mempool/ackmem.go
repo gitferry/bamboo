@@ -23,6 +23,7 @@ type AckMem struct {
 	memsize            int                                     // number of microblocks in mempool
 	currSize           int
 	threshhold         int // number of acks needed for a stable microblock
+	totalTx            int64
 	mu                 sync.Mutex
 }
 
@@ -52,9 +53,10 @@ func NewAckMem() *AckMem {
 // then the contained transactions should be deleted
 func (am *AckMem) AddTxn(txn *message.Transaction) (bool, *blockchain.MicroBlock) {
 	// mempool is full
-	if am.stableMicroblocks.Len()+len(am.pendingMicroblocks) >= am.memsize {
+	if am.txnList.Len()+1 > am.memsize {
 		return false, nil
 	}
+	am.totalTx++
 
 	// get the size of the structure. txn is the pointer.
 	tranSize := utils.SizeOf(txn)
@@ -259,6 +261,14 @@ func (am *AckMem) IsStable(id crypto.Identifier) bool {
 		return true
 	}
 	return false
+}
+
+func (am *AckMem) TotalTx() int64 {
+	return am.totalTx
+}
+
+func (am *AckMem) RemainingTx() int64 {
+	return int64(am.txnList.Len())
 }
 
 func (am *AckMem) AckList(id crypto.Identifier) []identity.NodeID {

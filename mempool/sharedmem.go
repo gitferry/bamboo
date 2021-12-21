@@ -37,4 +37,8 @@ type SharedMempool interface {
 	IsStable(id crypto.Identifier) bool
 
 	AckList(id crypto.Identifier) []identity.NodeID
+
+	TotalTx() int64
+
+	RemainingTx() int64
 }

@@ -20,6 +20,7 @@ type NaiveMem struct {
 	msize         int // byte size of transactions in a microblock
 	memsize       int // number of microblocks in mempool
 	currSize      int
+	totalTx       int64
 	mu            sync.Mutex
 }
 
@@ -51,6 +52,7 @@ func (nm *NaiveMem) AddTxn(txn *message.Transaction) (bool, *blockchain.MicroBlo
 	if tranSize > nm.msize {
 		return false, nil
 	}
+	nm.totalTx++
 
 	if totalSize > nm.msize {
 		//do not add the curr trans, and generate a microBlock
@@ -171,6 +173,14 @@ func (nm *NaiveMem) FillProposal(p *blockchain.Proposal) *blockchain.PendingBloc
 		}
 	}
 	return blockchain.NewPendingBlock(p, missingBlocks, existingBlocks)
+}
+
+func (nm *NaiveMem) TotalTx() int64 {
+	return nm.totalTx
+}
+
+func (nm *NaiveMem) RemainingTx() int64 {
+	return int64(nm.txnList.Len())
 }
 
 func (nm *NaiveMem) AddAck(ack *message.Ack) {
