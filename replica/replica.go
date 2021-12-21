@@ -166,6 +166,7 @@ func (r *Replica) HandleProposal(proposal blockchain.Proposal) {
 		}
 		r.Send(proposal.Proposer, ack)
 	}
+	r.totalBlockSize += len(proposal.HashList)
 	pendingBlock := r.sm.FillProposal(&proposal)
 	block := pendingBlock.CompleteBlock()
 	if block != nil {
@@ -301,7 +302,7 @@ func (r *Replica) handleQuery(m message.Query) {
 	//realAveProposeTime := float64(r.totalProposeDuration.Milliseconds()) / float64(r.processedNo)
 	//aveProcessTime := float64(r.totalProcessDuration.Milliseconds()) / float64(r.processedNo)
 	//aveVoteProcessTime := float64(r.totalVoteTime.Milliseconds()) / float64(r.roundNo)
-	aveBlockSize := float64(r.totalBlockSize) / float64(r.proposedNo)
+	aveBlockSize := float64(r.totalBlockSize) / float64(r.proposedNo+r.receivedNo)
 	//requestRate := float64(r.sm.TotalReceivedTxNo()) / time.Now().Sub(r.startTime).Seconds()
 	//committedRate := float64(r.committedNo) / time.Now().Sub(r.startTime).Seconds()
 	//aveRoundTime := float64(r.totalRoundTime.Milliseconds()) / float64(r.roundNo)
