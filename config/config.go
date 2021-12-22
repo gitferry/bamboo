@@ -54,6 +54,7 @@ type Config struct {
 	Fanout         int             `json:"fanout"`
 	FillInterval   int             `json:"fillInterval"`
 	Capacity       int             `json:"capacity"`
+	P              int             `json:"p"`
 	Q              int             `json:"q"` // the number of acks to be considered stable
 	R              int             `json:"r"` // max hops of gossip
 

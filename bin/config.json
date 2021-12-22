@@ -36,6 +36,7 @@
   "fanout": 2,
   "fillInterval": 1,
   "capacity": 1000,
+  "p": 10,
   "q": 3,
   "r": 5,
   "benchmark": {

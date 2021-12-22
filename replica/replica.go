@@ -6,6 +6,7 @@ import (
 	"github.com/gitferry/bamboo/crypto"
 	"github.com/gitferry/bamboo/limiter"
 	"github.com/gitferry/bamboo/utils"
+	"math/rand"
 	"time"
 
 	"go.uber.org/atomic"
@@ -384,7 +385,7 @@ func (r *Replica) gossip() {
 					r.MulticastQuorum(r.pickFanoutNodes(&mb), mb)
 					break L
 				case mb := <-r.otherMBChan:
-					if !r.sm.IsStable(mb.Hash) {
+					if rand.Intn(100) < config.Configuration.P && !r.sm.IsStable(mb.Hash) && mb.Hops <= config.Configuration.R {
 						//log.Debugf("[%v] is going to gossip an other mb", r.ID())
 						r.MulticastQuorum(r.pickFanoutNodes(&mb), mb)
 						break L
