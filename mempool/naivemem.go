@@ -41,14 +41,14 @@ func NewNaiveMem() *NaiveMem {
 // then the contained transactions should be deleted
 func (nm *NaiveMem) AddTxn(txn *message.Transaction) (bool, *blockchain.MicroBlock) {
 	// mempool is full
-	if nm.RemainingTx() >= int64(nm.memsize) {
-		//log.Warningf("mempool's tx list is full")
-		return false, nil
-	}
-	if nm.RemainingMB() >= int64(nm.memsize) {
-		//log.Warningf("mempool's mb list is full")
-		return false, nil
-	}
+	//if nm.RemainingTx() >= int64(nm.memsize) {
+	//	//log.Warningf("mempool's tx list is full")
+	//	return false, nil
+	//}
+	//if nm.RemainingMB() >= int64(nm.memsize) {
+	//	//log.Warningf("mempool's mb list is full")
+	//	return false, nil
+	//}
 
 	// get the size of the structure. txn is the pointer.
 	tranSize := utils.SizeOf(txn)
