@@ -385,10 +385,16 @@ func (r *Replica) gossip() {
 					r.MulticastQuorum(r.pickFanoutNodes(&mb), mb)
 					break L
 				case mb := <-r.otherMBChan:
-					if rand.Intn(100) < config.Configuration.P && !r.sm.IsStable(mb.Hash) && mb.Hops <= config.Configuration.R {
-						//log.Debugf("[%v] is going to gossip an other mb", r.ID())
-						r.MulticastQuorum(r.pickFanoutNodes(&mb), mb)
-						break L
+					if r.sm.IsStable(mb.Hash) && mb.Hops > config.Configuration.R {
+						if r.ID().Node() > config.Configuration.SlowNo {
+							r.MulticastQuorum(r.pickFanoutNodes(&mb), mb)
+							break L
+						} else if rand.Intn(100) < config.Configuration.P {
+							r.MulticastQuorum(r.pickFanoutNodes(&mb), mb)
+							break L
+						} else {
+							continue
+						}
 					} else {
 						continue
 					}
