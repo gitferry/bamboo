@@ -194,6 +194,16 @@ func (r *Replica) HandleProposal(proposal blockchain.Proposal) {
 // if so, tries to complete the block
 func (r *Replica) HandleMicroblock(mb blockchain.MicroBlock) {
 	//r.startSignal()
+	// gossip
+	//if a quorum of acks is not reached, gossip the microblock
+	go func() {
+		if config.Configuration.Gossip == true && !mb.IsRequested {
+			mb.Hops++
+			if mb.Hops <= config.Configuration.R {
+				r.otherMBChan <- mb
+			}
+		}
+	}()
 	_, ok := r.receivedMBs[mb.Hash]
 	if ok {
 		r.totalRedundantMBs++
@@ -203,22 +213,6 @@ func (r *Replica) HandleMicroblock(mb blockchain.MicroBlock) {
 	r.receivedMBs[mb.Hash] = struct{}{}
 	r.totalMicroblocks++
 
-	// gossip
-	//if a quorum of acks is not reached, gossip the microblock
-	if config.Configuration.Gossip == true && !mb.IsRequested {
-		mb.Hops++
-		r.otherMBChan <- mb
-		//log.Debugf("[%v] an other mb is added", r.ID())
-		//if config.Configuration.MemType == "naive" {
-		//	if mb.Hops <= config.Configuration.R {
-		//		go r.MulticastQuorum(r.pickFanoutNodes(&mb), mb)
-		//	}
-		//} else if config.Configuration.MemType == "ack" {
-		//	if !r.sm.IsStable(mb.Hash) && mb.Hops <= config.Configuration.R {
-		//		go r.MulticastQuorum(r.pickFanoutNodes(&mb), mb)
-		//	}
-		//}
-	}
 	//log.Debugf("[%v] received a microblock, id: %x", r.ID(), mb.Hash)
 	proposalID, exists := r.missingMBs[mb.Hash]
 	if exists {
@@ -369,7 +363,6 @@ func (r *Replica) handleTxn(m message.Transaction) {
 func (r *Replica) gossip() {
 	for {
 		tt := r.limiter.Take(int64(config.Configuration.Fanout))
-		log.Debugf("[%v] wait for %vms to do the next gossip", r.ID(), tt.Milliseconds())
 		time.Sleep(tt)
 	L:
 		for {
@@ -410,7 +403,6 @@ func (r *Replica) pickFanoutNodes(mb *blockchain.MicroBlock) []identity.NodeID {
 	sentNodes := mb.FindSentNodes()
 	nodes := utils.PickRandomNodes(sentNodes)
 	//mb.AddSentNodes(nodes)
-	log.Debugf("[%v] the mb %x has been sent to %v before, is going to send to %v", r.ID(), mb.Hash, sentNodes, nodes)
 	if len(nodes) < config.Configuration.Fanout {
 		return nil
 	}
