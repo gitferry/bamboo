@@ -405,11 +405,15 @@ func (r *Replica) gossip() {
 }
 
 func (r *Replica) pickFanoutNodes(mb *blockchain.MicroBlock) []identity.NodeID {
-	sentNodes := mb.FindSentNodes()
-	nodes := utils.PickRandomNodes(sentNodes)
-	mb.AddSentNodes(nodes)
 	mb.AddSentNodes(r.sm.AckList(mb.Hash))
 	mb.AddSentNodes([]identity.NodeID{r.ID()})
+	sentNodes := mb.FindSentNodes()
+	nodes := utils.PickRandomNodes(sentNodes)
+	//mb.AddSentNodes(nodes)
+	log.Debugf("[%v] the mb %x has been sent to %v before, is going to send to %v", r.ID(), mb.Hash, sentNodes, nodes)
+	if len(nodes) < config.Configuration.Fanout {
+		return nil
+	}
 	return nodes
 }
 

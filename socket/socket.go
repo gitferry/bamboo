@@ -174,6 +174,9 @@ func (s *socket) MulticastQuorum(nodes []identity.NodeID, m interface{}) {
 	//for i := 0; i < quorum; i++ {
 	//	s.Send(identity.NewNodeID(a[i]), m)
 	//}
+	if nodes == nil {
+		return
+	}
 
 	for _, id := range nodes {
 		if id == s.id {
