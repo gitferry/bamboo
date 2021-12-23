@@ -347,6 +347,7 @@ func (r *Replica) handleTxn(m message.Transaction) {
 		r.sm.AddMicroblock(mb)
 		mb.Timestamp = time.Now()
 		r.totalMicroblocks++
+		r.totalProposedMBs++
 		if config.Configuration.Gossip == false {
 			r.Broadcast(mb)
 		} else {
@@ -411,7 +412,7 @@ func (r *Replica) pickFanoutNodes(mb *blockchain.MicroBlock) []identity.NodeID {
 	mb.AddSentNodes(nodes)
 	r.mbSentNodes[mb.Hash] = mb.Bitmap
 	//mb.AddSentNodes(nodes)
-	log.Debugf("[%v] mb %x has received %v, is going to send to %v, %v hops", r.ID(), mb.Hash, sentNodes, nodes, mb.Hops)
+	//log.Debugf("[%v] mb %x has received %v, is going to send to %v, %v hops", r.ID(), mb.Hash, sentNodes, nodes, mb.Hops)
 	return nodes
 }
 
@@ -483,7 +484,6 @@ func (r *Replica) proposeBlock(view types.View) {
 	if config.Configuration.MemType == "time" {
 		r.waitUntilStable(payload)
 	}
-	r.totalProposedMBs += len(payload.MicroblockList)
 	proposal := r.Safety.MakeProposal(view, payload.GenerateHashList())
 	log.Debugf("[%v] is making a proposal for view %v, containing %v microblocks, %v left,id:%x", proposal.Proposer, proposal.View, len(proposal.HashList), r.sm.RemainingMB(), proposal.ID)
 	log.Debugf("[%v] contained microblocks are", r.ID())
