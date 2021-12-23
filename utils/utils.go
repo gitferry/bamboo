@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
+	"github.com/kelindar/bitmap"
 	"math/rand"
 	"net"
 	"reflect"
+	"strconv"
 	"time"
 
 	"github.com/gitferry/bamboo/config"
@@ -53,6 +55,16 @@ func SizeOf(v interface{}) int {
 	enc := gob.NewEncoder(&buffer)
 	enc.Encode(v)
 	return buffer.Len()
+}
+
+func BitmapToNodes(bm bitmap.Bitmap) []identity.NodeID {
+	nodes := make([]identity.NodeID, 0)
+	bm.Range(func(x uint32) {
+		nodes = append(nodes, identity.NodeID(strconv.Itoa(int(x))))
+		return
+	})
+
+	return nodes
 }
 
 func RandomPick(n int, f int) []int {

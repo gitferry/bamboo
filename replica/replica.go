@@ -6,6 +6,7 @@ import (
 	"github.com/gitferry/bamboo/crypto"
 	"github.com/gitferry/bamboo/limiter"
 	"github.com/gitferry/bamboo/utils"
+	"github.com/kelindar/bitmap"
 	"math/rand"
 	"time"
 
@@ -76,6 +77,7 @@ type Replica struct {
 	selfMBChan             chan blockchain.MicroBlock
 	otherMBChan            chan blockchain.MicroBlock
 	limiter                *limiter.Bucket
+	mbSentNodes            map[crypto.Identifier]bitmap.Bitmap
 }
 
 // NewReplica creates a new replica instance
@@ -103,6 +105,7 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 	r.missingCounts = make(map[identity.NodeID]int)
 	r.selfMBChan = make(chan blockchain.MicroBlock, 1024)
 	r.otherMBChan = make(chan blockchain.MicroBlock, 1024)
+	r.mbSentNodes = make(map[crypto.Identifier]bitmap.Bitmap)
 	r.limiter = limiter.NewBucket(time.Duration(config.Configuration.FillInterval)*time.Millisecond, int64(config.Configuration.Capacity))
 	memType := config.GetConfig().MemType
 	switch memType {
@@ -398,14 +401,17 @@ func (r *Replica) gossip() {
 }
 
 func (r *Replica) pickFanoutNodes(mb *blockchain.MicroBlock) []identity.NodeID {
+	if bm, exists := r.mbSentNodes[mb.Hash]; exists {
+		mb.AddSentNodes(utils.BitmapToNodes(bm))
+	}
 	mb.AddSentNodes(r.sm.AckList(mb.Hash))
 	mb.AddSentNodes([]identity.NodeID{r.ID()})
 	sentNodes := mb.FindSentNodes()
 	nodes := utils.PickRandomNodes(sentNodes)
+	mb.AddSentNodes(nodes)
+	r.mbSentNodes[mb.Hash] = mb.Bitmap
 	//mb.AddSentNodes(nodes)
-	if len(nodes) < config.Configuration.Fanout {
-		return nil
-	}
+	log.Debugf("[%v] mb %x has received %v, is going to send to %v, %v hops", r.ID(), mb.Hash, sentNodes, nodes, mb.Hops)
 	return nodes
 }
 
