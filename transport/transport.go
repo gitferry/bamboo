@@ -132,11 +132,17 @@ func (t *transport) Dial() error {
 }
 
 func (t *transport) SendBitsCount() int64 {
-	return int64(float64(t.totalSentBits) / time.Now().Sub(t.startSendingTime).Seconds())
+	rate := int64(float64(t.totalSentBits) / time.Now().Sub(t.startSendingTime).Seconds())
+	t.totalSentBits = 0
+	t.startSendingTime = time.Now()
+	return rate
 }
 
 func (t *transport) RecvBitsCount() int64 {
-	return int64(float64(t.totalRecvBits) / time.Now().Sub(t.startRecvTime).Seconds())
+	rate := int64(float64(t.totalRecvBits) / time.Now().Sub(t.startRecvTime).Seconds())
+	t.totalRecvBits = 0
+	t.startRecvTime = time.Now()
+	return rate
 }
 
 /******************************
