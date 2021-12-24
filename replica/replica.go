@@ -374,9 +374,6 @@ func (r *Replica) handleTxn(m message.Transaction) {
 }
 
 func (r *Replica) gossip() {
-	if r.ID().Node() <= config.Configuration.SlowNo {
-		config.Configuration.Fanout = config.Configuration.SlowFanout
-	}
 	for {
 		tt := r.limiter.Take(int64(config.Configuration.Fanout))
 		time.Sleep(tt)
@@ -395,15 +392,15 @@ func (r *Replica) gossip() {
 					break L
 				case mb := <-r.otherMBChan:
 					if !r.sm.IsStable(mb.Hash) && mb.Hops <= config.Configuration.R {
-						//if r.ID().Node() > config.Configuration.SlowNo {
-						r.MulticastQuorum(r.pickFanoutNodes(&mb), mb)
-						//	break L
-						//} else if rand.Intn(100) < config.Configuration.P {
-						//	r.MulticastQuorum(r.pickFanoutNodes(&mb), mb)
-						//	break L
-						//} else {
-						//	continue
-						//}
+						if r.ID().Node() > config.Configuration.SlowNo {
+							r.MulticastQuorum(r.pickFanoutNodes(&mb), mb)
+							break L
+						} else if rand.Intn(100) < config.Configuration.P {
+							r.MulticastQuorum(r.pickFanoutNodes(&mb), mb)
+							break L
+						} else {
+							continue
+						}
 					} else {
 						continue
 					}
@@ -576,7 +573,6 @@ func (r *Replica) ListenCommittedBlocks() {
 
 func (r *Replica) startSignal() {
 	if !r.isStarted.Load() {
-		time.Sleep(2 * time.Second)
 		r.startTime = time.Now()
 		r.tmpTime = time.Now()
 		log.Debugf("[%v] is boosting", r.ID())
