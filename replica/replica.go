@@ -174,12 +174,7 @@ func (r *Replica) HandleProposal(proposal blockchain.Proposal) {
 	}
 	r.totalBlockSize += len(proposal.HashList)
 	pendingBlock := r.sm.FillProposal(&proposal)
-	var block *blockchain.Block
-	if config.Configuration.Gossip == true && config.Configuration.MemType == "ack" {
-		block = blockchain.BuildBlock(pendingBlock.Proposal, pendingBlock.Payload)
-	} else {
-		block = pendingBlock.CompleteBlock()
-	}
+	block := pendingBlock.CompleteBlock()
 	if block != nil {
 		log.Debugf("[%v] a block is ready, view: %v, id: %x", r.ID(), proposal.View, proposal.ID)
 		r.eventChan <- *block
@@ -190,6 +185,11 @@ func (r *Replica) HandleProposal(proposal blockchain.Proposal) {
 	for _, mbid := range pendingBlock.MissingMBList() {
 		r.missingMBs[mbid] = proposal.ID
 		log.Debugf("[%v] a microblock is missing, id: %x", r.ID(), mbid)
+	}
+	if config.Configuration.Gossip == true && config.Configuration.MemType == "ack" {
+		block = blockchain.BuildBlock(pendingBlock.Proposal, pendingBlock.Payload)
+		r.eventChan <- *block
+		return
 	}
 	missingRequest := message.MissingMBRequest{
 		RequesterID:   r.ID(),
@@ -240,6 +240,9 @@ func (r *Replica) HandleMicroblock(mb blockchain.MicroBlock) {
 				log.Debugf("[%v] a block is ready, view: %v, id: %x", r.ID(), pd.Proposal.View, pd.Proposal.ID)
 				delete(r.pendingBlockMap, mb.ProposalID)
 				delete(r.missingMBs, mb.Hash)
+				if config.Configuration.Gossip == true && config.Configuration.MemType == "ack" {
+					return
+				}
 				r.eventChan <- *block
 			}
 		}
