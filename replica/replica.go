@@ -174,7 +174,12 @@ func (r *Replica) HandleProposal(proposal blockchain.Proposal) {
 	}
 	r.totalBlockSize += len(proposal.HashList)
 	pendingBlock := r.sm.FillProposal(&proposal)
-	block := pendingBlock.CompleteBlock()
+	var block *blockchain.Block
+	if config.Configuration.Gossip == true && config.Configuration.MemType == "ack" {
+		block = blockchain.BuildBlock(pendingBlock.Proposal, pendingBlock.Payload)
+	} else {
+		block = pendingBlock.CompleteBlock()
+	}
 	if block != nil {
 		log.Debugf("[%v] a block is ready, view: %v, id: %x", r.ID(), proposal.View, proposal.ID)
 		r.eventChan <- *block
