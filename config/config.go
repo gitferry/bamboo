@@ -52,6 +52,7 @@ type Config struct {
 	DefaultDelay   int             `json:"default_delay"`
 	Gossip         bool            `json:"gossip"`
 	Fanout         int             `json:"fanout"`
+	SlowFanout     int             `json:"slow_fanout"`
 	FillInterval   int             `json:"fillInterval"`
 	Capacity       int             `json:"capacity"`
 	P              int             `json:"p"`

@@ -198,7 +198,7 @@ func (r *Replica) HandleProposal(proposal blockchain.Proposal) {
 // it first checks if the relevant proposal is pending
 // if so, tries to complete the block
 func (r *Replica) HandleMicroblock(mb blockchain.MicroBlock) {
-	//r.startSignal()
+	r.startSignal()
 	// gossip
 	//if a quorum of acks is not reached, gossip the microblock
 	go func() {
@@ -341,7 +341,7 @@ func (r *Replica) handleQuery(m message.Query) {
 }
 
 func (r *Replica) handleTxn(m message.Transaction) {
-	r.startSignal()
+	//r.startSignal()
 	m.Timestamp = time.Now()
 	isbuilt, mb := r.sm.AddTxn(&m)
 	if isbuilt {
@@ -374,6 +374,9 @@ func (r *Replica) handleTxn(m message.Transaction) {
 }
 
 func (r *Replica) gossip() {
+	if r.ID().Node() <= config.Configuration.SlowNo {
+		config.Configuration.Fanout = config.Configuration.SlowFanout
+	}
 	for {
 		tt := r.limiter.Take(int64(config.Configuration.Fanout))
 		time.Sleep(tt)
@@ -392,15 +395,15 @@ func (r *Replica) gossip() {
 					break L
 				case mb := <-r.otherMBChan:
 					if !r.sm.IsStable(mb.Hash) && mb.Hops <= config.Configuration.R {
-						if r.ID().Node() > config.Configuration.SlowNo {
-							r.MulticastQuorum(r.pickFanoutNodes(&mb), mb)
-							break L
-						} else if rand.Intn(100) < config.Configuration.P {
-							r.MulticastQuorum(r.pickFanoutNodes(&mb), mb)
-							break L
-						} else {
-							continue
-						}
+						//if r.ID().Node() > config.Configuration.SlowNo {
+						r.MulticastQuorum(r.pickFanoutNodes(&mb), mb)
+						//	break L
+						//} else if rand.Intn(100) < config.Configuration.P {
+						//	r.MulticastQuorum(r.pickFanoutNodes(&mb), mb)
+						//	break L
+						//} else {
+						//	continue
+						//}
 					} else {
 						continue
 					}
@@ -573,6 +576,7 @@ func (r *Replica) ListenCommittedBlocks() {
 
 func (r *Replica) startSignal() {
 	if !r.isStarted.Load() {
+		time.Sleep(2 * time.Second)
 		r.startTime = time.Now()
 		r.tmpTime = time.Now()
 		log.Debugf("[%v] is boosting", r.ID())

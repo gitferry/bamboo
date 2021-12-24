@@ -34,6 +34,7 @@
   "mem_type": "ack",
   "gossip": true,
   "fanout": 2,
+  "slow_fanout": 1,
   "fillInterval": 1,
   "capacity": 1000,
   "p": 10,
