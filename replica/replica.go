@@ -41,43 +41,45 @@ type Replica struct {
 	eventChan       chan interface{}
 
 	/* for monitoring node statistics */
-	thrus                  string
-	lastViewTime           time.Time
-	startTime              time.Time
-	tmpTime                time.Time
-	voteStart              time.Time
-	totalCreateDuration    time.Duration
-	totalProcessDuration   time.Duration
-	totalProposeDuration   time.Duration
-	totalDisseminationTime time.Duration
-	totalDelay             time.Duration
-	totalRoundTime         time.Duration
-	totalVoteTime          time.Duration
-	totalBlockSize         int
-	totalMicroblocks       int
-	totalProposedMBs       int
-	missingMicroblocks     int
-	receivedNo             int
-	roundNo                int
-	voteNo                 int
-	totalCommittedTx       int
-	latencyNo              int
-	proposedNo             int
-	processedNo            int
-	committedNo            int
-	totalHops              int
-	totalCommittedMBs      int
-	totalRedundantMBs      int
-	totalReceivedTxs       int
-	txNoInMB               int
-	missingCounts          map[identity.NodeID]int
-	pendingBlockMap        map[crypto.Identifier]*blockchain.PendingBlock
-	missingMBs             map[crypto.Identifier]crypto.Identifier // microblock hash to proposal hash
-	receivedMBs            map[crypto.Identifier]struct{}
-	selfMBChan             chan blockchain.MicroBlock
-	otherMBChan            chan blockchain.MicroBlock
-	limiter                *limiter.Bucket
-	mbSentNodes            map[crypto.Identifier]bitmap.Bitmap
+	thrus                     string
+	lastViewTime              time.Time
+	startTime                 time.Time
+	tmpTime                   time.Time
+	voteStart                 time.Time
+	totalCreateDuration       time.Duration
+	totalProcessDuration      time.Duration
+	totalProposeDuration      time.Duration
+	totalDisseminationTime    time.Duration
+	totalDelay                time.Duration
+	totalRoundTime            time.Duration
+	totalVoteTime             time.Duration
+	totalSlowDisemminationDur time.Duration
+	totalSlowMBs              int
+	totalBlockSize            int
+	totalMicroblocks          int
+	totalProposedMBs          int
+	missingMicroblocks        int
+	receivedNo                int
+	roundNo                   int
+	voteNo                    int
+	totalCommittedTx          int
+	latencyNo                 int
+	proposedNo                int
+	processedNo               int
+	committedNo               int
+	totalHops                 int
+	totalCommittedMBs         int
+	totalRedundantMBs         int
+	totalReceivedTxs          int
+	txNoInMB                  int
+	missingCounts             map[identity.NodeID]int
+	pendingBlockMap           map[crypto.Identifier]*blockchain.PendingBlock
+	missingMBs                map[crypto.Identifier]crypto.Identifier // microblock hash to proposal hash
+	receivedMBs               map[crypto.Identifier]struct{}
+	selfMBChan                chan blockchain.MicroBlock
+	otherMBChan               chan blockchain.MicroBlock
+	limiter                   *limiter.Bucket
+	mbSentNodes               map[crypto.Identifier]bitmap.Bitmap
 }
 
 // NewReplica creates a new replica instance
@@ -213,6 +215,10 @@ func (r *Replica) HandleMicroblock(mb blockchain.MicroBlock) {
 		return
 	}
 	r.totalDisseminationTime += time.Now().Sub(mb.Timestamp)
+	if mb.Sender.Node() <= config.Configuration.SlowNo {
+		r.totalSlowDisemminationDur += time.Now().Sub(mb.Timestamp)
+		r.totalSlowMBs++
+	}
 	r.receivedMBs[mb.Hash] = struct{}{}
 	r.totalMicroblocks++
 
@@ -318,6 +324,9 @@ func (r *Replica) handleQuery(m message.Query) {
 	aveHops := float64(r.totalHops) / float64(r.totalCommittedMBs)
 	aveProposeTime := float64(r.totalProposeDuration.Milliseconds()) / float64(r.receivedNo)
 	aveDisseminationTime := float64(r.totalDisseminationTime.Milliseconds()) / float64(r.totalMicroblocks)
+	aveSlowDisseminationTime := float64(r.totalSlowDisemminationDur.Milliseconds()) / float64(r.totalSlowMBs)
+	r.totalSlowDisemminationDur = 0
+	r.totalSlowMBs = 0
 	aveVoteTime := float64(r.totalVoteTime.Milliseconds()) / float64(r.voteNo)
 	mbRate := float64(r.sm.TotalMB()) / time.Now().Sub(r.startTime).Seconds()
 	var missingCounts string
@@ -326,8 +335,8 @@ func (r *Replica) handleQuery(m message.Query) {
 	}
 	//status := fmt.Sprintf("chain status is: %s\nCommitted rate is %v.\nAve. block size is %v.\nAve. trans. delay is %v ms.\nAve. creation time is %f ms.\nAve. processing time is %v ms.\nAve. vote time is %v ms.\nRequest rate is %f txs/s.\nAve. round time is %f ms.\nLatency is %f ms.\nThroughput is %f txs/s.\n", r.Safety.GetChainStatus(), committedRate, aveBlockSize, aveTransDelay, aveCreateDuration, aveProcessTime, aveVoteProcessTime, requestRate, aveRoundTime, latency, throughput)
 	//status := fmt.Sprintf("Ave. actual proposing time is %v ms.\nAve. proposing time is %v ms.\nAve. processing time is %v ms.\nAve. vote time is %v ms.\nAve. block size is %v.\nAve. round time is %v ms.\nLatency is %v ms.\n", realAveProposeTime, aveProposeTime, aveProcessTime, aveVoteProcessTime, aveBlockSize, aveRoundTime, latency)
-	status := fmt.Sprintf("Ave. View Time: %vms\nAve. Propose Time: %vms\nAve. Dissemination Time: %vms\nAve. Creation Time: %v, a proposal contains %v microblocks\nAve. Vote Time: %vms\nAve. Tx Rate: %v\nAve. MB Rate: %v, an MB contains %v txs\nRedundant microblocks:%v\nTotal microblocks: %v, Remaining microblocks: %v\nTotal missing microblocks: %v\nTotoal proposed microblocks:%v\nAve. hops:%v\nSend Rate: %v Mbps\nRecv Rate: %v Mbps\nTotal txs: %v, Remaining txs: %v\n%sMissing counts:\n%s\n",
-		aveRoundTime, aveProposeTime, aveDisseminationTime, aveCreationTime, aveBlockSize, aveVoteTime, aveTxRate, mbRate, r.txNoInMB, r.totalRedundantMBs, r.sm.TotalMB(), r.sm.RemainingMB(), r.missingMicroblocks, r.totalProposedMBs, aveHops, r.SendRate(), r.RecvRate(), r.sm.TotalTx(), r.sm.RemainingTx(), r.thrus, missingCounts)
+	status := fmt.Sprintf("Ave. View Time: %vms\nAve. Propose Time: %vms\nAve. Dissemination Time: %vms, slow dissemination time: %v\nAve. Creation Time: %v, a proposal contains %v microblocks\nAve. Vote Time: %vms\nAve. Tx Rate: %v\nAve. MB Rate: %v, an MB contains %v txs\nRedundant microblocks:%v\nTotal microblocks: %v, Remaining microblocks: %v\nTotal missing microblocks: %v\nTotoal proposed microblocks:%v\nAve. hops:%v\nSend Rate: %v Mbps\nRecv Rate: %v Mbps\nTotal txs: %v, Remaining txs: %v\n%sMissing counts:\n%s\n",
+		aveRoundTime, aveProposeTime, aveDisseminationTime, aveSlowDisseminationTime, aveCreationTime, aveBlockSize, aveVoteTime, aveTxRate, mbRate, r.txNoInMB, r.totalRedundantMBs, r.sm.TotalMB(), r.sm.RemainingMB(), r.missingMicroblocks, r.totalProposedMBs, aveHops, r.SendRate(), r.RecvRate(), r.sm.TotalTx(), r.sm.RemainingTx(), r.thrus, missingCounts)
 	m.Reply(message.QueryReply{Info: status})
 }
 
