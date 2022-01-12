@@ -12,6 +12,7 @@ import (
 	"reflect"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/gitferry/bamboo/config"
 	"github.com/gitferry/bamboo/db"
@@ -40,6 +41,7 @@ type HTTPClient struct {
 	HTTP  map[identity.NodeID]string
 	ID    identity.NodeID // client id use the same id as servers in local site
 	N     int             // total number of nodes
+	Zipf  *rand.Zipf
 
 	CID int // command id
 	*http.Client
@@ -62,6 +64,9 @@ func NewHTTPClient() *HTTPClient {
 			delete(c.HTTP, id)
 		}
 	}
+	rand.Seed(time.Now().UTC().UnixNano())
+	r := rand.New(rand.NewSource(time.Now().UTC().UnixNano()))
+	c.Zipf = rand.NewZipf(r, config.Configuration.ZipfianS, config.Configuration.ZipfianV, uint64(len(config.Configuration.Addrs)-1))
 	return c
 }
 
@@ -83,7 +88,15 @@ func (c *HTTPClient) Put(key db.Key, value db.Value) error {
 
 func (c *HTTPClient) GetURL(key db.Key) (identity.NodeID, string) {
 	keys := reflect.ValueOf(c.HTTP).MapKeys()
-	replicaID := keys[rand.Intn(len(keys))].Interface().(identity.NodeID)
+	var replicaID identity.NodeID
+	if config.Configuration.Zipf {
+		v := c.Zipf.Uint64()
+		log.Debugf("zipf value is %v", v)
+		replicaID = keys[v].Interface().(identity.NodeID)
+	} else {
+		replicaID = keys[rand.Intn(len(keys))].Interface().(identity.NodeID)
+	}
+	log.Debugf("send tx to %v", replicaID)
 	return replicaID, c.HTTP[replicaID] + "/" + strconv.Itoa(int(key))
 }
 

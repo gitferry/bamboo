@@ -41,6 +41,9 @@
   "slow_no": 0,
   "q": 3,
   "r": 5,
+  "zipf": true,
+  "zipfian_s": 2,
+  "zipfian_v": 1,
   "benchmark": {
     "T": 1200,
     "N": 0,

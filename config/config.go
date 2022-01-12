@@ -59,6 +59,11 @@ type Config struct {
 	SlowNo         int             `json:"slow_no"`
 	Q              int             `json:"q"` // the number of acks to be considered stable
 	R              int             `json:"r"` // max hops of gossip
+	Zipf           bool            `json:"zipf"`
+
+	// zipfian distribution
+	ZipfianS float64 `json:"zipfian_s"` // zipfian s parameter
+	ZipfianV float64 `json:"zipfian_v"` // zipfian v parameter
 
 	hasher string
 	signer string
