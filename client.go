@@ -4,6 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"github.com/gitferry/bamboo/config"
+	"github.com/gitferry/bamboo/db"
+	"github.com/gitferry/bamboo/identity"
+	"github.com/gitferry/bamboo/log"
+	"github.com/gitferry/bamboo/node"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -12,13 +17,6 @@ import (
 	"reflect"
 	"strconv"
 	"sync"
-	"time"
-
-	"github.com/gitferry/bamboo/config"
-	"github.com/gitferry/bamboo/db"
-	"github.com/gitferry/bamboo/identity"
-	"github.com/gitferry/bamboo/log"
-	"github.com/gitferry/bamboo/node"
 )
 
 // Client interface provides get and put for key value store
@@ -64,8 +62,7 @@ func NewHTTPClient() *HTTPClient {
 			delete(c.HTTP, id)
 		}
 	}
-	rand.Seed(time.Now().UTC().UnixNano())
-	r := rand.New(rand.NewSource(time.Now().UTC().UnixNano()))
+	r := rand.New(rand.NewSource(1))
 	c.Zipf = rand.NewZipf(r, config.Configuration.ZipfianS, config.Configuration.ZipfianV, uint64(len(config.Configuration.Addrs)-1))
 	return c
 }
