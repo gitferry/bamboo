@@ -1,0 +1,76 @@
+Client = 10
+Ave. block size is 30.204045211183818.
+Ave. creation time is 0.105175 ms.
+Ave. processing time is 0.5980906638204513 ms.
+Ave. vote time is 0.18102929804966061 ms.
+Request rate is 4999.203451 txs/s.
+Ave. round time is 1.505678 ms.
+Latency is 9.157926 ms.
+Throughput is:
+Time: 50.785290736 s. Throughput: 19994.076799077055 txs/s
+
+Client = 20
+Ave. block size is 66.49452840020844.
+Ave. creation time is 0.120549 ms.
+Ave. processing time is 0.6025730789427621 ms.
+Ave. vote time is 0.1870834142237753 ms.
+Request rate is 9995.006926 txs/s.
+Ave. round time is 1.676090 ms.
+Latency is 10.118608 ms.
+Throughput is:
+Time: 38.303125145 s. Throughput: 40003.0500305309 txs/s
+
+Client = 30
+Ave. block size is 109.54749568221071.
+Ave. creation time is 0.135636 ms.
+Ave. processing time is 0.6080237142774916 ms.
+Ave. vote time is 0.18929550075134802 ms.
+Request rate is 14993.696358 txs/s.
+Ave. round time is 1.826258 ms.
+Latency is 11.355894 ms.
+Throughput is:
+Time: 63.45820132 s. Throughput: 59965.26732687399 txs/s
+
+Client = 40
+Ave. block size is 159.27639598089277.
+Ave. creation time is 0.154011 ms.
+Ave. processing time is 0.6159080536077342 ms.
+Ave. vote time is 0.19244965356472188 ms.
+Request rate is 19975.183725 txs/s.
+Ave. round time is 2.009751 ms.
+Latency is 12.899819 ms.
+Throughput is:
+Time: 48.439754891 s. Throughput: 79787.10706131812 txs/s
+
+Client = 50
+Ave. block size is 222.2079268292683.
+Ave. creation time is 0.172358 ms.
+Ave. processing time is 0.6248481166464156 ms.
+Ave. vote time is 0.19212738441642419 ms.
+Request rate is 24955.727188 txs/s.
+Ave. round time is 2.217851 ms.
+Latency is 16.242535 ms.
+Throughput is:
+Time: 43.80834095 s. Throughput: 100194.60211061937 txs/s
+
+Client = 60
+Ave. block size is 282.42409867172677.
+Ave. creation time is 0.194687 ms.
+Ave. processing time is 0.6147626747836012 ms.
+Ave. vote time is 0.19308291342189648 ms.
+Request rate is 29832.814006 txs/s.
+Ave. round time is 2.373205 ms.
+Latency is 21.285250 ms.
+Throughput is:
+Time: 49.899818494 s. Throughput: 121050.39514887963 txs/s
+
+Client = 65
+Ave. block size is 334.67827810818466.
+Ave. creation time is 0.214670 ms.
+Ave. processing time is 0.622803922952092 ms.
+Ave. vote time is 0.19424377938309828 ms.
+Request rate is 32949.183860 txs/s.
+Ave. round time is 2.534114 ms.
+Latency is 33.747994 ms.
+Throughput is:
+Time: 35.917278236 s. Throughput: 130398.970269514 txs/s

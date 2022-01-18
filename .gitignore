@@ -4,6 +4,7 @@
 *.dll
 *.so
 *.dylib
+*.pdf
 bin/server
 bin/client
 

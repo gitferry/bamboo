@@ -1,0 +1,18 @@
+Experiment with 15 clients:
+[0] throughput: 3931.450934, latency: 22.714409
+[1] throughput: 3935.311981, latency: 22.569005
+[2] throughput: 3927.776285, latency: 22.702344
+[3] throughput: 3912.689286, latency: 22.750586
+[4] throughput: 3943.413572, latency: 22.637993
+[5] throughput: 3920.314056, latency: 22.759690
+[6] throughput: 3917.872096, latency: 22.685353
+[7] throughput: 3929.620687, latency: 22.566278
+[8] throughput: 3933.959791, latency: 22.665695
+[9] throughput: 3945.052336, latency: 22.626619
+[10] throughput: 3921.826888, latency: 22.711652
+[11] throughput: 3931.243482, latency: 22.757968
+[12] throughput: 3943.946013, latency: 22.598013
+[13] throughput: 3934.053121, latency: 22.637344
+[14] throughput: 3917.210234, latency: 22.755594
+Total throughput: 58945.740762
+Average latency: 22.6759028667

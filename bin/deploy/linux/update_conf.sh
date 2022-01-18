@@ -2,7 +2,7 @@
 
 DEPLOY_NAME=$(jq '.auth.user' service_conf.json | sed 's/\"//g')
 DEPLOY_FILE=$(jq '.server.dir' service_conf.json | sed 's/\"//g')
-DEPLOY_IPS_FILE=$(jq '.server.ips_file' service_conf.json | sed 's/\"//g')
+DEPLOY_IPS_FILE=$(jq '.server.deploy_file' service_conf.json | sed 's/\"//g')
 
 update(){
     for line in $(cat $DEPLOY_IPS_FILE)

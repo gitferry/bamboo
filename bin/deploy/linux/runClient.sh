@@ -1,19 +1,10 @@
 #!/usr/bin/env bash
 
-N=10
-
-PID_FILE=client.pid
-
-if [ -z "${PID}" ]; then
-    echo "Process id for clients is written to location: {$PID_FILE}"
-    int=1
-    while (( $int<=$N ))
-    do
-    ./client&
-    echo $! >> ${PID_FILE}
-    let "int++"
-    done
-else
-    echo "Clients are already started in this folder."
-    exit 0
-fi
+go build ../client/
+int=1
+while (( $int<=$1 ))
+do
+./client&
+let "int++"
+done
+echo "$1 clients are started"

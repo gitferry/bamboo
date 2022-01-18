@@ -1,0 +1,65 @@
+Client = 2
+Ave. block size is 10.64438202247191.
+Ave. creation time is 0.097753 ms.
+Ave. processing time is 0.9854808164410465 ms.
+Ave. vote time is 0.15630829651448208 ms.
+Request rate is 499.999263 txs/s.
+Ave. round time is 2.657993 ms.
+Latency is 26.401478 ms.
+Throughput is:
+Time: 37.896055981 s. Throughput: 3997.0914529702036 txs/s
+
+Client = 4
+Ave. block size is 22.827759197324415.
+Ave. creation time is 0.103679 ms.
+Ave. processing time is 0.9742733699921445 ms.
+Ave. vote time is 0.15521777258111663 ms.
+Request rate is 1000.360086 txs/s.
+Ave. round time is 2.682443 ms.
+Latency is 29.139330 ms.
+Throughput is:
+Time: 13.662080694 s. Throughput: 7984.362311344087 txs/s
+
+Client = 6
+Ave. block size is 33.763813651137596.
+Ave. creation time is 0.106176 ms.
+Ave. processing time is 0.9513943184779776 ms.
+Ave. vote time is 0.15143454303629109 ms.
+Request rate is 1500.086837 txs/s.
+Ave. round time is 2.708496 ms.
+Latency is 29.435150 ms.
+Throughput is:
+Time: 20.785463539 s. Throughput: 11987.897388401136 txs/s
+
+Client = 8
+Ave. block size is 45.494288681204566.
+Ave. creation time is 0.109034 ms.
+Ave. processing time is 0.9543057996485061 ms.
+Ave. vote time is 0.15280816921954776 ms.
+Request rate is 1999.030713 txs/s.
+Ave. round time is 2.751067 ms.
+Latency is 31.274843 ms.
+Throughput is:
+Time: 21.918122623 s. Throughput: 15975.638519805183 txs/s
+
+Client = 10
+Ave. block size is 56.24822380106572.
+Ave. creation time is 0.112345 ms.
+Ave. processing time is 0.9468421929678387 ms.
+Ave. vote time is 0.1532983801549417 ms.
+Request rate is 2499.982131 txs/s.
+Ave. round time is 2.815920 ms.
+Latency is 36.802062 ms.
+Throughput is:
+Time: 50.698362503 s. Throughput: 19922.58746077451 txs/s
+
+Client = 12
+Ave. block size is 67.38215914850481.
+Ave. creation time is 0.117081 ms.
+Ave. processing time is 0.9605447371770396 ms.
+Ave. vote time is 0.15262970859985786 ms.
+Request rate is 2999.619856 txs/s.
+Ave. round time is 2.820606 ms.
+Latency is 41.478174 ms.
+Throughput is:
+Time: 44.323950002 s. Throughput: 23353.35924510047 txs/s

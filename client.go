@@ -88,8 +88,7 @@ func (c *HTTPClient) GetURL(key db.Key) (identity.NodeID, string) {
 	var replicaID identity.NodeID
 	if config.Configuration.Zipf {
 		v := c.Zipf.Uint64()
-		log.Debugf("zipf value is %v", v)
-		replicaID = keys[v].Interface().(identity.NodeID)
+		replicaID = identity.NewNodeID(int(v) + 1)
 	} else {
 		replicaID = keys[rand.Intn(len(keys))].Interface().(identity.NodeID)
 	}
