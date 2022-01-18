@@ -1,4 +1,4 @@
-#!/usr/bin
+#!/usr/bin/env bash
 
 echo "================== basic info ================="
 
@@ -14,6 +14,7 @@ echo "================== start auth ================="
 
 for line in $(cat server_auth.txt)
 do
+	{
 	echo 'auth: ' "$line"
   expect << __EOF
 	spawn ssh-copy-id $AUTH_NAME@$line
@@ -24,6 +25,8 @@ do
     eof
   }
 __EOF
+}&
 done
+wait
 
 echo "================== finished! ================="

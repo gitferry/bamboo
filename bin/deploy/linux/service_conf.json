@@ -4,7 +4,8 @@
   },
   "server": {
     "dir": "bamboo",
-    "ips_file": "public_ips.txt"
+    "ips_file": "public_ips.txt",
+    "deploy_file": "public_ips.txt"
   },
   "client": {
     "dir": "bamboo",
