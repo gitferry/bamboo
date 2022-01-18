@@ -8,10 +8,25 @@ import matplotlib.pyplot as plt
 
 def do_plot():
     f, ax = plt.subplots(2,1, figsize=(6,5))
-    replicaNo = [16, 32, 100, 200, 400]
-    xticks = [0,16, 32, 100, 200, 400, 410]
-    xticks_label = ["","16", "32", "100", "200", "400", ""]
+    replicaNo = [16, 32, 64, 128, 256]
+    xticks = [0, 16, 32, 64, 128, 256, 300]
+    xticks_label = ["","16", "32", "64", "128", "256", ""]
     thru = [
+    ('N-HS',[
+        153.2,
+        133.5,
+        94.95,
+        55.9,
+        30.4,
+    ], 'o', 'coral'),
+    ('SMP-HS',[
+        152,
+        89.2,
+    ], 'p', 'steelblue'),
+    ('S-HS',[
+        130,
+        80.1
+    ], 's', 'purple'),
     ('Tendermint',[
         154.3,
         133.4,
@@ -25,28 +40,7 @@ def do_plot():
         154.5,
         85.6,
         60.4,
-    ], 'h', 'brown'),
-    ('N-HS',[
-        153.2,
-        133.5,
-        94.95,
-        55.9,
-        30.4,
-    ], 'o', 'coral'),
-    ('BS-HS',[
-        79.8,
-        70.3,
-        32.2,
-        14.1,
-        2.2,
-    ], 'p', 'steelblue'),
-    ('S-HS',[
-        79.8,
-        70.3,
-        32.2,
-        14.1,
-        2.2,
-    ], 's', 'purple')
+    ], 'h', 'brown')
     ]
     for name, entries, style, color in thru:
         # thru = []
@@ -62,6 +56,21 @@ def do_plot():
         ax[0].set_xticklabels(xticks_label)
         ax[0].set_xticklabels(("", "", "", "", "", ""))
     lat = [
+    ('N-HS',[
+        153.2,
+        133.5,
+        94.95,
+        55.9,
+        30.4,
+    ], 'o', 'coral'),
+    ('SMP-HS',[
+        98,
+        258,
+    ], 'p', 'steelblue'),
+    ('S-HS',[
+        162,
+        320,
+    ], 's', 'purple'),
     ('Tendermint',[
         154.3,
         133.4,
@@ -75,28 +84,7 @@ def do_plot():
         154.5,
         85.6,
         60.4,
-    ], 'h', 'brown'),
-    ('N-HS',[
-        153.2,
-        133.5,
-        94.95,
-        55.9,
-        30.4,
-    ], 'o', 'coral'),
-    ('BS-HS',[
-        79.8,
-        70.3,
-        32.2,
-        14.1,
-        2.2,
-    ], 'p', 'steelblue'),
-    ('S-HS',[
-        79.8,
-        70.3,
-        32.2,
-        14.1,
-        2.2,
-    ], 's', 'purple')
+    ], 'h', 'brown')
     ]
     for name, entries, style, color in lat:
         ax[1].plot(replicaNo, entries, marker=style, color=color, mec=color, mfc='none', label='%s' % name, markersize=6)

@@ -186,7 +186,7 @@ func (r *Replica) HandleProposal(proposal blockchain.Proposal) {
 		r.missingMBs[mbid] = proposal.ID
 		log.Debugf("[%v] a microblock is missing, id: %x", r.ID(), mbid)
 	}
-	if config.Configuration.Gossip == true && config.Configuration.MemType == "ack" {
+	if config.Configuration.MemType == "ack" {
 		block = blockchain.BuildBlock(pendingBlock.Proposal, pendingBlock.Payload)
 		r.eventChan <- *block
 		return
@@ -496,6 +496,7 @@ func (r *Replica) processAcks(ack *message.Ack) {
 
 func (r *Replica) proposeBlock(view types.View) {
 	createStart := time.Now()
+	time.Sleep(time.Duration(config.Configuration.ProposeTime) * time.Millisecond)
 	payload := r.sm.GeneratePayload()
 	// if we are using time-based shared mempool, wait until all the microblocks are stable
 	if config.Configuration.MemType == "time" {

@@ -39,6 +39,7 @@ type Config struct {
 	Pprof          bool            `json:"pprof"`
 	MaxRound       int             `json:"maxRound"`
 	Strategy       string          `json:"strategy"`
+	ProposeTime    int             `json:"propose_time"`
 	PayloadSize    int             `json:"payload_size"`
 	Master         identity.NodeID `json:"master"`
 	Delay          int             `json:"delay"`   // transmission delay in ms
