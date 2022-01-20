@@ -158,8 +158,6 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 // it first checks if the referred microblocks exist in the mempool
 // and requests the missing ones
 func (r *Replica) HandleProposal(proposal blockchain.Proposal) {
-	starTime := time.Now()
-	defer log.Debugf("[%v] spent %v to handle the proposal", r.ID(), time.Now().Sub(starTime))
 	r.receivedNo++
 	r.startSignal()
 	r.totalProposeDuration += time.Now().Sub(proposal.Timestamp)
@@ -183,6 +181,9 @@ func (r *Replica) HandleProposal(proposal blockchain.Proposal) {
 	}
 	block := pendingBlock.CompleteBlock()
 	if block != nil {
+		for _, mb := range block.MicroblockList() {
+			log.Debugf("[%v] spent %v to fill a microblock", r.ID(), time.Now().Sub(mb.FutureTimestamp), mb.Hash)
+		}
 		log.Debugf("[%v] a block is ready, view: %v, id: %x", r.ID(), proposal.View, proposal.ID)
 		r.eventChan <- *block
 		return
@@ -233,7 +234,8 @@ func (r *Replica) HandleMicroblock(mb blockchain.MicroBlock) {
 	}
 	r.receivedMBs[mb.Hash] = struct{}{}
 	r.totalMicroblocks++
-	mb.Timestamp = time.Now()
+	log.Debugf("[%v] spent %v to receive a microblock, id: %v", r.ID(), time.Now().Sub(mb.Timestamp), mb.Hash)
+	mb.FutureTimestamp = time.Now()
 
 	//log.Debugf("[%v] received a microblock, id: %x", r.ID(), mb.Hash)
 	proposalID, exists := r.missingMBs[mb.Hash]
@@ -442,6 +444,7 @@ func (r *Replica) processCommittedBlock(block *blockchain.Block) {
 	r.totalCommittedMBs += len(block.MicroblockList())
 	for _, mb := range block.MicroblockList() {
 		txCount += len(mb.Txns)
+		log.Debugf("[%v] spent %v to agree on a microblock, id: %x", r.ID(), time.Now().Sub(mb.FutureTimestamp), mb.Hash)
 		for _, txn := range mb.Txns {
 			// only record the delay of transactions from the local memory pool
 			delay := time.Now().Sub(txn.Timestamp)

@@ -151,6 +151,7 @@ func (am *AckMem) AddAck(ack *blockchain.Ack) {
 		target.ackMap[ack.Receiver] = struct{}{}
 		if len(target.ackMap) >= am.threshhold {
 			if _, exists := am.stableMBs[target.microblock.Hash]; !exists {
+				log.Debugf("spent %v to stablize a microblock %x", time.Now().Sub(target.microblock.Timestamp), target.microblock.Hash)
 				am.stableMicroblocks.PushBack(target.microblock)
 				am.stableMBs[target.microblock.Hash] = struct{}{}
 				delete(am.pendingMicroblocks, ack.MicroblockID)
