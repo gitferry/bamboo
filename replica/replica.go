@@ -158,6 +158,8 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 // it first checks if the referred microblocks exist in the mempool
 // and requests the missing ones
 func (r *Replica) HandleProposal(proposal blockchain.Proposal) {
+	starTime := time.Now()
+	defer log.Debugf("[%v] spent %v to handle the proposal", r.ID(), time.Now().Sub(starTime))
 	r.receivedNo++
 	r.startSignal()
 	r.totalProposeDuration += time.Now().Sub(proposal.Timestamp)
@@ -174,13 +176,13 @@ func (r *Replica) HandleProposal(proposal blockchain.Proposal) {
 	//}
 	r.totalBlockSize += len(proposal.HashList)
 	pendingBlock := r.sm.FillProposal(&proposal)
+	if config.Configuration.MemType == "ack" {
+		if !r.verifySigs(pendingBlock.Payload.SigMap) {
+			log.Warningf("[%v] received an block %x with invalid sigs for microblocks", r.ID(), proposal.ID)
+		}
+	}
 	block := pendingBlock.CompleteBlock()
 	if block != nil {
-		if config.Configuration.MemType == "ack" {
-			if !r.verifySigs(pendingBlock.Payload.SigMap) {
-				log.Warningf("[%v] received an block %x with invalid sigs for microblocks", r.ID(), proposal.ID)
-			}
-		}
 		log.Debugf("[%v] a block is ready, view: %v, id: %x", r.ID(), proposal.View, proposal.ID)
 		r.eventChan <- *block
 		return
@@ -231,6 +233,7 @@ func (r *Replica) HandleMicroblock(mb blockchain.MicroBlock) {
 	}
 	r.receivedMBs[mb.Hash] = struct{}{}
 	r.totalMicroblocks++
+	mb.Timestamp = time.Now()
 
 	//log.Debugf("[%v] received a microblock, id: %x", r.ID(), mb.Hash)
 	proposalID, exists := r.missingMBs[mb.Hash]
