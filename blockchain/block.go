@@ -30,6 +30,7 @@ type Block struct {
 
 type Payload struct {
 	MicroblockList []*MicroBlock
+	SigMap         map[crypto.Identifier]map[identity.NodeID]crypto.Signature
 }
 
 type MicroBlock struct {
@@ -75,8 +76,11 @@ func BuildProposal(view types.View, qc *QC, prevID crypto.Identifier, payload []
 	return p
 }
 
-func NewPayload(microblockList []*MicroBlock) *Payload {
-	return &Payload{MicroblockList: microblockList}
+func NewPayload(microblockList []*MicroBlock, sigs map[crypto.Identifier]map[identity.NodeID]crypto.Signature) *Payload {
+	return &Payload{
+		MicroblockList: microblockList,
+		SigMap:         sigs,
+	}
 }
 
 func (b *Block) MicroblockList() []*MicroBlock {

@@ -32,7 +32,7 @@
   "estimate_num": 3,
   "estimate_window": 100,
   "propose_time": 100,
-  "mem_type": "naive",
+  "mem_type": "ack",
   "gossip": false,
   "fanout": 2,
   "slow_fanout": 1,

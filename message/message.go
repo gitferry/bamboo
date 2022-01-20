@@ -51,14 +51,15 @@ type MissingMBRequest struct {
 	MissingMBList []crypto.Identifier
 }
 
-type Ack struct {
-	SentTime time.Time
-	AckTime  time.Time
-	BackTime time.Time
-	Receiver identity.NodeID
-	ID       crypto.Identifier
-	Type     string
-}
+//type Ack struct {
+//SentTime time.Time
+//AckTime  time.Time
+//BackTime time.Time
+//Receiver identity.NodeID
+//Sig      crypto.Signature
+//ID       crypto.Identifier
+//Type     string
+//}
 
 // ReadReply cid and value of reading key
 type ReadReply struct {

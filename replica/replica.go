@@ -29,9 +29,9 @@ type Replica struct {
 	node.Node
 	Safety
 	election.Election
-	sm              mempool.SharedMempool
-	pm              *pacemaker.Pacemaker
-	estimator       *Estimator
+	sm mempool.SharedMempool
+	pm *pacemaker.Pacemaker
+	//estimator       *Estimator
 	start           chan bool // signal to start the node
 	isStarted       atomic.Bool
 	isByz           bool
@@ -96,7 +96,7 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 	}
 	r.isByz = isByz
 	r.pm = pacemaker.NewPacemaker(config.GetConfig().N())
-	r.estimator = NewEstimator()
+	//r.estimator = NewEstimator()
 	r.start = make(chan bool)
 	r.eventChan = make(chan interface{})
 	r.committedBlocks = make(chan *blockchain.Block, 100)
@@ -125,14 +125,14 @@ func NewReplica(id identity.NodeID, alg string, isByz bool) *Replica {
 	r.Register(message.Transaction{}, r.handleTxn)
 	r.Register(message.Query{}, r.handleQuery)
 	r.Register(message.MissingMBRequest{}, r.HandleMissingMBRequest)
-	r.Register(message.Ack{}, r.HandleAck)
+	r.Register(blockchain.Ack{}, r.HandleAck)
 	gob.Register(blockchain.Proposal{})
 	gob.Register(blockchain.MicroBlock{})
 	gob.Register(blockchain.Vote{})
 	gob.Register(pacemaker.TC{})
 	gob.Register(pacemaker.TMO{})
 	gob.Register(message.MissingMBRequest{})
-	gob.Register(message.Ack{})
+	gob.Register(blockchain.Ack{})
 
 	// Is there a better way to reduce the number of parameters?
 	switch alg {
@@ -162,20 +162,25 @@ func (r *Replica) HandleProposal(proposal blockchain.Proposal) {
 	r.startSignal()
 	r.totalProposeDuration += time.Now().Sub(proposal.Timestamp)
 	log.Debugf("[%v] received a proposal from %v, containing %v microblocks, view is %v, id: %x, prevID: %x", r.ID(), proposal.Proposer, len(proposal.HashList), proposal.View, proposal.ID, proposal.PrevID)
-	if config.Configuration.MemType == "time" {
-		ack := message.Ack{
-			SentTime: proposal.Timestamp,
-			AckTime:  time.Now(),
-			Receiver: r.ID(),
-			ID:       proposal.ID,
-			Type:     "p",
-		}
-		r.Send(proposal.Proposer, ack)
-	}
+	//if config.Configuration.MemType == "time" {
+	//	ack := message.Ack{
+	//		SentTime: proposal.Timestamp,
+	//		AckTime:  time.Now(),
+	//		Receiver: r.ID(),
+	//		ID:       proposal.ID,
+	//		Type:     "p",
+	//	}
+	//	r.Send(proposal.Proposer, ack)
+	//}
 	r.totalBlockSize += len(proposal.HashList)
 	pendingBlock := r.sm.FillProposal(&proposal)
 	block := pendingBlock.CompleteBlock()
 	if block != nil {
+		if config.Configuration.MemType == "ack" {
+			if !r.verifySigs(pendingBlock.Payload.SigMap) {
+				log.Warningf("[%v] received an block %x with invalid sigs for microblocks", r.ID(), proposal.ID)
+			}
+		}
 		log.Debugf("[%v] a block is ready, view: %v, id: %x", r.ID(), proposal.View, proposal.ID)
 		r.eventChan <- *block
 		return
@@ -252,19 +257,13 @@ func (r *Replica) HandleMicroblock(mb blockchain.MicroBlock) {
 			log.Errorf("[%v] can not add a microblock, id: %x", r.ID(), mb.Hash)
 		}
 		// ack
-		if !mb.IsRequested && (config.Configuration.MemType == "time" || config.Configuration.MemType == "ack") {
-			ack := message.Ack{
-				SentTime: mb.Timestamp,
-				AckTime:  time.Now(),
-				Receiver: r.ID(),
-				ID:       mb.Hash,
-				Type:     "mb",
-			}
-			if config.Configuration.MemType == "time" {
-				r.Send(mb.Sender, ack)
-			} else {
-				r.Broadcast(ack)
-			}
+		if !mb.IsRequested && config.Configuration.MemType == "ack" {
+			//if config.Configuration.MemType == "time" {
+			//	r.Send(mb.Sender, ack)
+			//} else {
+			//	r.Broadcast(ack)
+			//}
+			r.Send(mb.Sender, blockchain.MakeAck(r.ID(), mb.Hash))
 		}
 	}
 }
@@ -303,7 +302,7 @@ func (r *Replica) HandleTmo(tmo pacemaker.TMO) {
 	r.eventChan <- tmo
 }
 
-func (r *Replica) HandleAck(ack message.Ack) {
+func (r *Replica) HandleAck(ack blockchain.Ack) {
 	//log.Debugf("[%v] received an ack message, type: %v, id: %x", r.ID(), ack.Type, ack.ID)
 	//r.eventChan <- ack
 	r.processAcks(&ack)
@@ -353,12 +352,12 @@ func (r *Replica) handleTxn(m message.Transaction) {
 	m.Timestamp = time.Now()
 	isbuilt, mb := r.sm.AddTxn(&m)
 	if isbuilt {
-		if config.Configuration.MemType == "time" {
-			stableTime := r.estimator.PredictStableTime("mb")
-			//stableTime := time.Duration(0)
-			//log.Debugf("[%v] stable time for a microblock is %v", r.ID(), stableTime)
-			mb.FutureTimestamp = time.Now().Add(stableTime)
-		}
+		//if config.Configuration.MemType == "time" {
+		//	stableTime := r.estimator.PredictStableTime("mb")
+		//stableTime := time.Duration(0)
+		//log.Debugf("[%v] stable time for a microblock is %v", r.ID(), stableTime)
+		//	mb.FutureTimestamp = time.Now().Add(stableTime)
+		//}
 		r.txNoInMB = len(mb.Txns)
 		mb.Sender = r.ID()
 		r.sm.AddMicroblock(mb)
@@ -476,20 +475,31 @@ func (r *Replica) processNewView(newView types.View) {
 	r.proposeBlock(newView)
 }
 
-func (r *Replica) processAcks(ack *message.Ack) {
-	if config.Configuration.MemType == "time" {
-		r.estimator.AddAck(ack)
-	} else if config.Configuration.MemType == "ack" {
+func (r *Replica) processAcks(ack *blockchain.Ack) {
+	//if config.Configuration.MemType == "time" {
+	//	r.estimator.AddAck(ack)
+	if config.Configuration.MemType == "ack" {
+		if ack.Receiver != r.ID() {
+			voteIsVerified, err := crypto.PubVerify(ack.Signature, crypto.IDToByte(ack.MicroblockID), ack.Receiver)
+			if err != nil {
+				log.Warningf("[%v] Error in verifying the signature in ack id: %x", r.ID(), ack.MicroblockID)
+				return
+			}
+			if !voteIsVerified {
+				log.Warningf("[%v] received an ack with invalid signature. vote id: %x", r.ID(), ack.MicroblockID)
+				return
+			}
+		}
 		r.sm.AddAck(ack)
-		found, _ := r.sm.FindMicroblock(ack.ID)
-		if !found && r.sm.IsStable(ack.ID) {
+		found, _ := r.sm.FindMicroblock(ack.MicroblockID)
+		if !found && r.sm.IsStable(ack.MicroblockID) {
 			missingRequest := message.MissingMBRequest{
 				RequesterID:   r.ID(),
-				MissingMBList: []crypto.Identifier{ack.ID},
+				MissingMBList: []crypto.Identifier{ack.MicroblockID},
 			}
 			r.Send(ack.Receiver, missingRequest)
 			log.Debugf("[%v] has received enough acks, but not received the microblock id: %x, fetch from %v",
-				r.ID(), ack.ID, ack.Receiver)
+				r.ID(), ack.MicroblockID, ack.Receiver)
 		}
 	}
 }
@@ -499,9 +509,9 @@ func (r *Replica) proposeBlock(view types.View) {
 	time.Sleep(time.Duration(config.Configuration.ProposeTime) * time.Millisecond)
 	payload := r.sm.GeneratePayload()
 	// if we are using time-based shared mempool, wait until all the microblocks are stable
-	if config.Configuration.MemType == "time" {
-		r.waitUntilStable(payload)
-	}
+	//if config.Configuration.MemType == "time" {
+	//	r.waitUntilStable(payload)
+	//}
 	proposal := r.Safety.MakeProposal(view, payload.GenerateHashList())
 	log.Debugf("[%v] is making a proposal for view %v, containing %v microblocks, %v left,id:%x", proposal.Proposer, proposal.View, len(proposal.HashList), r.sm.RemainingMB(), proposal.ID)
 	log.Debugf("[%v] contained microblocks are", r.ID())
@@ -520,23 +530,40 @@ func (r *Replica) proposeBlock(view types.View) {
 	r.voteStart = time.Now()
 }
 
-func (r *Replica) waitUntilStable(payload *blockchain.Payload) {
-	lastItem := payload.LastItem()
-	if lastItem == nil {
-		return
+func (r *Replica) verifySigs(sigMap map[crypto.Identifier]map[identity.NodeID]crypto.Signature) bool {
+	for mbID, sigs := range sigMap {
+		for id, sig := range sigs {
+			voteIsVerified, err := crypto.PubVerify(sig, crypto.IDToByte(mbID), id)
+			if err != nil {
+				log.Warningf("[%v] Error in verifying the signature in ack id: %x", r.ID(), mbID)
+				return false
+			}
+			if !voteIsVerified {
+				log.Warningf("[%v] received an ack with invalid signature. vote id: %x", r.ID(), mbID)
+				return false
+			}
+		}
 	}
-	stableTime := r.estimator.PredictStableTime("p")
-	//stableTime := time.Duration(0)
-	wait := lastItem.FutureTimestamp.Sub(time.Now()) - stableTime
-	//log.Debugf("[%v] stable time for a proposal is %v", r.ID(), stableTime)
-	if stableTime < 0 {
-		log.Errorf("[%v] stable time for proposal is less than 0")
-	}
-	if wait > 0 {
-		log.Debugf("[%v] wait for %v until the contained microblocks are stable", r.ID(), wait)
-		time.Sleep(wait)
-	}
+	return true
 }
+
+//func (r *Replica) waitUntilStable(payload *blockchain.Payload) {
+//	lastItem := payload.LastItem()
+//	if lastItem == nil {
+//		return
+//	}
+//	stableTime := r.estimator.PredictStableTime("p")
+//	//stableTime := time.Duration(0)
+//	wait := lastItem.FutureTimestamp.Sub(time.Now()) - stableTime
+//	//log.Debugf("[%v] stable time for a proposal is %v", r.ID(), stableTime)
+//	if stableTime < 0 {
+//		log.Errorf("[%v] stable time for proposal is less than 0")
+//	}
+//	if wait > 0 {
+//		log.Debugf("[%v] wait for %v until the contained microblocks are stable", r.ID(), wait)
+//		time.Sleep(wait)
+//	}
+//}
 
 // ListenLocalEvent listens new view and timeout events
 func (r *Replica) ListenLocalEvent() {

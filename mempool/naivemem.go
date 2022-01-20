@@ -122,7 +122,7 @@ func (nm *NaiveMem) GeneratePayload() *blockchain.Payload {
 		microblockList = append(microblockList, mb)
 	}
 
-	return blockchain.NewPayload(microblockList)
+	return blockchain.NewPayload(microblockList, nil)
 }
 
 // CheckExistence checks if the referred microblocks in the proposal exists
@@ -200,7 +200,7 @@ func (nm *NaiveMem) RemainingMB() int64 {
 	return int64(nm.microblocks.Len())
 }
 
-func (nm *NaiveMem) AddAck(ack *message.Ack) {
+func (nm *NaiveMem) AddAck(ack *blockchain.Ack) {
 }
 
 func (nm *NaiveMem) AckList(id crypto.Identifier) []identity.NodeID {

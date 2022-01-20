@@ -16,11 +16,11 @@ type AckMem struct {
 	txnList            *list.List
 	microblockMap      map[crypto.Identifier]*blockchain.MicroBlock
 	pendingMicroblocks map[crypto.Identifier]*PendingMicroblock
-	ackBuffer          map[crypto.Identifier][]identity.NodeID //number of the ack received before mb arrived
-	stableMBs          map[crypto.Identifier]struct{}          //keeps track of stable microblocks
-	bsize              int                                     // number of microblocks in a proposal
-	msize              int                                     // byte size of transactions in a microblock
-	memsize            int                                     // number of microblocks in mempool
+	ackBuffer          map[crypto.Identifier]map[identity.NodeID]crypto.Signature //number of the ack received before mb arrived
+	stableMBs          map[crypto.Identifier]struct{}                             //keeps track of stable microblocks
+	bsize              int                                                        // number of microblocks in a proposal
+	msize              int                                                        // byte size of transactions in a microblock
+	memsize            int                                                        // number of microblocks in mempool
 	currSize           int
 	threshhold         int // number of acks needed for a stable microblock
 	totalTx            int64
@@ -42,7 +42,7 @@ func NewAckMem() *AckMem {
 		stableMicroblocks:  list.New(),
 		microblockMap:      make(map[crypto.Identifier]*blockchain.MicroBlock),
 		pendingMicroblocks: make(map[crypto.Identifier]*PendingMicroblock),
-		ackBuffer:          make(map[crypto.Identifier][]identity.NodeID),
+		ackBuffer:          make(map[crypto.Identifier]map[identity.NodeID]crypto.Signature),
 		stableMBs:          make(map[crypto.Identifier]struct{}),
 		currSize:           0,
 		txnList:            list.New(),
@@ -118,9 +118,9 @@ func (am *AckMem) AddMicroblock(mb *blockchain.MicroBlock) error {
 	buffer, received := am.ackBuffer[mb.Hash]
 	if received {
 		// if so, add these ack to the pendingblocks
-		for _, ack := range buffer {
+		for id, _ := range buffer {
 			//am.pendingMicroblocks[mb.Hash].ackMap[ack] = struct{}{}
-			pm.ackMap[ack] = struct{}{}
+			pm.ackMap[id] = struct{}{}
 		}
 		if len(pm.ackMap) >= am.threshhold {
 			if _, exists = am.stableMBs[mb.Hash]; !exists {
@@ -139,10 +139,10 @@ func (am *AckMem) AddMicroblock(mb *blockchain.MicroBlock) error {
 }
 
 // AddAck adds an ack and push a microblock into the stableMicroblocks queue if it receives enough acks
-func (am *AckMem) AddAck(ack *message.Ack) {
+func (am *AckMem) AddAck(ack *blockchain.Ack) {
 	am.mu.Lock()
 	defer am.mu.Unlock()
-	target, received := am.pendingMicroblocks[ack.ID]
+	target, received := am.pendingMicroblocks[ack.MicroblockID]
 	//check if the ack arrives before the microblock
 	if received {
 		target.ackMap[ack.Receiver] = struct{}{}
@@ -150,18 +150,19 @@ func (am *AckMem) AddAck(ack *message.Ack) {
 			if _, exists := am.stableMBs[target.microblock.Hash]; !exists {
 				am.stableMicroblocks.PushBack(target.microblock)
 				am.stableMBs[target.microblock.Hash] = struct{}{}
-				delete(am.pendingMicroblocks, ack.ID)
+				delete(am.pendingMicroblocks, ack.MicroblockID)
 			}
 		}
 	} else {
 		//ack arrives before microblock, record the number of ack received before microblock
 		//let the addMicroblock do the rest.
-		buffer, exist := am.ackBuffer[ack.ID]
+		_, exist := am.ackBuffer[ack.MicroblockID]
 		if exist {
-			am.ackBuffer[ack.ID] = append(buffer, ack.Receiver)
+			am.ackBuffer[ack.MicroblockID][ack.Receiver] = ack.Signature
 		} else {
-			temp := make([]identity.NodeID, 0)
-			am.ackBuffer[ack.ID] = append(temp, ack.Receiver)
+			temp := make(map[identity.NodeID]crypto.Signature, 0)
+			temp[ack.Receiver] = ack.Signature
+			am.ackBuffer[ack.MicroblockID] = temp
 		}
 	}
 }
@@ -172,6 +173,7 @@ func (am *AckMem) GeneratePayload() *blockchain.Payload {
 	var batchSize int
 	am.mu.Lock()
 	defer am.mu.Unlock()
+	sigMap := make(map[crypto.Identifier]map[identity.NodeID]crypto.Signature, 0)
 
 	if am.stableMicroblocks.Len() >= am.bsize {
 		batchSize = am.bsize
@@ -187,9 +189,20 @@ func (am *AckMem) GeneratePayload() *blockchain.Payload {
 		}
 		//log.Debugf("microblock id: %x is deleted from mempool when proposing", mb.Hash)
 		microblockList = append(microblockList, mb)
+
+		sigs := make(map[identity.NodeID]crypto.Signature, 0)
+		count := 0
+		for id, sig := range am.ackBuffer[mb.Hash] {
+			count++
+			sigs[id] = sig
+			if count == config.Configuration.Q {
+				break
+			}
+		}
+		sigMap[mb.Hash] = sigs
 	}
 
-	return blockchain.NewPayload(microblockList)
+	return blockchain.NewPayload(microblockList, sigMap)
 }
 
 // CheckExistence checks if the referred microblocks in the proposal exists

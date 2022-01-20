@@ -111,7 +111,7 @@ func (tm *Timemem) GeneratePayload() *blockchain.Payload {
 		}
 		microblockList = append(microblockList, mb.(*blockchain.MicroBlock))
 	}
-	return blockchain.NewPayload(microblockList)
+	return blockchain.NewPayload(microblockList, nil)
 }
 
 // CheckExistence checks if the referred microblocks in the proposal exists
@@ -165,7 +165,7 @@ func (tm *Timemem) IsStable(id crypto.Identifier) bool {
 	return false
 }
 
-func (tm *Timemem) AddAck(ack *message.Ack) {
+func (tm *Timemem) AddAck(ack *blockchain.Ack) {
 }
 
 func (tm *Timemem) AckList(id crypto.Identifier) []identity.NodeID {

@@ -18,6 +18,12 @@ type Vote struct {
 	crypto.Signature
 }
 
+type Ack struct {
+	Receiver     identity.NodeID
+	MicroblockID crypto.Identifier
+	crypto.Signature
+}
+
 type QC struct {
 	Leader  identity.NodeID
 	View    types.View
@@ -30,6 +36,19 @@ type QC struct {
 type Quorum struct {
 	total int
 	votes map[crypto.Identifier]map[identity.NodeID]*Vote
+}
+
+func MakeAck(receiver identity.NodeID, id crypto.Identifier) *Ack {
+	sig, err := crypto.PrivSign(crypto.IDToByte(id), receiver, nil)
+	if err != nil {
+		log.Fatalf("[%v] has an error when signing an ack", receiver)
+		return nil
+	}
+	return &Ack{
+		Receiver:     receiver,
+		MicroblockID: id,
+		Signature:    sig,
+	}
 }
 
 func MakeVote(view types.View, voter identity.NodeID, id crypto.Identifier) *Vote {
