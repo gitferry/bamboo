@@ -173,7 +173,9 @@ func (r *Replica) HandleProposal(proposal blockchain.Proposal) {
 	//	r.Send(proposal.Proposer, ack)
 	//}
 	r.totalBlockSize += len(proposal.HashList)
+	startTime := time.Now()
 	pendingBlock := r.sm.FillProposal(&proposal)
+	log.Debugf("[%v] spent %v to fill a proposal %x", r.ID(), time.Now().Sub(startTime), proposal.ID)
 	if config.Configuration.MemType == "ack" {
 		if !r.verifySigs(pendingBlock.Payload.SigMap) {
 			log.Warningf("[%v] received an block %x with invalid sigs for microblocks", r.ID(), proposal.ID)
@@ -181,9 +183,6 @@ func (r *Replica) HandleProposal(proposal blockchain.Proposal) {
 	}
 	block := pendingBlock.CompleteBlock()
 	if block != nil {
-		for _, mb := range block.MicroblockList() {
-			log.Debugf("[%v] spent %v to fill a microblock", r.ID(), time.Now().Sub(mb.FutureTimestamp), mb.Hash)
-		}
 		log.Debugf("[%v] a block is ready, view: %v, id: %x", r.ID(), proposal.View, proposal.ID)
 		r.eventChan <- *block
 		return
@@ -444,7 +443,6 @@ func (r *Replica) processCommittedBlock(block *blockchain.Block) {
 	r.totalCommittedMBs += len(block.MicroblockList())
 	for _, mb := range block.MicroblockList() {
 		txCount += len(mb.Txns)
-		log.Debugf("[%v] spent %v to agree on a microblock, id: %x", r.ID(), time.Now().Sub(mb.FutureTimestamp), mb.Hash)
 		for _, txn := range mb.Txns {
 			// only record the delay of transactions from the local memory pool
 			delay := time.Now().Sub(txn.Timestamp)
