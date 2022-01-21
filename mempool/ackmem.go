@@ -53,14 +53,14 @@ func NewAckMem() *AckMem {
 // then the contained transactions should be deleted
 func (am *AckMem) AddTxn(txn *message.Transaction) (bool, *blockchain.MicroBlock) {
 	// mempool is full
-	//if am.RemainingTx() >= int64(am.memsize) {
-	//	//log.Warningf("mempool's tx list is full")
-	//	return false, nil
-	//}
-	//if am.RemainingMB() >= int64(am.memsize) {
-	//	//log.Warningf("mempool's mb is full")
-	//	return false, nil
-	//}
+	if am.RemainingTx() >= int64(am.memsize) {
+		//log.Warningf("mempool's tx list is full")
+		return false, nil
+	}
+	if am.RemainingMB() >= int64(am.memsize) {
+		//log.Warningf("mempool's mb is full")
+		return false, nil
+	}
 	am.totalTx++
 
 	// get the size of the structure. txn is the pointer.
