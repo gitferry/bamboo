@@ -14,7 +14,6 @@ import (
 	"math/rand"
 	"net/http"
 	"net/http/httputil"
-	"reflect"
 	"strconv"
 	"sync"
 )
@@ -35,11 +34,11 @@ type AdminClient interface {
 
 // HTTPClient implements Client interface with REST API
 type HTTPClient struct {
-	Addrs map[identity.NodeID]string
-	HTTP  map[identity.NodeID]string
-	ID    identity.NodeID // client id use the same id as servers in local site
-	N     int             // total number of nodes
-	Zipf  *rand.Zipf
+	HTTP map[identity.NodeID]string
+	ID   identity.NodeID // client id use the same id as servers in local site
+	N    int             // total number of nodes
+	Zipf *rand.Zipf
+	ids  []identity.NodeID
 
 	CID int // command id
 	*http.Client
@@ -49,7 +48,6 @@ type HTTPClient struct {
 func NewHTTPClient() *HTTPClient {
 	c := &HTTPClient{
 		N:      len(config.Configuration.Addrs),
-		Addrs:  config.Configuration.Addrs,
 		HTTP:   config.Configuration.HTTPAddrs,
 		Client: &http.Client{},
 	}
@@ -58,12 +56,20 @@ func NewHTTPClient() *HTTPClient {
 	if config.GetConfig().Strategy == "silence" {
 		for i := 1; i <= bzn; i++ {
 			id := identity.NewNodeID(i)
-			delete(c.Addrs, id)
 			delete(c.HTTP, id)
 		}
 	}
+	c.ids = make([]identity.NodeID, c.N)
+	for i := 0; i < c.N; i++ {
+		c.ids[i] = identity.NewNodeID(i + 1)
+	}
+	if config.GetConfig().Master != "0" {
+		delete(c.HTTP, config.GetConfig().Master)
+		masterIndex := config.GetConfig().Master.Node() - 1
+		c.ids = append(c.ids[:masterIndex], c.ids[masterIndex+1:]...)
+	}
 	r := rand.New(rand.NewSource(1))
-	c.Zipf = rand.NewZipf(r, config.Configuration.ZipfianS, config.Configuration.ZipfianV, uint64(len(config.Configuration.Addrs)-1))
+	c.Zipf = rand.NewZipf(r, config.Configuration.ZipfianS, config.Configuration.ZipfianV, uint64(len(c.ids)-1))
 	return c
 }
 
@@ -84,13 +90,12 @@ func (c *HTTPClient) Put(key db.Key, value db.Value) error {
 }
 
 func (c *HTTPClient) GetURL(key db.Key) (identity.NodeID, string) {
-	keys := reflect.ValueOf(c.HTTP).MapKeys()
 	var replicaID identity.NodeID
 	if config.Configuration.Zipf {
 		v := c.Zipf.Uint64()
-		replicaID = identity.NewNodeID(int(v) + 1)
+		replicaID = c.ids[v]
 	} else {
-		replicaID = keys[rand.Intn(len(keys))].Interface().(identity.NodeID)
+		replicaID = c.ids[rand.Intn(len(c.ids))]
 	}
 	log.Debugf("send tx to %v", replicaID)
 	return replicaID, c.HTTP[replicaID] + "/" + strconv.Itoa(int(key))

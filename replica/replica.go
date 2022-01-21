@@ -173,9 +173,7 @@ func (r *Replica) HandleProposal(proposal blockchain.Proposal) {
 	//	r.Send(proposal.Proposer, ack)
 	//}
 	r.totalBlockSize += len(proposal.HashList)
-	startTime := time.Now()
 	pendingBlock := r.sm.FillProposal(&proposal)
-	log.Debugf("[%v] spent %v to fill a proposal %x", r.ID(), time.Now().Sub(startTime), proposal.ID)
 	if config.Configuration.MemType == "ack" {
 		if !r.verifySigs(pendingBlock.Payload.SigMap) {
 			log.Warningf("[%v] received an block %x with invalid sigs for microblocks", r.ID(), proposal.ID)
@@ -226,6 +224,7 @@ func (r *Replica) HandleMicroblock(mb blockchain.MicroBlock) {
 		r.totalRedundantMBs++
 		return
 	}
+	defer r.kickOff()
 	r.totalDisseminationTime += time.Now().Sub(mb.Timestamp)
 	if mb.Sender.Node() <= config.Configuration.SlowNo {
 		r.totalSlowDisemminationDur += time.Now().Sub(mb.Timestamp)
@@ -233,7 +232,6 @@ func (r *Replica) HandleMicroblock(mb blockchain.MicroBlock) {
 	}
 	r.receivedMBs[mb.Hash] = struct{}{}
 	r.totalMicroblocks++
-	log.Debugf("[%v] spent %v to receive a microblock, id: %v", r.ID(), time.Now().Sub(mb.Timestamp), mb.Hash)
 	mb.FutureTimestamp = time.Now()
 
 	//log.Debugf("[%v] received a microblock, id: %x", r.ID(), mb.Hash)
@@ -267,7 +265,13 @@ func (r *Replica) HandleMicroblock(mb blockchain.MicroBlock) {
 			//} else {
 			//	r.Broadcast(ack)
 			//}
-			r.Send(mb.Sender, blockchain.MakeAck(r.ID(), mb.Hash))
+			leader := r.GetCurrentLeader()
+			ack := blockchain.MakeAck(r.ID(), mb.Hash)
+			if leader != r.ID() {
+				r.Send(leader, blockchain.MakeAck(r.ID(), mb.Hash))
+			} else {
+				r.HandleAck(*ack)
+			}
 		}
 	}
 }
@@ -288,27 +292,28 @@ func (r *Replica) HandleMissingMBRequest(mbr message.MissingMBRequest) {
 }
 
 func (r *Replica) HandleVote(vote blockchain.Vote) {
+	log.Debugf("[%v] received a vote frm %v, blockID is %x", r.ID(), vote.Voter, vote.BlockID)
 	if vote.View < r.pm.GetCurView() {
+		//log.Warningf("[%v] received a vote has lower view", r.ID())
 		return
 	}
 	r.totalVoteTime += time.Now().Sub(vote.Timestamp)
 	r.voteNo++
-	r.startSignal()
-	log.Debugf("[%v] received a vote frm %v, blockID is %x", r.ID(), vote.Voter, vote.BlockID)
+	//r.startSignal()
+	//log.Debugf("[%v] received a vote frm %v, blockID is %x", r.ID(), vote.Voter, vote.BlockID)
 	r.eventChan <- vote
 }
 
 func (r *Replica) HandleTmo(tmo pacemaker.TMO) {
+	log.Debugf("[%v] received a timeout from %v for view %v", r.ID(), tmo.NodeID, tmo.View)
 	if tmo.View < r.pm.GetCurView() {
 		return
 	}
-	log.Debugf("[%v] received a timeout from %v for view %v", r.ID(), tmo.NodeID, tmo.View)
 	r.eventChan <- tmo
 }
 
 func (r *Replica) HandleAck(ack blockchain.Ack) {
-	//log.Debugf("[%v] received an ack message, type: %v, id: %x", r.ID(), ack.Type, ack.ID)
-	//r.eventChan <- ack
+	log.Debugf("[%v] received an ack message form %v, id: %x", r.ID(), ack.Receiver, ack.MicroblockID)
 	r.processAcks(&ack)
 }
 
@@ -352,7 +357,7 @@ func (r *Replica) handleQuery(m message.Query) {
 }
 
 func (r *Replica) handleTxn(m message.Transaction) {
-	//r.startSignal()
+	r.startSignal()
 	m.Timestamp = time.Now()
 	isbuilt, mb := r.sm.AddTxn(&m)
 	if isbuilt {
@@ -377,6 +382,10 @@ func (r *Replica) handleTxn(m message.Transaction) {
 			//r.MulticastQuorum(r.pickFanoutNodes(mb), mb)
 		}
 	}
+	r.kickOff()
+}
+
+func (r *Replica) kickOff() {
 	// the first leader kicks off the protocol
 	if r.pm.GetCurView() == 0 && r.IsLeader(r.ID(), 1) {
 		log.Debugf("[%v] is going to kick off the protocol", r.ID())
@@ -510,7 +519,7 @@ func (r *Replica) processAcks(ack *blockchain.Ack) {
 
 func (r *Replica) proposeBlock(view types.View) {
 	createStart := time.Now()
-	time.Sleep(time.Duration(config.Configuration.ProposeTime) * time.Millisecond)
+	//time.Sleep(time.Duration(config.Configuration.ProposeTime) * time.Millisecond)
 	payload := r.sm.GeneratePayload()
 	// if we are using time-based shared mempool, wait until all the microblocks are stable
 	//if config.Configuration.MemType == "time" {
@@ -518,10 +527,10 @@ func (r *Replica) proposeBlock(view types.View) {
 	//}
 	proposal := r.Safety.MakeProposal(view, payload.GenerateHashList())
 	log.Debugf("[%v] is making a proposal for view %v, containing %v microblocks, %v left,id:%x", proposal.Proposer, proposal.View, len(proposal.HashList), r.sm.RemainingMB(), proposal.ID)
-	log.Debugf("[%v] contained microblocks are", r.ID())
-	for _, id := range proposal.HashList {
-		log.Debugf("[%v] id: %x", r.ID(), id)
-	}
+	//log.Debugf("[%v] contained microblocks are", r.ID())
+	//for _, id := range proposal.HashList {
+	//	log.Debugf("[%v] id: %x", r.ID(), id)
+	//}
 	r.totalBlockSize += len(proposal.HashList)
 	r.proposedNo++
 	createEnd := time.Now()
@@ -568,6 +577,10 @@ func (r *Replica) verifySigs(sigMap map[crypto.Identifier]map[identity.NodeID]cr
 //		time.Sleep(wait)
 //	}
 //}
+
+func (r *Replica) GetCurrentLeader() identity.NodeID {
+	return r.Election.FindLeaderFor(r.pm.GetCurView())
+}
 
 // ListenLocalEvent listens new view and timeout events
 func (r *Replica) ListenLocalEvent() {

@@ -6,11 +6,9 @@ import (
 	"github.com/gitferry/bamboo/config"
 	"github.com/gitferry/bamboo/crypto"
 	"github.com/gitferry/bamboo/identity"
-	"github.com/gitferry/bamboo/log"
 	"github.com/gitferry/bamboo/message"
 	"github.com/gitferry/bamboo/utils"
 	"sync"
-	"time"
 )
 
 type AckMem struct {
@@ -126,7 +124,6 @@ func (am *AckMem) AddMicroblock(mb *blockchain.MicroBlock) error {
 		}
 		if len(pm.ackMap) >= am.threshhold {
 			if _, exists = am.stableMBs[mb.Hash]; !exists {
-				log.Debugf("spent %v to stablize a microblock %x", time.Now().Sub(mb.Timestamp), mb.Hash)
 				am.stableMicroblocks.PushBack(mb)
 				am.stableMBs[mb.Hash] = struct{}{}
 				delete(am.pendingMicroblocks, mb.Hash)
@@ -151,7 +148,6 @@ func (am *AckMem) AddAck(ack *blockchain.Ack) {
 		target.ackMap[ack.Receiver] = struct{}{}
 		if len(target.ackMap) >= am.threshhold {
 			if _, exists := am.stableMBs[target.microblock.Hash]; !exists {
-				log.Debugf("spent %v to stablize a microblock %x", time.Now().Sub(target.microblock.Timestamp), target.microblock.Hash)
 				am.stableMicroblocks.PushBack(target.microblock)
 				am.stableMBs[target.microblock.Hash] = struct{}{}
 				delete(am.pendingMicroblocks, ack.MicroblockID)
