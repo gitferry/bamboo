@@ -11,39 +11,28 @@ plt.rc('xtick', labelsize=BIGGER_SIZE)    # fontsize of the tick labels
 plt.rc('ytick', labelsize=BIGGER_SIZE)    # fontsize of the tick labels
 plt.rc('legend', fontsize=MEDIUM_SIZE)    # legend fontsize
 
+# batchsize = 512000
 def do_plot():
     f, ax = plt.subplots(2,1, figsize=(6,5))
-    replicaNo = [16, 32, 64, 128, 256]
-    xticks = [14.5,16, 32, 64, 128, 256, 260]
-    xticks_label = ["","16", "32", "64", "128", "256", ""]
-    thru = [
-    ('N-HS',[
-        # 167.2,
-        # 49.3,
-        # 33.2,
-        # 25.1,
-        # 16.1,
-    ], 'o', 'coral'),
+    replicaNo = [100, 200, 300, 400]
+    xticks = [100, 200, 300, 400]
+    # bandwidth = 100Mbps, batchsize = 12K
+    # s=1.01 v=1
+    thru1 = [
     ('SMP-HS',[
-        # 34.1,
-        66.2,
-        61.1,
-        51.8,
-        22.0,
-        17.1,
-        13.8,
+        [5.7, 8.5],
+        [1.5, 3.1],
+        [1.4, 2.4], # 20000
+        [0.9, 1.4],
     ], 'p', 'steelblue'),
-    ('S-HS',[
-        # 50.1,
-        64.6,
-        59.8,
-        49.9,
-        20.9,
-        15.5,
-        12.4,
+    ('GS-HS',[
+        [17.8, 18.8], # 18.4, 21.4
+        [12.8, 14.5],
+        [11.6, 13.2],
+        [9.4, 10.8],
     ], 's', 'purple')
     ]
-    for name, entries, style, color in thru:
+    for name, entries, style, color in thru1:
         # thru = []
         # for item in entries:
         #     thru.append((item[0]+item[1])/2.0)
@@ -53,34 +42,22 @@ def do_plot():
 #         ax[0].set_yscale('log')
         ax[0].legend(loc='best', fancybox=True,frameon=True,framealpha=0.3)
         ax[0].set_xticks(xticks)
-        ax[0].set_ylim([0,200])
-        ax[0].set_xticklabels(xticks_label)
+        ax[0].set_ylim([0,250])
+        # ax[0].set_xticklabels(xticks_label)
         ax[0].set_xticklabels(("", "", "", "", "", ""))
-    lat = [
-    ('N-HS',[
-        # 55,
-        # 190,
-        # 700,
-        # 1920,
-        # 5870,
-    ], 'o', 'coral'),
+    # s=1.1 v=5
+    thru2 = [
     ('SMP-HS',[
-        # 5.398,
-        1031,
-        1532,
-        2312,
-        4018,
-        7386,
-        15321,
+        [7.4, 10.5],
+        [4.1, 5.7],
+        [2.9, 5.1],
+        [2.3, 2.7],
     ], 'p', 'steelblue'),
-    ('S-HS',[
-        # 5.6,
-        1282,
-        1721,
-        3321,
-        5666,
-        8732,
-        18021,
+    ('GS-HS',[
+        [16.5, 18.2], # [17.1, 19.2]
+        [11.1, 13.1], # 3411
+        [10.2, 12.0], # 6165
+        [7.8, 9.2],
     ], 's', 'purple')
     ]
     for name, entries, style, color in lat:
@@ -89,13 +66,13 @@ def do_plot():
         ax[1].set_xticks(replicaNo)
         ax[1].set_xticks(xticks)
         ax[1].set_ylim([0,10000])
-        ax[1].set_xticklabels(xticks_label)
+        # ax[1].set_xticklabels(xticks_label)
         ax[1].set_yscale('log')
     ax[0].grid(linestyle='--', alpha=0.2)
     ax[1].grid(linestyle='--', alpha=0.2)
     f.text(0.5, 0.03, 'Number of nodes', ha='center', va='center')
 #     plt.subplots_adjust(hspace=0.1)
-    plt.savefig('scalability-lan.pdf', format='pdf')
+    plt.savefig('unbalance_workload.pdf', format='pdf')
     plt.show()
 
 if __name__ == '__main__':

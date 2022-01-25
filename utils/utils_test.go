@@ -1,9 +1,11 @@
 package utils
 
 import (
+	"fmt"
 	"github.com/gitferry/bamboo/config"
 	"github.com/gitferry/bamboo/identity"
 	"github.com/stretchr/testify/require"
+	"math/rand"
 	"strconv"
 	"testing"
 )
@@ -32,4 +34,28 @@ func MockAddresses(n int) map[identity.NodeID]string {
 	}
 
 	return address
+}
+
+func TestZipf(t *testing.T) {
+	rounds := 1000000
+	n := 100
+	ids := make([]identity.NodeID, n)
+	for i := 0; i < n; i++ {
+		ids[i] = identity.NewNodeID(i + 1)
+	}
+	masterIndex := 0
+	ids = append(ids[:masterIndex], ids[masterIndex+1:]...)
+	r := rand.New(rand.NewSource(1))
+	zipf := rand.NewZipf(r, 1.01, 1, uint64(n-1))
+	zipfMap := make(map[uint64]int)
+	for i := 0; i < rounds; i++ {
+		num := zipf.Uint64()
+		zipfMap[num]++
+	}
+	//data := make([]int, n)
+	for i := 0; i < n-1; i++ {
+		fmt.Printf("%v,", zipfMap[uint64(i)])
+		//data[i] = zipfMap[uint64(i)]
+	}
+	//fmt.Printf("%v", data)
 }

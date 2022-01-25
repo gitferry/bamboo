@@ -212,7 +212,7 @@ func (r *Replica) HandleMicroblock(mb blockchain.MicroBlock) {
 	// gossip
 	//if a quorum of acks is not reached, gossip the microblock
 	go func() {
-		if config.Configuration.Gossip == true && !mb.IsRequested {
+		if config.Configuration.Gossip == true && !mb.IsRequested && r.ID() != config.Configuration.Master {
 			mb.Hops++
 			if mb.Hops <= config.Configuration.R {
 				r.otherMBChan <- mb
@@ -345,14 +345,10 @@ func (r *Replica) handleQuery(m message.Query) {
 	r.totalSlowMBs = 0
 	aveVoteTime := float64(r.totalVoteTime.Milliseconds()) / float64(r.voteNo)
 	mbRate := float64(r.sm.TotalMB()) / time.Now().Sub(r.startTime).Seconds()
-	var missingCounts string
-	for k, v := range r.missingCounts {
-		missingCounts += fmt.Sprintf("%v: %v\n", k, v)
-	}
 	//status := fmt.Sprintf("chain status is: %s\nCommitted rate is %v.\nAve. block size is %v.\nAve. trans. delay is %v ms.\nAve. creation time is %f ms.\nAve. processing time is %v ms.\nAve. vote time is %v ms.\nRequest rate is %f txs/s.\nAve. round time is %f ms.\nLatency is %f ms.\nThroughput is %f txs/s.\n", r.Safety.GetChainStatus(), committedRate, aveBlockSize, aveTransDelay, aveCreateDuration, aveProcessTime, aveVoteProcessTime, requestRate, aveRoundTime, latency, throughput)
 	//status := fmt.Sprintf("Ave. actual proposing time is %v ms.\nAve. proposing time is %v ms.\nAve. processing time is %v ms.\nAve. vote time is %v ms.\nAve. block size is %v.\nAve. round time is %v ms.\nLatency is %v ms.\n", realAveProposeTime, aveProposeTime, aveProcessTime, aveVoteProcessTime, aveBlockSize, aveRoundTime, latency)
-	status := fmt.Sprintf("Ave. View Time: %vms\nAve. Propose Time: %vms\nAve. Dissemination Time: %vms, slow dissemination time: %v\nAve. Creation Time: %v, a proposal contains %v microblocks\nAve. Vote Time: %vms\nAve. Tx Rate: %v\nAve. MB Rate: %v, an MB contains %v txs\nRedundant microblocks:%v\nTotal microblocks: %v, Remaining microblocks: %v\nTotal missing microblocks: %v\nTotoal proposed microblocks:%v\nAve. hops:%v\nSend Rate: %v Mbps\nRecv Rate: %v Mbps\nTotal txs: %v, Remaining txs: %v\n%sMissing counts:\n%s\n",
-		aveRoundTime, aveProposeTime, aveDisseminationTime, aveSlowDisseminationTime, aveCreationTime, aveBlockSize, aveVoteTime, aveTxRate, mbRate, r.txNoInMB, r.totalRedundantMBs, r.sm.TotalMB(), r.sm.RemainingMB(), r.missingMicroblocks, r.totalProposedMBs, aveHops, r.SendRate(), r.RecvRate(), r.sm.TotalTx(), r.sm.RemainingTx(), r.thrus, missingCounts)
+	status := fmt.Sprintf("Ave. View Time: %vms\nAve. Propose Time: %vms\nAve. Dissemination Time: %vms, slow dissemination time: %v\nAve. Creation Time: %v, a proposal contains %v microblocks\nAve. Vote Time: %vms\nAve. Tx Rate: %v\nAve. MB Rate: %v, an MB contains %v txs\nRedundant microblocks:%v\nTotal microblocks: %v, Remaining microblocks: %v\nTotal missing microblocks: %v\nTotoal proposed microblocks:%v\nAve. hops:%v\nSend Rate: %v Mbps\nRecv Rate: %v Mbps\nTotal txs: %v, Remaining txs: %v\n%s\n",
+		aveRoundTime, aveProposeTime, aveDisseminationTime, aveSlowDisseminationTime, aveCreationTime, aveBlockSize, aveVoteTime, aveTxRate, mbRate, r.txNoInMB, r.totalRedundantMBs, r.sm.TotalMB(), r.sm.RemainingMB(), r.missingMicroblocks, r.totalProposedMBs, aveHops, r.SendRate(), r.RecvRate(), r.sm.TotalTx(), r.sm.RemainingTx(), r.thrus)
 	m.Reply(message.QueryReply{Info: status})
 }
 
@@ -431,6 +427,9 @@ func (r *Replica) gossip() {
 }
 
 func (r *Replica) pickFanoutNodes(mb *blockchain.MicroBlock) []identity.NodeID {
+	if !config.Configuration.Opt {
+		return utils.PickRandomNodes(nil)
+	}
 	if bm, exists := r.mbSentNodes[mb.Hash]; exists {
 		mb.AddSentNodes(utils.BitmapToNodes(bm))
 	}
@@ -492,6 +491,9 @@ func (r *Replica) processAcks(ack *blockchain.Ack) {
 	//if config.Configuration.MemType == "time" {
 	//	r.estimator.AddAck(ack)
 	if config.Configuration.MemType == "ack" {
+		if r.sm.IsStable(ack.MicroblockID) {
+			return
+		}
 		if ack.Receiver != r.ID() {
 			voteIsVerified, err := crypto.PubVerify(ack.Signature, crypto.IDToByte(ack.MicroblockID), ack.Receiver)
 			if err != nil {

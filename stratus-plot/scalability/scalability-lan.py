@@ -11,6 +11,7 @@ plt.rc('xtick', labelsize=BIGGER_SIZE)    # fontsize of the tick labels
 plt.rc('ytick', labelsize=BIGGER_SIZE)    # fontsize of the tick labels
 plt.rc('legend', fontsize=MEDIUM_SIZE)    # legend fontsize
 
+# batchsize = 512000
 def do_plot():
     f, ax = plt.subplots(2,1, figsize=(6,5))
     replicaNo = [16, 32, 64, 128, 256]
@@ -30,11 +31,19 @@ def do_plot():
         # 142,
         # 89.2,
         # 78.9,
-        184,
-        162,
-        160,
-        112,
-        102,
+        # 184,
+        # 162,
+        # 160,
+        # 112,
+        # 102,
+        # 193,
+        # 151,
+        207, # batchsize = 128000
+        195,
+        185,
+        131.7,
+        101, # batchsize = 512000
+        88,
     ], 'p', 'steelblue'),
     ('S-HS',[
         # 144,
@@ -42,11 +51,18 @@ def do_plot():
         # 130,
         # 80.1,
         # 55.1,
-        181,
-        155,
-        152,
-        101,
-        92,
+        # 181,
+        # 155,
+        # 152,
+        # 101,
+        # 92,
+        # 146,
+        202,
+        186,
+        176.9,
+        125.3,
+        93,
+        82,
     ], 's', 'purple')
     # ('Tendermint',[
     #     154.3,
@@ -73,7 +89,7 @@ def do_plot():
 #         ax[0].set_yscale('log')
         ax[0].legend(loc='best', fancybox=True,frameon=True,framealpha=0.3)
         ax[0].set_xticks(xticks)
-        ax[0].set_ylim([0,200])
+        ax[0].set_ylim([0,250])
         ax[0].set_xticklabels(xticks_label)
         ax[0].set_xticklabels(("", "", "", "", "", ""))
     lat = [
@@ -90,11 +106,19 @@ def do_plot():
         # 98,
         # 258,
         # 531,
-        38,
-        72,
-        140,
-        220,
-        804,
+        # 38,
+        # 72,
+        # 140,
+        # 220,
+        # 804,
+        # 450,
+        # 1012,
+        49,
+        96,
+        203, # batchsize = 256000
+        820, # batchsize = 400000
+        2682, # batchsize = 512000
+        4862,
     ], 'p', 'steelblue'),
     ('S-HS',[
         # 33,
@@ -102,11 +126,19 @@ def do_plot():
         # 162,
         # 320,
         # 1232,
-        97,
-        279,
-        893,
-        2891,
-        5613,
+        # 97,
+        # 279,
+        # 893,
+        # 2891,
+        # 5613,
+        # 878,
+        # 1093,
+        53,
+        104,
+        277,
+        965,
+        4573,
+        7649,
     ], 's', 'purple')
     # ('Tendermint',[
     #     154.3,

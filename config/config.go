@@ -61,6 +61,7 @@ type Config struct {
 	Q              int             `json:"q"` // the number of acks to be considered stable
 	R              int             `json:"r"` // max hops of gossip
 	Zipf           bool            `json:"zipf"`
+	Opt            bool            `json:"opt"`
 
 	// zipfian distribution
 	ZipfianS float64 `json:"zipfian_s"` // zipfian s parameter
