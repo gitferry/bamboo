@@ -13,9 +13,9 @@ plt.rc('legend', fontsize=MEDIUM_SIZE)    # legend fontsize
 
 def do_plot():
     f, ax = plt.subplots(2,1, figsize=(6,5))
-    replicaNo = [16, 32, 64, 128, 256]
-    xticks = [14.5,16, 32, 64, 128, 256, 260]
-    xticks_label = ["","16", "32", "64", "128", "256", ""]
+    replicaNo = [16, 32, 64, 128, 256, 400]
+    xticks = [14.5, 16, 32, 64, 128, 256, 400, 410]
+    xticks_label = ["","16", "", "64", "128", "256", "400", ""]
     thru = [
     ('N-HS',[
         # 167.2,
@@ -23,6 +23,12 @@ def do_plot():
         # 33.2,
         # 25.1,
         # 16.1,
+        4.5,
+        2.7,
+        1.2,
+        0.8,
+        0,
+        0,
     ], 'o', 'coral'),
     ('SMP-HS',[
         # 34.1,
@@ -53,16 +59,17 @@ def do_plot():
 #         ax[0].set_yscale('log')
         ax[0].legend(loc='best', fancybox=True,frameon=True,framealpha=0.3)
         ax[0].set_xticks(xticks)
-        ax[0].set_ylim([0,200])
+        # ax[0].set_ylim([0,200])
         ax[0].set_xticklabels(xticks_label)
         ax[0].set_xticklabels(("", "", "", "", "", ""))
     lat = [
     ('N-HS',[
-        # 55,
-        # 190,
-        # 700,
-        # 1920,
-        # 5870,
+        982,
+        1342,
+        2931,
+        35810,
+        1021432,
+        2132193,
     ], 'o', 'coral'),
     ('SMP-HS',[
         # 5.398,
@@ -88,7 +95,7 @@ def do_plot():
         ax[1].set_ylabel("Latency (ms)")
         ax[1].set_xticks(replicaNo)
         ax[1].set_xticks(xticks)
-        ax[1].set_ylim([0,10000])
+        ax[1].set_ylim([0,100000])
         ax[1].set_xticklabels(xticks_label)
         ax[1].set_yscale('log')
     ax[0].grid(linestyle='--', alpha=0.2)

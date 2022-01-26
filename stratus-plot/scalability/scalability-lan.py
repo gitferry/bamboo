@@ -14,9 +14,9 @@ plt.rc('legend', fontsize=MEDIUM_SIZE)    # legend fontsize
 # batchsize = 512000
 def do_plot():
     f, ax = plt.subplots(2,1, figsize=(6,5))
-    replicaNo = [16, 32, 64, 128, 256]
-    xticks = [14.5,16, 32, 64, 128, 256, 260]
-    xticks_label = ["","16", "32", "64", "128", "256", ""]
+    replicaNo = [16, 32, 64, 128, 256, 400]
+    xticks = [14.5,16, 32, 64, 128, 256, 400, 410]
+    xticks_label = ["","16", "", "64", "128", "256", "400", ""]
     thru = [
     ('N-HS',[
         167.2,
@@ -24,6 +24,7 @@ def do_plot():
         33.2,
         25.1,
         16.1,
+        0,
     ], 'o', 'coral'),
     ('SMP-HS',[
         # 175,
@@ -99,6 +100,7 @@ def do_plot():
         700,
         1920,
         5870,
+        1000000,
     ], 'o', 'coral'),
     ('SMP-HS',[
         # 29,
