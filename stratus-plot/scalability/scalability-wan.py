@@ -47,7 +47,10 @@ def do_plot():
         20.9,
         15.5,
         12.4,
-    ], 's', 'purple')
+    ], 's', 'purple'),
+    ('Narwhal',[
+        33.9,
+    ], 'h', 'purple')
     ]
     for name, entries, style, color in thru:
         # thru = []
@@ -88,7 +91,10 @@ def do_plot():
         5666,
         8732,
         18021,
-    ], 's', 'purple')
+    ], 's', 'purple'),
+    ('Narwhal',[
+        3588,
+    ], 'h', 'purple')
     ]
     for name, entries, style, color in lat:
         ax[1].plot(replicaNo, entries, marker=style, color=color, mec=color, mfc='none', label='%s' % name, markersize=6)
@@ -102,7 +108,7 @@ def do_plot():
     ax[1].grid(linestyle='--', alpha=0.2)
     f.text(0.5, 0.03, 'Number of nodes', ha='center', va='center')
 #     plt.subplots_adjust(hspace=0.1)
-    plt.savefig('scalability-lan.pdf', format='pdf')
+    plt.savefig('scalability-wan.pdf', format='pdf')
     plt.show()
 
 if __name__ == '__main__':

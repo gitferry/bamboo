@@ -64,21 +64,11 @@ def do_plot():
         125.3,
         93,
         82,
-    ], 's', 'purple')
-    # ('Tendermint',[
-    #     154.3,
-    #     133.4,
-    #     94.5,
-    #     55.6,
-    #     30.4,
-    # ], '^', 'darkseagreen'),
-    # ('Narwhal',[
-    #     184.3,
-    #     163.4,
-    #     154.5,
-    #     85.6,
-    #     60.4,
-    # ], 'h', 'brown')
+    ], 's', 'purple'),
+    ('Narwhal',[
+        254.3, #173.3
+        130.2,
+    ], 'h', 'brown')
     ]
     for name, entries, style, color in thru:
         # thru = []
@@ -142,20 +132,10 @@ def do_plot():
         4573,
         7649,
     ], 's', 'purple')
-    # ('Tendermint',[
-    #     154.3,
-    #     133.4,
-    #     94.5,
-    #     55.6,
-    #     30.4,
-    # ], '^', 'darkseagreen'),
-    # ('Narwhal',[
-    #     184.3,
-    #     163.4,
-    #     154.5,
-    #     85.6,
-    #     60.4,
-    # ], 'h', 'brown')
+    ('Narwhal',[
+        832,
+        6125,
+    ], '^', 'darkseagreen')
     ]
     for name, entries, style, color in lat:
         ax[1].plot(replicaNo, entries, marker=style, color=color, mec=color, mfc='none', label='%s' % name, markersize=6)
