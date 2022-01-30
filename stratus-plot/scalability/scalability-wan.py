@@ -49,8 +49,13 @@ def do_plot():
         12.4,
     ], 's', 'purple'),
     ('Narwhal',[
-        33.9,
-    ], 'h', 'purple')
+        33.9, #16
+        29, #32
+        24.1, #64
+        18, #128
+        4.4, # 256
+        0, # 400
+    ], 'h', 'darkseagreen')
     ]
     for name, entries, style, color in thru:
         # thru = []
@@ -93,8 +98,13 @@ def do_plot():
         18021,
     ], 's', 'purple'),
     ('Narwhal',[
-        3588,
-    ], 'h', 'purple')
+        3588, #16
+        3605, #32
+        4171, #64
+        8888, #128
+        52306, #256
+        500000, #400
+    ], '^', 'darkseagreen')
     ]
     for name, entries, style, color in lat:
         ax[1].plot(replicaNo, entries, marker=style, color=color, mec=color, mfc='none', label='%s' % name, markersize=6)
