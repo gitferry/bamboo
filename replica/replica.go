@@ -370,7 +370,15 @@ func (r *Replica) handleTxn(m message.Transaction) {
 		r.totalMicroblocks++
 		r.totalProposedMBs++
 		if config.Configuration.Gossip == false {
-			r.Broadcast(mb)
+			if r.isByz && config.Configuration.Strategy == "missing" {
+				if config.Configuration.MemType == "naive" {
+					r.Send(r.GetCurrentLeader(), mb)
+				} else if config.Configuration.MemType == "ack" {
+					r.MulticastQuorum(r.randomPick(), mb)
+				}
+			} else {
+				r.Broadcast(mb)
+			}
 		} else {
 			mb.Hops++
 			r.selfMBChan <- *mb
@@ -424,6 +432,17 @@ func (r *Replica) gossip() {
 			}
 		}
 	}
+}
+
+func (r *Replica) randomPick() []identity.NodeID {
+	n := config.GetConfig().N() - 1 // exluding the master
+	f := n/3 + 1
+	pick := utils.RandomPick(n, f)
+	pickedNode := make([]identity.NodeID, f)
+	for i, item := range pick {
+		pickedNode[i] = identity.NewNodeID(item + 2)
+	}
+	return pickedNode
 }
 
 func (r *Replica) pickFanoutNodes(mb *blockchain.MicroBlock) []identity.NodeID {

@@ -36,6 +36,14 @@ func MockAddresses(n int) map[identity.NodeID]string {
 	return address
 }
 
+func TestRandomPick(t *testing.T) {
+	n := 100
+	f := n/3 + 1
+	pick := RandomPick(n, f)
+	require.Equal(t, 34, len(pick))
+	fmt.Printf("%v", RandomPick(n, f))
+}
+
 func TestZipf(t *testing.T) {
 	rounds := 1000000
 	n := 100
