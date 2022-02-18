@@ -12,7 +12,7 @@ plt.rc('ytick', labelsize=BIGGER_SIZE)    # fontsize of the tick labels
 plt.rc('legend', fontsize=MEDIUM_SIZE)    # legend fontsize
 
 def do_plot():
-    f, ax = plt.subplots(2,1, figsize=(6,5))
+    f, ax = plt.subplots(1,2,figsize=(10,4),constrained_layout=True)
     replicaNo = [16, 32, 64, 128, 256, 400]
     xticks = [14.5, 16, 32, 64, 128, 256, 400, 410]
     xticks_label = ["","16", "", "64", "128", "256", "400", ""]
@@ -30,6 +30,14 @@ def do_plot():
         0,
         0,
     ], 'o', 'coral'),
+    ('N-SL',[
+        1.2,
+        0.2,
+        0,
+        0,
+        0,
+        0,
+    ], '>', 'olive'),
     ('SMP-HS',[
         # 34.1,
         66.2,
@@ -48,6 +56,14 @@ def do_plot():
         15.5,
         12.4,
     ], 's', 'purple'),
+    ('S-SL',[
+        60.1,
+        50.3,
+        32.1,
+        8.1,
+        2.3,
+        0.6,
+    ], '<', 'brown'),
     ('Narwhal',[
         33.9, #16
         29, #32
@@ -61,15 +77,16 @@ def do_plot():
         # thru = []
         # for item in entries:
         #     thru.append((item[0]+item[1])/2.0)
-        ax[0].plot(replicaNo, entries, marker=style, mec=color, color=color, mfc='none', label='%s'%name, markersize=6)
+        ax[0].plot(replicaNo, entries, marker=style, mec=color, color=color, mfc='none', label='%s'%name, markersize=8)
 #         ax[0].errorbar(replicaNo, thru, yerr=errs, marker='s', mfc='red', mec='green', ms=20, mew=4)
         ax[0].set_ylabel("Throughput (KTx/s)")
 #         ax[0].set_yscale('log')
         ax[0].legend(loc='best', fancybox=True,frameon=True,framealpha=0.3)
         ax[0].set_xticks(xticks)
         # ax[0].set_ylim([0,200])
+        ax[0].set_ylim([0, 80])
         ax[0].set_xticklabels(xticks_label)
-        ax[0].set_xticklabels(("", "", "", "", "", ""))
+        # ax[0].set_xticklabels(("", "", "", "", "", ""))
     lat = [
     ('N-HS',[
         982,
@@ -79,6 +96,14 @@ def do_plot():
         1021432,
         2132193,
     ], 'o', 'coral'),
+    ('N-SL',[
+        1521,
+        3321,
+        12433,
+        50321,
+        1923919,
+        1992913,
+    ], '>', 'olive'),
     ('SMP-HS',[
         # 5.398,
         1031,
@@ -97,6 +122,14 @@ def do_plot():
         8732,
         18021,
     ], 's', 'purple'),
+    ('S-SL',[
+        2231,
+        3499,
+        7811,
+        19011,
+        29111,
+        102311,
+    ], '<', 'brown'),
     ('Narwhal',[
         3588, #16
         3605, #32
@@ -107,16 +140,17 @@ def do_plot():
     ], '^', 'darkseagreen')
     ]
     for name, entries, style, color in lat:
-        ax[1].plot(replicaNo, entries, marker=style, color=color, mec=color, mfc='none', label='%s' % name, markersize=6)
+        ax[1].plot(replicaNo, entries, marker=style, color=color, mec=color, mfc='none', label='%s' % name, markersize=8)
         ax[1].set_ylabel("Latency (ms)")
         ax[1].set_xticks(replicaNo)
         ax[1].set_xticks(xticks)
-        ax[1].set_ylim([0,100000])
         ax[1].set_xticklabels(xticks_label)
         ax[1].set_yscale('log')
-    ax[0].grid(linestyle='--', alpha=0.2)
-    ax[1].grid(linestyle='--', alpha=0.2)
-    f.text(0.5, 0.03, 'Number of nodes', ha='center', va='center')
+    ax[1].set_ylim([0,100000])
+    ax[0].grid(linestyle='--', alpha=0.5)
+    ax[1].grid(linestyle='--', alpha=0.5)
+    f.supxlabel('# of replicas')
+    # f.text(0.5, 0.03, 'Number of nodes', ha='center', va='center')
 #     plt.subplots_adjust(hspace=0.1)
     plt.savefig('scalability-wan.pdf', format='pdf')
     plt.show()

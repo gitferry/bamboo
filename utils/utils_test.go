@@ -46,7 +46,7 @@ func TestRandomPick(t *testing.T) {
 
 func TestZipf(t *testing.T) {
 	rounds := 1000000
-	n := 100
+	n := 200
 	ids := make([]identity.NodeID, n)
 	for i := 0; i < n; i++ {
 		ids[i] = identity.NewNodeID(i + 1)
@@ -54,7 +54,7 @@ func TestZipf(t *testing.T) {
 	masterIndex := 0
 	ids = append(ids[:masterIndex], ids[masterIndex+1:]...)
 	r := rand.New(rand.NewSource(1))
-	zipf := rand.NewZipf(r, 1.01, 1, uint64(n-1))
+	zipf := rand.NewZipf(r, 1.01, 10, uint64(n-1))
 	zipfMap := make(map[uint64]int)
 	for i := 0; i < rounds; i++ {
 		num := zipf.Uint64()

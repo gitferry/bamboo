@@ -14,74 +14,72 @@ plt.rc('legend', fontsize=MEDIUM_SIZE)    # legend fontsize
 bsize = [
     ('b16K-p128',[
         # (4,703),
-        # (8,400),
-        (12,300),
-        (16,265),
+        (58,400),
+        (62,300),
+        (66,265),
         # (20,280),
-        (24,350),
-        (25,480),
-        (27,650),
-        (28,900),
-        (29,1428),
+        (74,350),
+        (75,480),
+        (77,650),
+        (78,900),
+        (79,1328),
     ], '-o', 'coral'),
     ('b64K-p128',[
         # (12,900),
         # (20,580),
         # (28,447),
         # (40,350),
-        # (48,315),
-        (56,296),
-        (72,320),
-        (76,330),
-        (80,490),
-        (81,679),
-        (80,1262),
+        (98,415),
+        (106,396),
+        (122,420),
+        (126,430),
+        (130,590),
+        (131,779),
+        (130,1162),
     ], '-^', 'coral'),
     ('b128K-p128',[
         # (28,800),
         # (36,640),
         # (44,540),
         # (52,480),
-        # (60,430),
-        (68,400),
-        (76,380),
-        (80,370),
-        (84,410),
-        (85,612),
-        (85,1302),
+        (110,630),
+        (118,600),
+        (126,580),
+        (130,570),
+        (134,610),
+        (135,812),
+        (135,1302),
     ], '-*', 'coral'),
     ('b16K-p512',[
-        # (4,380),
-        (8,250),
-        (12,285),
-        (15,634),
-        (15,746),
-        (14,1582),
+        (54,380),
+        (58,250),
+        (62,285),
+        (65,634),
+        (65,746),
+        (64,1582),
     ], '--p', 'steelblue'),
     ('b64K-p512',[
         # (8,653),
-        # (16,378),
-        (24,295),
-        (32,275),
-        (40,320),
-        (46,500),
-        (45,1032),
+        (66,478),
+        (74,395),
+        (82,375),
+        (90,420),
+        (96,600),
+        (95,1032),
     ], '--v', 'steelblue'),
     ('b128K-p512',[
         # (12,843),
         # (20,540),
-        # (28,423),
-        (36,368),
+        (78,623),
+        (86,568),
         # (44,320),
-        (52,432),
-        (51,872),
-        (52,1123)
+        (102,632),
+        (101,1072),
+        (102,1323)
     ], '--d', 'steelblue')]
 
-
-
 def do_plot():
-    f = plt.figure(1, figsize=(7,5))
+    f = plt.figure(1, figsize=(7.5,4), constrained_layout=True)
     plt.clf()
     ax = f.add_subplot(1, 1, 1)
     for name, entries, style, color in bsize:
@@ -91,12 +89,12 @@ def do_plot():
             throughput.append(t)
             latency.append(l)
         ax.plot(throughput, latency, style, color=color, label='%s' % name, markersize=8, alpha=0.8)
-    plt.legend(fancybox=True,frameon=True,framealpha=0.3,mode={"expand", None},ncol=3, loc='best')
-    plt.grid(linestyle='--', alpha=0.2)
+    plt.legend(fancybox=True,frameon=True,framealpha=0.3,mode={"expand", None},ncol=3, loc='upper center')
+    plt.grid(linestyle='--', alpha=0.5)
     plt.ylim([0,2000])
     plt.ylabel('Latency (ms)')
     plt.xlabel('Throughput (KTx/s)')
-    plt.tight_layout()
+    # plt.tight_layout()
     plt.savefig('batch-size.pdf', format='pdf')
     plt.show()
 
