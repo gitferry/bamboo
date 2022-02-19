@@ -62,6 +62,10 @@ type Config struct {
 	R              int             `json:"r"` // max hops of gossip
 	Zipf           bool            `json:"zipf"`
 	Opt            bool            `json:"opt"`
+	LoadBalance    bool            `json:"load_balance"`
+	LoadedIndex    int             `json:"loaded_index"`
+	ForwardP       int             `json:"forward_p"`
+	D              int             `json:"d"`
 
 	// zipfian distribution
 	ZipfianS float64 `json:"zipfian_s"` // zipfian s parameter

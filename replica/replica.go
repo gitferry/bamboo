@@ -219,6 +219,11 @@ func (r *Replica) HandleMicroblock(mb blockchain.MicroBlock) {
 			}
 		}
 	}()
+	if config.Configuration.LoadBalance && mb.IsForward {
+		mb.IsForward = false
+		r.Broadcast(mb)
+		return
+	}
 	_, ok := r.receivedMBs[mb.Hash]
 	if ok {
 		r.totalRedundantMBs++
@@ -369,7 +374,21 @@ func (r *Replica) handleTxn(m message.Transaction) {
 		mb.Timestamp = time.Now()
 		r.totalMicroblocks++
 		r.totalProposedMBs++
-		if config.Configuration.Gossip == false {
+		//if config.Configuration.Gossip == false {
+		//	if r.isByz && config.Configuration.Strategy == "missing" {
+		//		if config.Configuration.MemType == "naive" {
+		//			r.Send(r.GetCurrentLeader(), mb)
+		//		} else if config.Configuration.MemType == "ack" {
+		//			r.MulticastQuorum(r.randomPick(), mb)
+		//		}
+		//	} else {
+		//		r.Broadcast(mb)
+		//	}
+		//} else {
+		//	mb.Hops++
+		//	r.selfMBChan <- *mb
+		//}
+		if config.Configuration.LoadBalance == false {
 			if r.isByz && config.Configuration.Strategy == "missing" {
 				if config.Configuration.MemType == "naive" {
 					r.Send(r.GetCurrentLeader(), mb)
@@ -382,8 +401,6 @@ func (r *Replica) handleTxn(m message.Transaction) {
 		} else {
 			mb.Hops++
 			r.selfMBChan <- *mb
-			//log.Debugf("a self mb is added")
-			//r.MulticastQuorum(r.pickFanoutNodes(mb), mb)
 		}
 	}
 	r.kickOff()
@@ -394,6 +411,25 @@ func (r *Replica) kickOff() {
 	if r.pm.GetCurView() == 0 && r.IsLeader(r.ID(), 1) {
 		log.Debugf("[%v] is going to kick off the protocol", r.ID())
 		r.pm.AdvanceView(0)
+	}
+}
+
+func (r *Replica) loadbalance() {
+	for {
+		select {
+		case mb := <-r.selfMBChan:
+			if rand.Intn(100) < config.Configuration.ForwardP && r.ID().Node() <= config.Configuration.LoadedIndex {
+				mb.IsForward = true
+				pick := pickRandomNodes(config.Configuration.N()-1, 1, config.Configuration.LoadedIndex)[0]
+				log.Debugf("[%v] is going to forward a mb to %v", r.ID(), pick)
+				r.Send(pick, mb)
+			} else {
+				r.Broadcast(mb)
+			}
+			//log.Debugf("[%v] is going to gossip a self mb", r.ID())
+			//r.MulticastQuorum(r.pickFanoutNodes(&mb), mb)
+		default:
+		}
 	}
 }
 
@@ -441,6 +477,15 @@ func (r *Replica) randomPick() []identity.NodeID {
 	pickedNode := make([]identity.NodeID, f)
 	for i, item := range pick {
 		pickedNode[i] = identity.NewNodeID(item + 2)
+	}
+	return pickedNode
+}
+
+func pickRandomNodes(n, d, index int) []identity.NodeID {
+	pick := utils.RandomPick(n-index, d)
+	pickedNode := make([]identity.NodeID, d)
+	for i, item := range pick {
+		pickedNode[i] = identity.NewNodeID(item + 1 + index)
 	}
 	return pickedNode
 }
@@ -658,7 +703,8 @@ func (r *Replica) startSignal() {
 // Start starts event loop
 func (r *Replica) Start() {
 	go r.Run()
-	go r.gossip()
+	//go r.gossip()
+	go r.loadbalance()
 	// wait for the start signal
 	<-r.start
 	go r.ListenLocalEvent()

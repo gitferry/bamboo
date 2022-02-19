@@ -41,6 +41,7 @@ type MicroBlock struct {
 	FutureTimestamp time.Time
 	Sender          identity.NodeID
 	IsRequested     bool
+	IsForward       bool
 	Bitmap          bitmap.Bitmap
 	Hops            int
 }
