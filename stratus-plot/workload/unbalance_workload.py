@@ -31,28 +31,41 @@ def do_plot():
         [0.9, 1.4]
     ),
     (
-        # S-HS-d1
+        # S-HS-G
         [17.8, 18.8], # 18.4, 21.4
-        [12.8, 14.5],
-        [11.6, 13.2],
-        [9.4, 10.8]
+        [10.8, 12.5],
+        [9.6, 11.2],
+        [7.4, 8.8]
+    ),
+    (
+        # S-HS-d1
+        [27.8, 28.8], # 18.4, 21.4
+        [14.8, 16.5],
+        [12.6, 14.2],
+        [10.4, 11.8]
     ),
     (
         # S-HS-d2
-        [20.8, 21.8], # 18.4, 21.4
-        [15.8, 17.5],
-        [14.6, 16.2],
-        [12.4, 13.8]
+        [28.8, 30.8], # 18.4, 21.4
+        [16.8, 17.5],
+        [13.6, 15.2],
+        [11.9, 12.8]
     ),
     (
         # S-HS-d3
-        [21.8, 22.8], # 18.4, 21.4
-        [16.8, 18.5],
-        [15.6, 17.2],
-        [13.4, 14.8]
+        [29.5, 30.8], # 18.4, 21.4
+        [17.2, 18.1],
+        [13.9, 15.3],
+        [12.3, 13.1]
     )
     ]
-    bar_width = 20
+    even_workload = [
+        31.9,
+        19.9,
+        16.5,
+        13.4,
+    ]
+    bar_width = 18
     thru1_smp = []
     err1_smp = []
     corlor1_smp = 'steelblue'
@@ -60,35 +73,44 @@ def do_plot():
         ave = (entries[0] + entries[1])/2.0
         thru1_smp.append(ave)
         err1_smp.append(entries[1]-entries[0])
+    thru1_g = []
+    err1_g = []
+    corlor1_g = 'darkseagreen'
+    for entries in data1[1]:
+        ave = (entries[0] + entries[1])/2.0
+        thru1_g.append(ave)
+        err1_g.append(entries[1]-entries[0])
     thru1_d1 = []
     err1_d1 = []
     corlor1_d1 = 'orangered'
-    for entries in data1[1]:
+    for entries in data1[2]:
         ave = (entries[0] + entries[1])/2.0
         thru1_d1.append(ave)
         err1_d1.append(entries[1]-entries[0])
     thru1_d2 = []
     err1_d2 = []
     corlor1_d2 = 'coral'
-    for entries in data1[2]:
+    for entries in data1[3]:
         ave = (entries[0] + entries[1])/2.0
         thru1_d2.append(ave)
         err1_d2.append(entries[1]-entries[0])
     thru1_d3 = []
     err1_d3 = []
     corlor1_d3 = 'lightcoral'
-    for entries in data1[3]:
+    for entries in data1[4]:
         ave = (entries[0] + entries[1])/2.0
         thru1_d3.append(ave)
         err1_d3.append(entries[1]-entries[0])
-    ax[0].bar(replicaNo-bar_width, thru1_smp, bar_width, color=corlor1_smp, yerr=err1_smp, error_kw=error_params, label='SMP-HS', edgecolor='black', alpha=0.6, hatch='/')
-    ax[0].bar(replicaNo, thru1_d1, bar_width, color=corlor1_d1, yerr=err1_d1, error_kw=error_params, label='S-HS-d1', edgecolor='black', alpha=0.6, hatch='//')
-    ax[0].bar(replicaNo+bar_width, thru1_d2, bar_width, color=corlor1_d2, yerr=err1_d2, error_kw=error_params, label='S-HS-d2', edgecolor='black', alpha=0.6, hatch='\\')
-    ax[0].bar(replicaNo+2*bar_width, thru1_d3, bar_width, color=corlor1_d3, yerr=err1_d3, error_kw=error_params, label='S-HS-d3', edgecolor='black', alpha=0.6, hatch='/\\')
+    ax[0].bar(replicaNo-2*bar_width, thru1_smp, bar_width, color=corlor1_smp, yerr=err1_smp, error_kw=error_params, label='SMP-HS', edgecolor='black', alpha=0.6, hatch='/')
+    ax[0].bar(replicaNo-1*bar_width, thru1_g, bar_width, color=corlor1_g, yerr=err1_g, error_kw=error_params, label='S-HS-G', edgecolor='black', alpha=0.6, hatch='//')
+    ax[0].bar(replicaNo, thru1_d1, bar_width, color=corlor1_d1, yerr=err1_d1, error_kw=error_params, label='S-HS-d1', edgecolor='black', alpha=0.6, hatch='\\')
+    ax[0].bar(replicaNo+bar_width, thru1_d2, bar_width, color=corlor1_d2, yerr=err1_d2, error_kw=error_params, label='S-HS-d2', edgecolor='black', alpha=0.6, hatch='\\\\')
+    ax[0].bar(replicaNo+2*bar_width, thru1_d3, bar_width, color=corlor1_d3, yerr=err1_d3, error_kw=error_params, label='S-HS-d3', edgecolor='black', alpha=0.6, hatch='\\\\\\')
+    ax[0].plot(replicaNo, even_workload, marker='s', linestyle='--', mec='purple', color='purple', mfc='none', label='S-HS-Even', markersize=8)
     ax[0].set_ylabel("Throughput (KTx/s)")
     # plt.set_xticklabels(tick_label)
     # plt.set_xticks(replicaNo+2*bar_width)
-    # s=1.1 v=5
+    # s=1.1 v=10
     data2 = [
     (
         # SMP-HS
@@ -98,23 +120,30 @@ def do_plot():
         [2.3, 2.7],
     ),
     (
+        # S-HS-G
+        [10.5, 11.2], # [17.1, 19.2]
+        [5.1, 6.1], # 3411
+        [3.2, 4.0], # 6165
+        [2.8, 3.2],
+    ),
+    (
         # S-HS-d1
-        [16.5, 18.2], # [17.1, 19.2]
-        [11.1, 13.1], # 3411
-        [10.2, 12.0], # 6165
-        [7.8, 9.2],
+        [19.5, 21.2], # [17.1, 19.2]
+        [9.1, 10.1], # 3411
+        [8.2, 9.0], # 6165
+        [7.8, 8.2],
     ),
     (
         # S-HS-d2
-        [19.5, 21.2], # [17.1, 19.2]
-        [14.1, 16.1], # 3411
-        [13.2, 15.0], # 6165
+        [26.5, 27.2], # [17.1, 19.2]
+        [15.1, 17.1], # 3411
+        [11.2, 13.0], # 6165
         [10.8, 12.2],
     ),
     (
         # S-HS-d3
-        [20.5, 22.2], # [17.1, 19.2]
-        [15.1, 17.1], # 3411
+        [29.5, 30.2], # [17.1, 19.2]
+        [18.1, 19.5], # 3411
         [14.2, 16.0], # 6165
         [11.8, 13.2],
     )
@@ -126,31 +155,40 @@ def do_plot():
         ave = (entries[0] + entries[1])/2.0
         thru2_smp.append(ave)
         err2_smp.append(entries[1]-entries[0])
+    thru2_g = []
+    err2_g = []
+    corlor2_g = 'darkseagreen'
+    for entries in data2[1]:
+        ave = (entries[0] + entries[1])/2.0
+        thru2_g.append(ave)
+        err2_g.append(entries[1]-entries[0])
     thru2_d1 = []
     err2_d1 = []
     corlor2_d1 = 'orangered'
-    for entries in data2[1]:
+    for entries in data2[2]:
         ave = (entries[0] + entries[1])/2.0
         thru2_d1.append(ave)
         err2_d1.append(entries[1]-entries[0])
     thru2_d2 = []
     err2_d2 = []
     corlor2_d2 = 'coral'
-    for entries in data1[2]:
+    for entries in data2[3]:
         ave = (entries[0] + entries[1])/2.0
         thru2_d2.append(ave)
         err2_d2.append(entries[1]-entries[0])
     thru2_d3 = []
     err2_d3 = []
     corlor2_d3 = 'lightcoral'
-    for entries in data1[3]:
+    for entries in data2[4]:
         ave = (entries[0] + entries[1])/2.0
         thru2_d3.append(ave)
         err2_d3.append(entries[1]-entries[0])
-    ax[1].bar(replicaNo-bar_width, thru2_smp, bar_width, color=corlor2_smp, yerr=err2_smp, error_kw=error_params, edgecolor='black', alpha=0.6, hatch='/')
-    ax[1].bar(replicaNo, thru2_d1, bar_width, color=corlor2_d1, yerr=err2_d1, error_kw=error_params, edgecolor='black', alpha=0.6, hatch='//')
-    ax[1].bar(replicaNo+bar_width, thru2_d2, bar_width, color=corlor2_d2, yerr=err2_d2, error_kw=error_params, edgecolor='black', alpha=0.6, hatch='\\')
-    ax[1].bar(replicaNo+2*bar_width, thru2_d3, bar_width, color=corlor2_d3, yerr=err2_d3, error_kw=error_params, edgecolor='black', alpha=0.6, hatch='/\\')
+    ax[1].bar(replicaNo-2*bar_width, thru2_smp, bar_width, color=corlor2_smp, yerr=err2_smp, error_kw=error_params, edgecolor='black', alpha=0.6, hatch='/')
+    ax[1].bar(replicaNo-1*bar_width, thru2_g, bar_width, color=corlor2_g, yerr=err2_g, error_kw=error_params, edgecolor='black', alpha=0.6, hatch='//')
+    ax[1].bar(replicaNo, thru2_d1, bar_width, color=corlor2_d1, yerr=err2_d1, error_kw=error_params, edgecolor='black', alpha=0.6, hatch='\\')
+    ax[1].bar(replicaNo+bar_width, thru2_d2, bar_width, color=corlor2_d2, yerr=err2_d2, error_kw=error_params, edgecolor='black', alpha=0.6, hatch='\\\\')
+    ax[1].bar(replicaNo+2*bar_width, thru2_d3, bar_width, color=corlor2_d3, yerr=err2_d3, error_kw=error_params, edgecolor='black', alpha=0.6, hatch='\\\\\\')
+    ax[1].plot(replicaNo, even_workload, linestyle='--', marker='s', mec='purple', color='purple', mfc='none', markersize=8)
     # plt.bar(replicaNo-2*bar_width, thru1_smp, bar_width, color=corlor1_smp, yerr=err1_smp, error_kw=error_params, label='SMP-HS-Zipf1')
     # plt.bar(replicaNo-bar_width, thru2_smp, bar_width, color=corlor2_smp, yerr=err2_smp, error_kw=error_params, label='SMP-HS-Zipf2')
     # plt.bar(replicaNo, thru1_gs, bar_width, color=corlor1_gs, yerr=err1_gs, error_kw=error_params, label='GS-HS-Zipf1')
@@ -161,10 +199,10 @@ def do_plot():
     # ax[0].legend(loc='best', fancybox=True,frameon=True,framealpha=0.3)
     # plt.set_ylabel("Throughput (KTx/s)")
     # ax[1].legend(loc='best', fancybox=True,frameon=True,framealpha=0.3)
-    ax[0].set_title('(a) Zipfian s=1.01 v=1')
-    ax[1].set_title('(b) Zipfian s=1.01 v=5')
-    ax[0].set_ylim([0,27])
-    ax[1].set_ylim([0,27])
+    ax[0].set_title('(a) Zipf1 s=1.01 v=1 (highly skewed)')
+    ax[1].set_title('(b) Zipf10 s=1.01 v=10 (lightly skewed)')
+    ax[0].set_ylim([0,40])
+    ax[1].set_ylim([0,40])
     # ax[1].set_xticks(replicaNo+2*bar_width)
     # thru2 = [
     # ('SMP-HS',[
